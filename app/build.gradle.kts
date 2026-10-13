@@ -58,6 +58,15 @@ dependencies {
 
     implementation(libs.kotlinx.coroutines.android)
 
+    // Only for shuffle/repeat: their state lives in the compat "extra binder", which the
+    // framework MediaController cannot read.
+    implementation(libs.androidx.media)
+
+    // Album art: Palette for the card colors, Coil for players that send an art URI instead of a bitmap.
+    implementation(libs.androidx.palette)
+    implementation(libs.coil)
+    implementation(libs.coil.network.okhttp)
+
     testImplementation(libs.junit)
     testImplementation(libs.kotlinx.coroutines.test)
 }

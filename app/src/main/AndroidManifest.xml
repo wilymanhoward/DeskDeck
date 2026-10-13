@@ -2,6 +2,20 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
+    <!-- Album art that players publish as an http(s) URI; lyrics (M3). -->
+    <uses-permission android:name="android.permission.INTERNET" />
+
+    <!--
+        Android 11+ package visibility: make launchable apps visible so we can show the label of the
+        app that owns a media session and launch apps from the rail, without QUERY_ALL_PACKAGES.
+    -->
+    <queries>
+        <intent>
+            <action android:name="android.intent.action.MAIN" />
+            <category android:name="android.intent.category.LAUNCHER" />
+        </intent>
+    </queries>
+
     <application
         android:name=".DeskDeckApp"
         android:allowBackup="true"
@@ -32,6 +46,20 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <!--
+            Being an enabled notification listener is what allows
+            MediaSessionManager.getActiveSessions() for other apps' sessions.
+        -->
+        <service
+            android:name=".media.MediaListenerService"
+            android:exported="true"
+            android:label="@string/app_name"
+            android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE">
+            <intent-filter>
+                <action android:name="android.service.notification.NotificationListenerService" />
+            </intent-filter>
+        </service>
     </application>
 
 </manifest>
