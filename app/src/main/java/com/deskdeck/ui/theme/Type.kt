@@ -58,6 +58,6 @@ val LyricTextStyle = TextStyle(
     fontFamily = Inter,
     fontSize = 30.sp,
     lineHeight = 40.sp,
-    fontWeight = FontWeight.W700,
+    fontWeight = FontWeight.W800,
     letterSpacing = TightTitle,
 )

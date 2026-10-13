@@ -117,6 +117,9 @@ button instead of the player.
   - **⊞** opens all apps. Tap to open one, or tap its pin to add it to the sidebar.
 - **Lyrics:**
   - The current line fills word by word as it's sung; instrumental breaks show three dots.
+  - Lyrics wait for the sound to reach you: DeskDeck measures the audio output's delay (about
+    0.4 s over Bluetooth) and shifts them by it. If a speaker buffers more than it reports, set
+    **Settings › Lyrics › Extra delay** once; it's remembered for that speaker only.
   - Scroll freely. Following the song resumes after 5 seconds.
   - Tap a line to jump to it.
   - If the timing is off, use the sliders button (top right of the lyrics) for **Earlier / Later**
@@ -222,6 +225,10 @@ screen plus two overlays), and transliteration libraries (Android's built-in ICU
 - **Shuffle/repeat** are best-effort. With apps built on Android's media compat libraries (Spotify,
   YouTube Music) they work with real state. Apps that only offer custom actions can be toggled, but
   their state isn't shown. Otherwise the buttons are disabled.
+- **Audio delay** is measured with a short silent test track on the same output (only while music
+  is already playing), using Android's presentation timestamps. These include what a Bluetooth
+  device reports about itself, but some speakers buffer more without saying so; that part can
+  only be set by ear, per speaker.
 - **Word timing** is exact only for lyrics with word stamps (enhanced LRC). LRCLIB almost always
   has line timing only, so DeskDeck estimates when each word is sung from its syllables. It's
   close for most songs but can run ahead or behind on held notes or fast runs. No Spotify, Apple

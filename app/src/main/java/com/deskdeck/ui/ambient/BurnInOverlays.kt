@@ -56,6 +56,7 @@ import com.deskdeck.ui.common.clockFormatter
 import com.deskdeck.ui.common.rememberCurrentTime
 import com.deskdeck.ui.common.rememberIs24Hour
 import com.deskdeck.ui.dashboard.LyricsUiState
+import com.deskdeck.ui.lyrics.LocalLyricsDelay
 import com.deskdeck.ui.settings.LocalAppSettings
 import com.deskdeck.ui.theme.Dimens
 import com.deskdeck.ui.theme.LocalMotion
@@ -171,9 +172,10 @@ private fun AmbientClock(alpha: Float, fontSize: Int) {
 @Composable
 private fun CurrentLyricLine(lyrics: LyricsUiState, position: State<Long>) {
     val synced = lyrics as? LyricsUiState.Synced ?: return
-    val line by remember(synced) {
+    val delayMs = LocalLyricsDelay.current
+    val line by remember(synced, delayMs) {
         derivedStateOf {
-            synced.lines.getOrNull(synced.lines.activeIndexAt(position.value + synced.offsetMs))?.text
+            synced.lines.getOrNull(synced.lines.activeIndexAt(position.value + synced.offsetMs - delayMs))?.text
         }
     }
     val text = line?.takeIf { it.isNotBlank() } ?: return

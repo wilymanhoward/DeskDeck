@@ -21,6 +21,8 @@ class SettingsSerializationTest {
             clockShowSeconds = true,
             lyricsFontSizeSp = 36,
             showRomanization = true,
+            lyricsLatencyCompensation = false,
+            lyricsRouteAdjustMs = mapOf("8:Bedroom speaker" to 600, "speaker" to -100, "8:Odd|name" to 50),
             dynamicColors = false,
             accent = AccentColor.AMBER,
             keepScreenOn = KeepScreenOn.ALWAYS,

@@ -24,6 +24,11 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.rememberTextMeasurer
+import androidx.compose.foundation.gestures.scrollBy
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.withFrameMillis
+import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.unit.Dp
 import com.deskdeck.domain.LyricRow
 import com.deskdeck.domain.LyricWord
@@ -106,6 +111,7 @@ import com.deskdeck.domain.LyricLine
 import com.deskdeck.domain.MediaKind
 import com.deskdeck.ui.dashboard.DashboardActions
 import com.deskdeck.ui.dashboard.LyricsUiState
+import com.deskdeck.ui.lyrics.LocalLyricsDelay
 import com.deskdeck.ui.lyrics.Romanizer
 import com.deskdeck.ui.settings.LocalAppSettings
 import com.deskdeck.ui.theme.ActiveLyricWhite
@@ -139,6 +145,12 @@ private const val GAP_EXIT_MS = 400
 private val GAP_ROW_HEIGHT = 56.dp
 private val DOT_RADIUS = 6.dp
 private val DOT_SPACING = 22.dp
+private val LINE_PADDING = 32.dp
+private const val INACTIVE_SCALE = 0.94f
+private const val WAVE_DURATION_MS = 650f
+private const val WAVE_STAGGER_MS = 45f
+/** Rows after the anchor that still visibly lag; the wave ends once they've settled. */
+private const val WAVE_ROWS = 8
 
 @Composable
 fun LyricsPanel(
@@ -152,8 +164,8 @@ fun LyricsPanel(
         targetState = state,
         contentKey = { it.contentKey() },
         transitionSpec = { fadeIn(motion.fade()) togetherWith fadeOut(motion.fade()) },
-        modifier = modifier
-            .glass(RoundedCornerShape(Dimens.cardCorner), tint = Color.Black.copy(alpha = 0.12f)),
+        // No panel: like Apple Music, lyrics sit directly on the album-colored background.
+        modifier = modifier,
         label = "lyricsState",
     ) { s ->
         when (s) {
@@ -216,11 +228,14 @@ private fun SyncedLyrics(
     val rows = remember(lines) { buildLyricRows(lines) }
     val romanized = rememberRomanized(lines.map { it.text }, settings.showRomanization)
     // Changes only when the row changes, so per-frame position updates don't recompose the list.
-    val activeRow by remember(rows, offsetMs) {
-        derivedStateOf { rows.activeRowAt(position.value + offsetMs) }
+    // Lyric time follows what's heard: the reported position, minus the output latency.
+    val delayMs = LocalLyricsDelay.current
+    val lyricClock = remember(position, offsetMs, delayMs) { { position.value + offsetMs - delayMs } }
+    val activeRow by remember(rows, lyricClock) {
+        derivedStateOf { rows.activeRowAt(lyricClock()) }
     }
-    val lyricClock = remember(position, offsetMs) { { position.value + offsetMs } }
 
+    val wave = remember { LyricWave() }
     var following by remember { mutableStateOf(true) }
     var lastUserScrollAt by remember { mutableLongStateOf(0L) }
     val userScrollDetector = remember {
@@ -247,7 +262,7 @@ private fun SyncedLyrics(
         }
     }
     LaunchedEffect(activeRow, following, motion) {
-        if (following) listState.animateAnchorOn(activeRow.coerceAtLeast(0), ACTIVE_LINE_ANCHOR, motion)
+        if (following) listState.followLine(activeRow.coerceAtLeast(0), ACTIVE_LINE_ANCHOR, wave, motion)
     }
 
     BoxWithConstraints(Modifier.fillMaxSize()) {
@@ -269,13 +284,14 @@ private fun SyncedLyrics(
                         style = style,
                         distance = index - activeRow,
                         clock = lyricClock,
+                        waveOffset = { wave.offsetFor(index) },
                         clickLabel = seekLabel,
                         onClick = {
                             following = true
                             actions.onSeek((row.line.startMs - offsetMs).coerceAtLeast(0))
                         },
                     )
-                    is LyricRow.Gap -> GapItem(gap = row, distance = index - activeRow, clock = lyricClock)
+                    is LyricRow.Gap -> GapItem(gap = row, distance = index - activeRow, clock = lyricClock, waveOffset = { wave.offsetFor(index) })
                 }
             }
         }
@@ -375,6 +391,7 @@ private fun LyricLineItem(
     style: TextStyle,
     distance: Int,
     clock: () -> Long,
+    waveOffset: () -> Float,
     clickLabel: String,
     onClick: () -> Unit,
 ) {
@@ -382,12 +399,12 @@ private fun LyricLineItem(
     val active = distance == 0
     val targetAlpha = when {
         active -> 1f
-        distance < 0 -> 0.3f
-        else -> (0.62f - 0.08f * (distance - 1)).coerceAtLeast(0.28f)
+        distance < 0 -> 0.32f
+        else -> (0.5f - 0.05f * (distance - 1)).coerceAtLeast(0.3f)
     }
     val alpha by animateFloatAsState(targetAlpha, motion.fade(), label = "lineAlpha")
     val scale by animateFloatAsState(
-        targetValue = if (active || motion.reduced) 1f else 0.86f,
+        targetValue = if (active || motion.reduced) 1f else INACTIVE_SCALE,
         animationSpec = motion.gentle(),
         label = "lineScale",
     )
@@ -405,6 +422,7 @@ private fun LyricLineItem(
     Column(
         modifier = Modifier
             .fillMaxWidth()
+            .graphicsLayer { translationY = waveOffset() }
             .clip(RoundedCornerShape(16.dp))
             .drawBehind { if (flash.value > 0f) drawRect(Color.White.copy(alpha = 0.12f * flash.value)) }
             .clickable(onClickLabel = clickLabel) {
@@ -414,24 +432,27 @@ private fun LyricLineItem(
                     flash.animateTo(0f, tween(FLASH_MS))
                 }
             }
-            .padding(horizontal = 32.dp, vertical = 10.dp)
+            .padding(horizontal = LINE_PADDING, vertical = 10.dp)
             .graphicsLayer {
                 this.alpha = alpha
                 scaleX = scale
                 scaleY = scale
+                // Left-aligned lines shrink toward their left edge, so the text column stays straight.
+                transformOrigin = TransformOrigin(0f, 0.5f)
             }
             .then(if (Build.VERSION.SDK_INT >= 31 && blur > 0.dp) Modifier.blur(blur, BlurredEdgeTreatment.Unbounded) else Modifier)
             .semantics(mergeDescendants = true) {},
-        horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         if (line.words.isEmpty()) {
-            Text(text = line.text, style = style, color = CappedWhite, textAlign = TextAlign.Center)
+            Text(text = line.text, style = style, color = CappedWhite)
         } else {
-            FlowRow(horizontalArrangement = Arrangement.Center, modifier = Modifier.fillMaxWidth()) {
+            FlowRow(modifier = Modifier.fillMaxWidth()) {
                 line.words.forEach { word ->
-                    val trailingSpace = word.text.endsWith(" ")
-                    if (active) SungWord(word, style, clock) else Text(word.text.trimEnd(), style = style, color = CappedWhite)
-                    if (trailingSpace) Spacer(Modifier.width(spaceWidth))
+                    // A word and its space are one item, so a wrapped line never starts with a space.
+                    Row {
+                        if (active) SungWord(word, style, clock) else Text(word.text.trimEnd(), style = style, color = CappedWhite)
+                        if (word.text.endsWith(" ")) Spacer(Modifier.width(spaceWidth))
+                    }
                 }
             }
         }
@@ -440,7 +461,6 @@ private fun LyricLineItem(
                 text = romanized,
                 style = style.copy(fontSize = style.fontSize * 0.55f, lineHeight = style.lineHeight * 0.55f, fontWeight = FontWeight.Normal),
                 color = MutedText,
-                textAlign = TextAlign.Center,
             )
         }
     }
@@ -449,7 +469,7 @@ private fun LyricLineItem(
 /**
  * A word of the active line: dim until sung, then filled with white from the left as playback
  * passes through it (a soft-edged mask, so the fill moves smoothly within the word). While it's
- * being sung it lifts slightly and glows. All of it reads [clock] in the draw phase.
+ * being sung it lifts slightly. All of it reads [clock] in the draw phase.
  */
 @Composable
 private fun SungWord(word: LyricWord, style: TextStyle, clock: () -> Long) {
@@ -459,22 +479,6 @@ private fun SungWord(word: LyricWord, style: TextStyle, clock: () -> Long) {
         Modifier
             .graphicsLayer {
                 if (!reduced) translationY = -WORD_LIFT.toPx() * word.emphasisAt(clock())
-            }
-            .drawBehind {
-                val glow = word.emphasisAt(clock())
-                if (glow <= 0f) return@drawBehind
-                // A soft pill just around the word; it stays inside the line's clip, so no hard edges.
-                val inset = 4.dp.toPx()
-                drawRoundRect(
-                    brush = Brush.radialGradient(
-                        listOf(Color.White.copy(alpha = 0.09f * glow), Color.Transparent),
-                        center = center,
-                        radius = size.maxDimension * 0.6f,
-                    ),
-                    topLeft = Offset(-inset, -inset),
-                    size = Size(size.width + 2 * inset, size.height + 2 * inset),
-                    cornerRadius = CornerRadius(size.height / 2),
-                )
             },
     ) {
         Text(text, style = style, color = CappedWhite.copy(alpha = UNSUNG_ALPHA))
@@ -517,7 +521,7 @@ private fun LyricWord.emphasisAt(positionMs: Long): Float = when {
  * gently while it's the active row, and shrink away just before the next line starts.
  */
 @Composable
-private fun GapItem(gap: LyricRow.Gap, distance: Int, clock: () -> Long) {
+private fun GapItem(gap: LyricRow.Gap, distance: Int, clock: () -> Long, waveOffset: () -> Float) {
     val motion = LocalMotion.current
     val active = distance == 0
     val breath = if (active && !motion.reduced) {
@@ -536,7 +540,10 @@ private fun GapItem(gap: LyricRow.Gap, distance: Int, clock: () -> Long) {
         Modifier
             .fillMaxWidth()
             .height(GAP_ROW_HEIGHT)
-            .graphicsLayer { this.alpha = alpha }
+            .graphicsLayer {
+                this.alpha = alpha
+                translationY = waveOffset()
+            }
             .clearAndSetSemantics {},
     ) {
         val now = clock()
@@ -546,7 +553,7 @@ private fun GapItem(gap: LyricRow.Gap, distance: Int, clock: () -> Long) {
         val scale = (1f + 0.15f * breath.value) * ending
         val radius = DOT_RADIUS.toPx() * scale
         val spacing = DOT_SPACING.toPx()
-        val startX = size.width / 2 - spacing
+        val startX = LINE_PADDING.toPx() + DOT_RADIUS.toPx()
         for (i in 0 until 3) {
             val fill = (progress * 3 - i).coerceIn(0f, 1f)
             drawCircle(color.copy(alpha = 0.3f + 0.7f * fill), radius, Offset(startX + i * spacing, size.height / 2))
@@ -583,16 +590,65 @@ private fun rememberRomanized(texts: List<String>, enabled: Boolean): List<Strin
     return result
 }
 
-/** Scrolls so that item [index] is centered on [anchor] (a fraction of the viewport height), with a spring. */
-private suspend fun LazyListState.animateAnchorOn(index: Int, anchor: Float, motion: MotionSpec) {
+/**
+ * Apple Music's lyric "wave": when the active line changes, the list moves to its new place at
+ * once and every row is drawn back where it was, then springs to its new spot: the lines above
+ * and the new active line first, each following line a moment later. One shared clock drives
+ * every row's offset in the draw phase, so the wave costs no recomposition.
+ */
+private class LyricWave {
+    private var delta by mutableFloatStateOf(0f)
+    private var anchor by mutableIntStateOf(0)
+    private var elapsedMs by mutableFloatStateOf(Float.MAX_VALUE)
+
+    /** How far row [index] is still drawn from its laid-out place. */
+    fun offsetFor(index: Int): Float {
+        if (delta == 0f) return 0f
+        val lag = (index - anchor + 1).coerceAtLeast(0) * WAVE_STAGGER_MS
+        val t = ((elapsedMs - lag) / WAVE_DURATION_MS).coerceIn(0f, 1f)
+        return delta * (1f - easeOutSoft(t))
+    }
+
+    fun start(scrolledBy: Float, anchorIndex: Int) {
+        // A wave still running keeps its remaining offset, so rows never jump.
+        delta = offsetFor(anchorIndex) + scrolledBy
+        anchor = anchorIndex
+        elapsedMs = 0f
+    }
+
+    suspend fun run() {
+        val start = withFrameMillis { it }
+        while (elapsedMs < WAVE_DURATION_MS + WAVE_STAGGER_MS * WAVE_ROWS) {
+            withFrameMillis { elapsedMs = (it - start).toFloat() }
+        }
+        delta = 0f
+    }
+
+    /** Ease-out that settles gently at the end, close to a softly damped spring. */
+    private fun easeOutSoft(t: Float): Float {
+        val inv = 1f - t
+        return 1f - inv * inv * inv * (1f + 1.2f * t)
+    }
+}
+
+/** Brings row [index] to [anchor] (a fraction of the viewport height), with the wave unless motion is reduced. */
+private suspend fun LazyListState.followLine(index: Int, anchor: Float, wave: LyricWave, motion: MotionSpec) {
     if (layoutInfo.visibleItemsInfo.none { it.index == index }) {
+        // Far away (first load, a seek): jump without a wave.
         scrollToItem(index)
     }
     val info = layoutInfo
     val item = info.visibleItemsInfo.firstOrNull { it.index == index } ?: return
     val anchorY = info.viewportStartOffset + (info.viewportEndOffset - info.viewportStartOffset) * anchor
     val delta = item.offset + item.size / 2 - anchorY
-    animateScrollBy(delta, motion.gentle())
+    if (delta == 0f) return
+    if (motion.reduced) {
+        animateScrollBy(delta, motion.fade())
+        return
+    }
+    val scrolled = scrollBy(delta)
+    wave.start(scrolled, index)
+    wave.run()
 }
 
 /** Fades lyrics out toward the top and bottom edges of the panel. */

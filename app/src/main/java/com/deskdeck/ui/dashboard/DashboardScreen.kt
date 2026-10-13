@@ -25,6 +25,8 @@ import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.State
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableLongStateOf
@@ -72,6 +74,7 @@ import com.deskdeck.ui.theme.LocalMotion
 import com.deskdeck.ui.theme.MotionSpec
 import com.deskdeck.ui.theme.TrueBlack
 import com.deskdeck.ui.theme.screenEntrance
+import com.deskdeck.ui.lyrics.LocalLyricsDelay
 import com.deskdeck.ui.volume.VolumeRow
 
 @Composable
@@ -130,7 +133,16 @@ fun DashboardRoute(
     val dashboardVisible = burnIn.mode == DisplayMode.ACTIVE || burnIn.mode == DisplayMode.DIMMED
     val position = rememberPlaybackPosition(nowPlaying?.playback, nowPlaying?.track?.durationMs, everyFrame = dashboardVisible)
     val wake = { tracker.onInteraction(force = true) }
+    val audioDelay by viewModel.audioDelay.collectAsStateWithLifecycle()
+    // Measured only while something plays, so the silent test track never wakes a speaker.
+    LaunchedEffect(anyPlaying, foreground, audioDelay.measured) {
+        if (anyPlaying && foreground && !audioDelay.measured) viewModel.measureAudioDelay()
+    }
+    val audioRoute by viewModel.audioRoute.collectAsStateWithLifecycle()
+    val lyricsDelay = (if (settings.lyricsLatencyCompensation) audioDelay.ms else 0L) +
+        (settings.lyricsRouteAdjustMs[audioRoute.id] ?: 0)
 
+    CompositionLocalProvider(LocalLyricsDelay provides lyricsDelay) {
     Box(Modifier.fillMaxSize()) {
         DashboardScreen(
             nowPlaying = nowPlaying,
@@ -169,6 +181,7 @@ fun DashboardRoute(
         ) {
             PausedClockScreen(onWake = wake)
         }
+    }
     }
 }
 
