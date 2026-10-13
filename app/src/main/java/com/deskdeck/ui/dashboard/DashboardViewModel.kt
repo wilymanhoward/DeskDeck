@@ -14,6 +14,7 @@ import com.deskdeck.launcher.RailAppsRepository
 import com.deskdeck.media.AppLabels
 import com.deskdeck.media.MediaRepository
 import com.deskdeck.media.NotificationAccess
+import com.deskdeck.media.NotificationBanners
 import com.deskdeck.media.NotificationCounter
 import com.deskdeck.media.sources.SourceStatus
 import com.deskdeck.media.sources.SourceSwitcher
@@ -49,6 +50,7 @@ class DashboardViewModel @Inject constructor(
     private val sourceSwitcher: SourceSwitcher,
     private val appLabels: AppLabels,
     networkMonitor: NetworkMonitor,
+    private val banners: NotificationBanners,
 ) : ViewModel(), DashboardActions {
 
     val nowPlaying: StateFlow<NowPlaying?> = media.nowPlaying
@@ -144,6 +146,8 @@ class DashboardViewModel @Inject constructor(
     override fun onRemoveFromRail(packageName: String) {
         viewModelScope.launch { railAppsRepository.unpin(packageName) }
     }
+
+    override fun onOpenNotifications() = banners.openCenter()
 
     override fun onOpenApp(packageName: String) = appLauncher.launchOrOpenStore(packageName)
 

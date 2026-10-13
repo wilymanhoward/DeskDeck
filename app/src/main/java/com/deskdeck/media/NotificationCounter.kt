@@ -18,9 +18,11 @@ data class NotificationFacts(
  * Notifications a person would consider "unread": dismissable, not ongoing (music players,
  * downloads, navigation), and not a group summary (so a chat with 3 messages counts 3, not 4).
  */
-fun countUserNotifications(items: List<NotificationFacts>, ownPackage: String): Int = items.count {
-    !it.isOngoing && it.isClearable && !it.isGroupSummary && it.packageName != ownPackage
-}
+fun isUserNotification(n: NotificationFacts, ownPackage: String): Boolean =
+    !n.isOngoing && n.isClearable && !n.isGroupSummary && n.packageName != ownPackage
+
+fun countUserNotifications(items: List<NotificationFacts>, ownPackage: String): Int =
+    items.count { isUserNotification(it, ownPackage) }
 
 /** Live count for the rail badge, fed by [MediaListenerService]. */
 @Singleton

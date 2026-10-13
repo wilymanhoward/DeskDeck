@@ -73,7 +73,7 @@
     <!-- Onboarding -->
     <string name="onb_title">Let DeskDeck see what\'s playing</string>
     <string name="onb_body">DeskDeck shows and controls the music playing in Spotify, YouTube Music, Apple Music and any other player. Android only shares that through &lt;b&gt;Notification access&lt;/b&gt;.</string>
-    <string name="onb_privacy">Your notifications are never stored or sent anywhere. DeskDeck only counts them for the badge in the sidebar.</string>
+    <string name="onb_privacy">Your notifications are never stored or sent anywhere. DeskDeck only shows them inside the app and counts them for the bell in the sidebar.</string>
     <string name="onb_step_1">Tap &lt;b&gt;Open settings&lt;/b&gt;</string>
     <string name="onb_step_2">Turn on &lt;b&gt;DeskDeck&lt;/b&gt; and confirm</string>
     <string name="onb_step_3">Come back here. DeskDeck continues on its own.</string>
@@ -213,11 +213,10 @@
     <!-- Notification banners -->
     <string name="banner_hidden_content">New notification</string>
     <string name="banner_clear">Clear</string>
-    <string name="banner_close">Close</string>
     <string name="banner_dismiss">Dismiss banner</string>
     <string name="settings_cat_notifications">Notifications</string>
     <string name="settings_banners">Notification banners</string>
-    <string name="settings_banners_detail">Show new notifications as banners at the top of DeskDeck</string>
+    <string name="settings_banners_detail">Show new notifications as small banners next to the bell</string>
     <string name="settings_banner_hide_content">Hide message content</string>
     <string name="settings_banner_hide_content_detail">Show only the app name, not the title or text</string>
     <string name="settings_banner_dnd">Respect Do Not Disturb</string>
@@ -226,4 +225,17 @@
     <string name="settings_seconds">%1$d s</string>
     <string name="settings_banner_apps">Apps</string>
     <string name="settings_banner_apps_detail">Apps appear here once they post a notification. Turn one off to stop its banners; its notifications still count in the sidebar.</string>
+
+    <!-- Notification panel -->
+    <string name="center_title">Notifications</string>
+    <string name="center_clear_all">Clear all</string>
+    <plurals name="center_clear_confirm">
+        <item quantity="one">Clear %1$d?</item>
+        <item quantity="other">Clear all %1$d?</item>
+    </plurals>
+    <string name="center_close">Close notifications</string>
+    <string name="center_empty">You\'re all caught up</string>
+    <string name="center_time_now">now</string>
+    <string name="center_time_minutes">%1$d min</string>
+    <string name="center_time_hours">%1$d h</string>
 </resources>
