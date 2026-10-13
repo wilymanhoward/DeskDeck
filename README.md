@@ -116,6 +116,7 @@ button instead of the player.
   - **+** or a long-press on an app edits the sidebar: add, remove, reorder.
   - **⊞** opens all apps. Tap to open one, or tap its pin to add it to the sidebar.
 - **Lyrics:**
+  - The current line fills word by word as it's sung; instrumental breaks show three dots.
   - Scroll freely. Following the song resumes after 5 seconds.
   - Tap a line to jump to it.
   - If the timing is off, use the sliders button (top right of the lyrics) for **Earlier / Later**
@@ -221,6 +222,10 @@ screen plus two overlays), and transliteration libraries (Android's built-in ICU
 - **Shuffle/repeat** are best-effort. With apps built on Android's media compat libraries (Spotify,
   YouTube Music) they work with real state. Apps that only offer custom actions can be toggled, but
   their state isn't shown. Otherwise the buttons are disabled.
+- **Word timing** is exact only for lyrics with word stamps (enhanced LRC). LRCLIB almost always
+  has line timing only, so DeskDeck estimates when each word is sung from its syllables. It's
+  close for most songs but can run ahead or behind on held notes or fast runs. No Spotify, Apple
+  Music or Musixmatch data is used; a word-level provider can be added behind `LyricsProvider`.
 - **Lyrics** come only from LRCLIB's community database. Some tracks have no lyrics or only unsynced
   ones. Use **Retry**, and **Earlier / Later** if the timing is off.
 - **Ad / podcast / live detection** uses metadata heuristics (Spotify's ad markers, episode ids,

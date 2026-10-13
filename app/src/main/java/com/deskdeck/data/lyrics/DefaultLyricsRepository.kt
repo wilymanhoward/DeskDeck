@@ -81,7 +81,7 @@ class DefaultLyricsRepository @Inject constructor(
 
     private fun LyricsCacheEntity.toResult(): LyricsResult {
         if (notFound) return LyricsResult.NotFound
-        val lines = syncedLrc?.let(LrcParser::parse).orEmpty()
+        val lines = syncedLrc?.let(LrcParser::parse)?.let(WordTiming::complete).orEmpty()
         val lyrics = when {
             lines.isNotEmpty() -> Lyrics.Synced(lines)
             !plain.isNullOrBlank() -> Lyrics.Plain(plain.trim())

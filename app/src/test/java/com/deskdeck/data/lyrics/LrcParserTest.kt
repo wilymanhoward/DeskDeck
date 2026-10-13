@@ -1,6 +1,7 @@
 package com.deskdeck.data.lyrics
 
 import com.deskdeck.domain.LyricLine
+import com.deskdeck.domain.LyricWord
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -86,9 +87,50 @@ class LrcParserTest {
     }
 
     @Test
-    fun `word level stamps are stripped`() {
-        val lines = LrcParser.parse("[00:01.00]<00:01.00>Hello <00:01.50>there <00:02.00>world")
-        assertEquals(listOf(LyricLine(1_000, "Hello there world")), lines)
+    fun `enhanced word stamps become timed words`() {
+        val line = LrcParser.parse("[00:01.00]<00:01.00>Hello <00:01.50>there <00:02.00>world<00:02.80>").single()
+        assertEquals("Hello there world", line.text)
+        assertEquals(
+            listOf(LyricWord(1_000, 1_500, "Hello "), LyricWord(1_500, 2_000, "there "), LyricWord(2_000, 2_800, "world")),
+            line.words,
+        )
+        assertEquals(false, line.isEstimated)
+    }
+
+    @Test
+    fun `last enhanced word without an end stamp gets its end later`() {
+        val line = LrcParser.parse("[00:01.00]<00:01.00>Hello <00:01.50>world").single()
+        // Unknown end = start; WordTiming fills it in.
+        assertEquals(LyricWord(1_500, 1_500, "world"), line.words.last())
+        val completed = WordTiming.complete(listOf(line, LyricLine(10_000, "next"))).first()
+        assertTrue(completed.words.last().endMs > 1_500)
+        assertEquals(completed.words.last().endMs, completed.endMs)
+    }
+
+    @Test
+    fun `syllable stamps inside a word keep the word together`() {
+        val line = LrcParser.parse("[00:01.00]<00:01.00>Hel<00:01.30>lo <00:01.60>you<00:02.00>").single()
+        assertEquals("Hello you", line.text)
+        assertEquals(listOf("Hel", "lo ", "you"), line.words.map { it.text })
+    }
+
+    @Test
+    fun `stamps separated only by spaces keep the space`() {
+        val line = LrcParser.parse("[00:01.00]<00:01.00>Hello<00:01.50> <00:01.60>world<00:02.00>").single()
+        assertEquals("Hello world", line.text)
+    }
+
+    @Test
+    fun `offset shifts word stamps too`() {
+        val line = LrcParser.parse("[offset:500]\n[00:02.00]<00:02.00>Hi <00:02.50>there<00:03.00>").single()
+        assertEquals(1_500, line.startMs)
+        assertEquals(listOf(1_500L, 2_000L), line.words.map { it.startMs })
+        assertEquals(2_500, line.words.last().endMs)
+    }
+
+    @Test
+    fun `stamps with no words leave an empty line`() {
+        assertEquals(listOf(LyricLine(1_000, "")), LrcParser.parse("[00:01.00]<00:01.00> <00:02.00>"))
     }
 
     @Test

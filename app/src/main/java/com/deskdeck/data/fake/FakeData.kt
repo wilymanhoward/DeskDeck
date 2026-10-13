@@ -1,5 +1,6 @@
 package com.deskdeck.data.fake
 
+import com.deskdeck.data.lyrics.WordTiming
 import com.deskdeck.domain.ArtworkColors
 import com.deskdeck.domain.LyricLine
 import com.deskdeck.domain.Lyrics
@@ -113,7 +114,7 @@ object FakeData {
         timed += 146.0 to "Neon harbor, me and you"
         timed += 151.0 to "And when the last light fades along the water, I'll still be standing at the edge of the pier"
         timed += 158.0 to ""
-        return timed.map { (sec, text) -> LyricLine((sec * 1000).toLong(), text) }
+        return WordTiming.complete(timed.map { (sec, text) -> LyricLine((sec * 1000).toLong(), text) })
     }
 
     private val paperSatellitesLyrics: String get() = """
