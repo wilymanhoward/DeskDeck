@@ -28,6 +28,7 @@ class SettingsSerializationTest {
             keepScreenOn = KeepScreenOn.ALWAYS,
             sourceMode = SourceMode.PIN,
             mediaBrowserResume = true,
+            spotifyLibrary = true,
             burnIn = BurnInSettings(
                 pixelShift = false,
                 pixelShiftDp = 9,

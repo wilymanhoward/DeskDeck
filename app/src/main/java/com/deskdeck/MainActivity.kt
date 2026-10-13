@@ -1,5 +1,6 @@
 package com.deskdeck
 
+import android.content.Intent
 import android.os.Bundle
 import android.view.KeyEvent
 import androidx.activity.ComponentActivity
@@ -8,12 +9,18 @@ import androidx.activity.enableEdgeToEdge
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
+import com.deskdeck.data.spotify.SpotifyAccount
+import com.deskdeck.data.spotify.SpotifyAuth
+import com.deskdeck.data.spotify.SpotifyLibrary
+import com.deskdeck.di.ApplicationScope
 import com.deskdeck.media.NotificationAccess
 import com.deskdeck.media.NotificationBanners
 import com.deskdeck.media.VolumeController
 import com.deskdeck.ui.AppRoot
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.launch
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
@@ -21,6 +28,9 @@ class MainActivity : ComponentActivity() {
     @Inject lateinit var notificationAccess: NotificationAccess
     @Inject lateinit var volume: VolumeController
     @Inject lateinit var banners: NotificationBanners
+    @Inject lateinit var spotifyAuth: SpotifyAuth
+    @Inject lateinit var spotifyLibrary: SpotifyLibrary
+    @Inject @ApplicationScope lateinit var appScope: CoroutineScope
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -29,6 +39,22 @@ class MainActivity : ComponentActivity() {
         setContent {
             // The theme lives in AppRoot because the accent color is a user setting.
             AppRoot()
+        }
+        handleSpotifyRedirect(intent)
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        handleSpotifyRedirect(intent)
+    }
+
+    /** The end of Spotify sign-in: the Custom Tab redirects to deskdeck://spotify-callback. */
+    private fun handleSpotifyRedirect(intent: Intent?) {
+        val uri = intent?.data?.takeIf(spotifyAuth::isRedirect) ?: return
+        intent.data = null
+        appScope.launch {
+            spotifyAuth.completeSignIn(uri, spotifyLibrary::loadProfile)
+            if (spotifyAuth.account.value is SpotifyAccount.SignedIn) spotifyLibrary.refresh()
         }
     }
 

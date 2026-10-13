@@ -7,6 +7,9 @@ import com.deskdeck.data.settings.AppSettings
 import com.deskdeck.data.settings.BurnInSettings
 import com.deskdeck.data.settings.NotificationSettings
 import com.deskdeck.data.settings.SettingsRepository
+import com.deskdeck.data.spotify.SpotifyAccount
+import com.deskdeck.data.spotify.SpotifyAuth
+import com.deskdeck.data.spotify.SpotifyLibrary
 import com.deskdeck.media.AppLabels
 import com.deskdeck.media.AudioDelay
 import com.deskdeck.media.OutputLatency
@@ -27,7 +30,17 @@ class SettingsViewModel @Inject constructor(
     banners: NotificationBanners,
     appLabels: AppLabels,
     outputLatency: OutputLatency,
+    private val spotifyAuth: SpotifyAuth,
+    private val spotifyLibrary: SpotifyLibrary,
 ) : ViewModel() {
+
+    val spotifyAccount: StateFlow<SpotifyAccount> = spotifyAuth.account
+
+    fun beginSpotifySignIn(): String = spotifyAuth.beginSignIn().toString()
+
+    fun disconnectSpotify() {
+        viewModelScope.launch { spotifyLibrary.signOut() }
+    }
 
     val audioDelay: StateFlow<AudioDelay> = outputLatency.delay
     val audioRoute: StateFlow<OutputRoute> = outputLatency.route

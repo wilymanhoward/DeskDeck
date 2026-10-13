@@ -166,6 +166,69 @@ can't force the screen off without device-admin rights.
 
 ---
 
+## Spotify library (optional)
+
+Browse your Spotify playlists inside DeskDeck and start one on this tablet without switching apps.
+It's off until you set it up. Everything else in DeskDeck works without a Spotify login.
+
+### 1. Create a Spotify app (once)
+
+1. Go to <https://developer.spotify.com/dashboard> and sign in with your Spotify account.
+2. **Create app**: any name and description (e.g. "DeskDeck"). Under **Redirect URIs** add exactly
+   `deskdeck://spotify-callback`. Under **Which API/SDKs are you planning to use?** tick **Web API**.
+   Accept the terms and save.
+3. Open the app's **Settings** and copy the **Client ID**. DeskDeck uses PKCE, so there is no
+   client secret to copy, and none is ever stored.
+4. Open **User Management** and add the Spotify account you'll sign in with (name and the email
+   of that account). In Development Mode only listed accounts can use the app, even your own if
+   it isn't the owner account.
+
+### 2. Add the Client ID to the build
+
+In `local.properties` (next to `sdk.dir`; the file is gitignored, so the ID is never committed):
+
+```properties
+spotify.clientId=your_client_id_here
+```
+
+Rebuild and install (`./gradlew assembleDebug`).
+
+### 3. Connect in DeskDeck
+
+**Settings › Sources › Spotify library**: turn it on, then **Connect**. Spotify's sign-in page
+opens in a sheet over DeskDeck; after you agree it returns to DeskDeck by itself. Then open the
+library by long-pressing Spotify in the sidebar (**Spotify library**), or with the **Spotify
+library** button on the Now Playing card while Spotify is playing.
+
+Tokens are stored encrypted with a key kept in the Android Keystore and refreshed automatically.
+**Disconnect** deletes them and the cached playlist list. DeskDeck asks only for:
+`playlist-read-private`, `playlist-read-collaborative`, `user-library-read`,
+`user-read-playback-state`, `user-modify-playback-state`.
+
+### Limits (Spotify's, not DeskDeck's)
+
+- **Development Mode**: a new Spotify app runs in Development Mode. The app owner needs Spotify
+  Premium, at most 5 accounts can be added under User Management, search results are capped at
+  10, and some Web API endpoints aren't available. For a personal desk display this is fine.
+- **Premium** is required to start playback through the Web API. Without it DeskDeck says so;
+  you can still pick music in Spotify and see it here.
+- **Not registered**: if Spotify answers "the user may not be registered", add the account under
+  User Management (step 1.4) and connect again.
+- **Rate limits** (HTTP 429, including the daily quota) show "Spotify is busy" with the wait time
+  Spotify gives.
+- **Waking Spotify**: playback starts on *this tablet's* Spotify. If Spotify isn't running or
+  hasn't registered as a device yet, DeskDeck wakes it in the background with a play key press
+  (the same way the sidebar starts apps) and retries for about 8 seconds. Spotify may play its
+  last track for a moment before switching to the playlist. If it still can't be reached, the
+  library shows **Open Spotify**; DeskDeck never opens Spotify on its own.
+- **Offline**: the last playlist list stays visible; starting one needs a connection.
+- **Spotify-made playlists** (editorial, Daily Mix and similar) may be missing or not playable for
+  apps created after late 2024; your own and followed user playlists work.
+- **App Remote SDK** isn't used: it isn't published to Maven and needs a manual AAR. The Web API
+  route covers resume and play.
+- YouTube Music and Apple Music have no comparable public API for this, so their sidebar icons
+  stay source switchers only.
+
 ## Architecture
 
 Single activity, Jetpack Compose with Material 3, MVVM with `StateFlow`, Hilt for dependency
