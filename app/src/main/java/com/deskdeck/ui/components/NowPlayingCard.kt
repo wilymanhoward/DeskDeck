@@ -43,6 +43,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.deskdeck.R
+import com.deskdeck.data.lyrics.TitleCleaner
 import com.deskdeck.domain.MediaKind
 import com.deskdeck.domain.NowPlaying
 import com.deskdeck.domain.Track
@@ -160,9 +161,10 @@ private fun TrackHeadline(track: Track) {
         label = "trackHeadline",
         modifier = Modifier.fillMaxWidth(),
     ) { t ->
+        val display = remember(t) { TitleCleaner.forDisplay(t) }
         Column(Modifier.fillMaxWidth()) {
             Text(
-                text = t.title,
+                text = display.title,
                 style = MaterialTheme.typography.headlineMedium,
                 color = CappedWhite,
                 maxLines = 1,
@@ -170,7 +172,7 @@ private fun TrackHeadline(track: Track) {
                 modifier = Modifier.semantics { heading() },
             )
             Text(
-                text = listOfNotNull(t.artist ?: stringResource(R.string.np_unknown_artist), t.album)
+                text = listOfNotNull(display.artist ?: stringResource(R.string.np_unknown_artist), t.album)
                     .joinToString(" • "),
                 style = MaterialTheme.typography.titleMedium,
                 color = MutedText,

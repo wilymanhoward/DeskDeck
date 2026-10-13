@@ -49,6 +49,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.deskdeck.R
 import com.deskdeck.burnin.Drift
+import com.deskdeck.data.lyrics.TitleCleaner
 import com.deskdeck.domain.NowPlaying
 import com.deskdeck.domain.activeIndexAt
 import com.deskdeck.ui.common.clockFormatter
@@ -114,15 +115,16 @@ fun AmbientScreen(
             Column(Modifier.widthIn(max = 520.dp)) {
                 AmbientClock(alpha = 0.55f, fontSize = 40)
                 if (nowPlaying != null) {
+                    val display = remember(nowPlaying.track) { TitleCleaner.forDisplay(nowPlaying.track) }
                     Spacer(Modifier.height(8.dp))
                     Text(
-                        text = nowPlaying.track.title,
+                        text = display.title,
                         style = MaterialTheme.typography.titleLarge,
                         color = Color.White.copy(alpha = 0.6f),
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                     )
-                    nowPlaying.track.artist?.let {
+                    display.artist?.let {
                         Text(
                             text = it,
                             style = MaterialTheme.typography.titleMedium,

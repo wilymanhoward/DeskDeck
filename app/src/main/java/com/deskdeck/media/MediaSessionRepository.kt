@@ -129,12 +129,14 @@ class MediaSessionRepository @Inject constructor(
         val key = "${track.id}|${bitmap?.width}x${bitmap?.height}|$uri"
         if (key != artworkKey) {
             artworkKey = key
-            // Show a direct bitmap immediately; keep the previous colors until the new ones are ready
-            // so the card doesn't flash grey between tracks.
-            artwork = ResolvedArtwork(bitmap, artwork?.colors)
+            val cropLetterbox = entry.packageName in Letterbox.VIDEO_APPS
+            // Show a direct bitmap immediately (except video frames, which are cropped first: keep
+            // the previous art for those few ms rather than flash the bars). Keep the previous
+            // colors until the new ones are ready so the card doesn't flash grey between tracks.
+            artwork = ResolvedArtwork(if (cropLetterbox) artwork?.bitmap else bitmap, artwork?.colors)
             artworkJob?.cancel()
             artworkJob = scope.launch {
-                val resolved = artworkLoader.resolve(bitmap, uri)
+                val resolved = artworkLoader.resolve(bitmap, uri, cropLetterbox)
                 if (artworkKey == key) {
                     artwork = resolved
                     publish()

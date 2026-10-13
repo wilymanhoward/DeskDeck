@@ -3,7 +3,7 @@ package com.deskdeck.launcher
 import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.Intent
-import android.net.Uri
+import androidx.core.net.toUri
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -27,8 +27,8 @@ class AppLauncher @Inject constructor(
     }
 
     fun openStorePage(packageName: String) {
-        val market = Intent(Intent.ACTION_VIEW, Uri.parse("market://details?id=$packageName"))
-        val web = Intent(Intent.ACTION_VIEW, Uri.parse("https://play.google.com/store/apps/details?id=$packageName"))
+        val market = Intent(Intent.ACTION_VIEW, "market://details?id=$packageName".toUri())
+        val web = Intent(Intent.ACTION_VIEW, "https://play.google.com/store/apps/details?id=$packageName".toUri())
         for (intent in listOf(market, web)) {
             try {
                 context.startActivity(intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))

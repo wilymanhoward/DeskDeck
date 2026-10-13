@@ -36,22 +36,31 @@ object TitleCleaner {
     private val PIPE_SUFFIX = Regex("""\s+[|｜].*$""")
     private val DASH_SUFFIX = Regex("""\s+[-–—]\s+(.+)$""")
 
+    /** Only video-platform decoration; unlike [NOISE] it keeps "Live", "Remastered", "feat." … for display. */
+    private val VIDEO_NOISE = Regex(
+        """(?<![\p{L}\p{N}])(official|video|audio|lyrics?|visuali[sz]er|mv|m/v|hd|hq|4k)(?![\p{L}\p{N}])""",
+        RegexOption.IGNORE_CASE,
+    )
+
+    data class DisplayText(val title: String, val artist: String?)
+
+    /**
+     * What the now-playing card shows: "Adele - Hello (Official Music Video)" by "AdeleVEVO" becomes
+     * "Hello" by "Adele". Gentler than [queryFor]: version info like "(Live)" or "(Remastered)" is
+     * meaningful to read, so only video decoration is removed. Normal music metadata is unchanged.
+     */
+    fun forDisplay(track: Track): DisplayText {
+        var title = BRACKETS.replace(track.title) { m -> if (VIDEO_NOISE.containsMatchIn(m.groupValues[1])) "" else m.value }
+        title = PIPE_SUFFIX.replace(title, "")
+        val (splitTitle, artist) = splitArtistPrefix(title, track.artist)
+        return DisplayText(
+            title = splitTitle.trim().ifBlank { track.title.trim() },
+            artist = artist ?: track.artist,
+        )
+    }
+
     fun queryFor(track: Track): LyricsQuery {
-        var title = track.title
-        var artist = track.artist?.let(::cleanArtist)
-
-        // "Artist - Title" from video platforms: trust it when the channel name is missing, a
-        // VEVO/Topic channel, or matches the left part.
-        splitArtistTitle(title)?.let { (left, right) ->
-            val channel = artist
-            if (channel == null || isChannelName(track.artist) || normalize(left).contains(normalize(channel)) ||
-                normalize(channel).contains(normalize(left))
-            ) {
-                artist = cleanArtist(left)
-                title = right
-            }
-        }
-
+        val (title, artist) = splitArtistPrefix(track.title, track.artist)
         val cleanTitle = cleanTitle(title).ifBlank { track.title.trim() }
         return LyricsQuery(
             title = cleanTitle,
@@ -88,6 +97,18 @@ object TitleCleaner {
             .first()
             .trim()
             .ifEmpty { artist.trim() }
+
+    /**
+     * "Artist - Title" from video platforms → (Title, Artist), trusted when the channel name is
+     * missing, a VEVO/Topic channel, or matches the left part. Otherwise (title, cleaned artist).
+     */
+    private fun splitArtistPrefix(title: String, rawArtist: String?): Pair<String, String?> {
+        val artist = rawArtist?.let(::cleanArtist)
+        val (left, right) = splitArtistTitle(title) ?: return title to artist
+        val trusted = artist == null || isChannelName(rawArtist) ||
+            normalize(left).contains(normalize(artist)) || normalize(artist).contains(normalize(left))
+        return if (trusted) right to cleanArtist(left) else title to artist
+    }
 
     /** Splits "Artist - Title"; null when the title has no such separator. */
     fun splitArtistTitle(title: String): Pair<String, String>? {

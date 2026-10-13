@@ -8,6 +8,9 @@ import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.withFrameMillis
 import com.deskdeck.domain.PlaybackInfo
+import kotlinx.coroutines.delay
+
+private const val COVERED_UPDATE_MS = 250L
 
 /**
  * The playback position, extrapolated from the latest [PlaybackInfo] snapshot on every frame
@@ -16,11 +19,14 @@ import com.deskdeck.domain.PlaybackInfo
  *
  * Read the returned state only in leaf composables or draw lambdas, so that a per-frame update
  * redraws the seek bar instead of recomposing the whole screen.
+ *
+ * @param everyFrame false while the dashboard is covered (ambient, paused clock): a few updates a
+ * second are enough for the current lyric line and save the per-frame work on an always-on device.
  */
 @Composable
-fun rememberPlaybackPosition(playback: PlaybackInfo?, durationMs: Long?): State<Long> {
+fun rememberPlaybackPosition(playback: PlaybackInfo?, durationMs: Long?, everyFrame: Boolean = true): State<Long> {
     val position = remember { mutableLongStateOf(0L) }
-    LaunchedEffect(playback, durationMs) {
+    LaunchedEffect(playback, durationMs, everyFrame) {
         if (playback == null) {
             position.longValue = 0L
             return@LaunchedEffect
@@ -28,7 +34,7 @@ fun rememberPlaybackPosition(playback: PlaybackInfo?, durationMs: Long?): State<
         position.longValue = playback.positionAt(SystemClock.elapsedRealtime(), durationMs)
         if (!playback.isPlaying) return@LaunchedEffect
         while (true) {
-            withFrameMillis { }
+            if (everyFrame) withFrameMillis { } else delay(COVERED_UPDATE_MS)
             position.longValue = playback.positionAt(SystemClock.elapsedRealtime(), durationMs)
         }
     }
