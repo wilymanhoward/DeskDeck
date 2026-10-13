@@ -39,6 +39,7 @@ private object Keys {
     val keepScreenOn = stringPreferencesKey("keep_screen_on")
     val sourceMode = stringPreferencesKey("source_mode")
     val mediaBrowserResume = booleanPreferencesKey("source_media_browser")
+    val spotifyLibrary = booleanPreferencesKey("spotify_library")
     val pixelShift = booleanPreferencesKey("burnin_pixel_shift")
     val pixelShiftDp = intPreferencesKey("burnin_pixel_shift_dp")
     val idleDim = booleanPreferencesKey("burnin_idle_dim")
@@ -78,6 +79,7 @@ internal fun readSettings(prefs: Preferences): AppSettings {
         keepScreenOn = enumOr(prefs[Keys.keepScreenOn], d.keepScreenOn),
         sourceMode = enumOr(prefs[Keys.sourceMode], d.sourceMode),
         mediaBrowserResume = prefs[Keys.mediaBrowserResume] ?: d.mediaBrowserResume,
+        spotifyLibrary = prefs[Keys.spotifyLibrary] ?: d.spotifyLibrary,
         burnIn = BurnInSettings(
             pixelShift = prefs[Keys.pixelShift] ?: b.pixelShift,
             pixelShiftDp = (prefs[Keys.pixelShiftDp] ?: b.pixelShiftDp).coerceIn(SettingsRanges.pixelShiftDp),
@@ -114,6 +116,7 @@ internal fun writeSettings(prefs: MutablePreferences, s: AppSettings) {
     prefs[Keys.keepScreenOn] = s.keepScreenOn.name
     prefs[Keys.sourceMode] = s.sourceMode.name
     prefs[Keys.mediaBrowserResume] = s.mediaBrowserResume
+    prefs[Keys.spotifyLibrary] = s.spotifyLibrary
     val b = s.burnIn
     prefs[Keys.pixelShift] = b.pixelShift
     prefs[Keys.pixelShiftDp] = b.pixelShiftDp

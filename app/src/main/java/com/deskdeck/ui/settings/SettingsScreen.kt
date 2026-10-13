@@ -64,6 +64,10 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.deskdeck.BuildConfig
 import com.deskdeck.R
+import androidx.compose.ui.platform.LocalContext
+import com.deskdeck.ui.spotify.openSignIn
+import com.deskdeck.ui.spotify.errorText
+import com.deskdeck.data.spotify.SpotifyAccount
 import com.deskdeck.data.settings.AccentColor
 import com.deskdeck.data.settings.AppSettings
 import com.deskdeck.data.settings.ClockFormat
@@ -296,6 +300,42 @@ private fun SourceSettings(s: AppSettings, vm: SettingsViewModel) {
             subtitle = stringResource(R.string.settings_media_browser_detail),
             checked = s.mediaBrowserResume,
         ) { v -> vm.update { it.copy(mediaBrowserResume = v) } }
+    }
+    SettingCard {
+        val account by vm.spotifyAccount.collectAsStateWithLifecycle()
+        val context = LocalContext.current
+        SwitchRow(
+            title = stringResource(R.string.settings_spotify_library),
+            subtitle = stringResource(R.string.settings_spotify_library_detail),
+            checked = s.spotifyLibrary,
+        ) { v -> vm.update { it.copy(spotifyLibrary = v) } }
+        when (val a = account) {
+            SpotifyAccount.NotConfigured -> RowText(
+                title = stringResource(R.string.settings_spotify_account),
+                subtitle = stringResource(R.string.library_setup_detail),
+                enabled = s.spotifyLibrary,
+                modifier = Modifier.padding(horizontal = 24.dp, vertical = 14.dp),
+            )
+            is SpotifyAccount.SignedIn -> ActionRow(
+                title = stringResource(R.string.settings_spotify_account),
+                subtitle = a.displayName?.let { stringResource(R.string.settings_spotify_connected, it) }
+                    ?: stringResource(R.string.settings_spotify_connected_unnamed),
+                actionLabel = stringResource(R.string.settings_spotify_disconnect),
+                enabled = s.spotifyLibrary,
+                onClick = vm::disconnectSpotify,
+            )
+            else -> ActionRow(
+                title = stringResource(R.string.settings_spotify_account),
+                subtitle = when (a) {
+                    SpotifyAccount.SigningIn -> stringResource(R.string.settings_spotify_signing_in)
+                    is SpotifyAccount.Failed -> errorText(a.error).second
+                    else -> stringResource(R.string.settings_spotify_not_connected)
+                },
+                actionLabel = stringResource(R.string.settings_spotify_connect),
+                enabled = s.spotifyLibrary,
+                onClick = { openSignIn(context, vm.beginSpotifySignIn()) },
+            )
+        }
     }
 }
 

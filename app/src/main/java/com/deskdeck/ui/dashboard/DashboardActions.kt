@@ -35,4 +35,7 @@ interface DashboardActions : PlayerActions {
 
     /** Opens the notification panel (the bell). */
     fun onOpenNotifications() {}
+
+    /** Opens the Spotify library (rail long-press on Spotify, or the card's Library button). */
+    fun onOpenLibrary() {}
 }

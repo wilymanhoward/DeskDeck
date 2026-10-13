@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -49,6 +50,16 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import com.deskdeck.R
+import com.deskdeck.ui.theme.pressScale
+import androidx.compose.foundation.layout.Row
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.semantics.Role
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.ui.layout.boundsInRoot
+import androidx.compose.ui.layout.onGloballyPositioned
+import com.deskdeck.ui.spotify.LocalArtTarget
+import com.deskdeck.data.spotify.SpotifyLibrary
 import com.deskdeck.data.lyrics.TitleCleaner
 import com.deskdeck.domain.MediaKind
 import com.deskdeck.domain.NowPlaying
@@ -84,6 +95,8 @@ fun NowPlayingCard(
     onOpenApp: (String) -> Unit = {},
     onGetApp: (String) -> Unit = {},
     volumeControl: (@Composable () -> Unit)? = null,
+    /** Shown as a Library button while Spotify is the source; null hides it. */
+    onOpenLibrary: (() -> Unit)? = null,
 ) {
     val motion = LocalMotion.current
     BoxWithConstraints(modifier = modifier.glass(RoundedCornerShape(Dimens.cardCorner))) {
@@ -102,7 +115,7 @@ fun NowPlayingCard(
             if (np == null) {
                 EmptyNowPlaying(accessMissing, onGrantAccess, emptySource, onOpenApp, onGetApp)
             } else {
-                NowPlayingContent(np, position, palette, actions, volumeControl)
+                NowPlayingContent(np, position, palette, actions, volumeControl, onOpenLibrary)
             }
         }
     }
@@ -115,8 +128,10 @@ private fun NowPlayingContent(
     palette: CardPalette,
     actions: PlayerActions,
     volumeControl: (@Composable () -> Unit)?,
+    onOpenLibrary: (() -> Unit)?,
 ) {
     val track = nowPlaying.track
+    val artTarget = LocalArtTarget.current
     val motion = LocalMotion.current
     // Apple Music-style: the cover sits large while playing and settles back when paused.
     val artScale by animateFloatAsState(
@@ -130,13 +145,18 @@ private fun NowPlayingContent(
             .padding(Dimens.cardPadding),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Text(
-            text = stringResource(R.string.np_playing_on, nowPlaying.sourceLabel),
-            style = MaterialTheme.typography.labelLarge,
-            color = MutedText,
-            maxLines = 1,
-            modifier = Modifier.fillMaxWidth(),
-        )
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                text = stringResource(R.string.np_playing_on, nowPlaying.sourceLabel),
+                style = MaterialTheme.typography.labelLarge,
+                color = MutedText,
+                maxLines = 1,
+                modifier = Modifier.weight(1f),
+            )
+            if (onOpenLibrary != null && nowPlaying.sourcePackage == SpotifyLibrary.SPOTIFY_PACKAGE) {
+                LibraryButton(onOpenLibrary)
+            }
+        }
         Spacer(Modifier.height(16.dp))
 
         // Art takes whatever height is left, stays square, and disappears in very short windows.
@@ -153,6 +173,8 @@ private fun NowPlayingContent(
                     colors = nowPlaying.colors,
                     modifier = Modifier
                         .aspectRatio(1f, matchHeightConstraintsFirst = true)
+                        // Where a playlist's cover lands when it's started from the library.
+                        .onGloballyPositioned { artTarget.bounds = it.boundsInRoot() }
                         // Scale and depth shadow in one layer, read in the draw phase.
                         .graphicsLayer {
                             scaleX = artScale
@@ -380,5 +402,24 @@ private fun EmptyTexts(title: String, detail: String?) {
             textAlign = TextAlign.Center,
             modifier = Modifier.widthIn(max = 380.dp),
         )
+    }
+}
+
+/** A small pill that opens the Spotify library. */
+@Composable
+private fun LibraryButton(onClick: () -> Unit) {
+    val interaction = remember { MutableInteractionSource() }
+    Row(
+        modifier = Modifier
+            .pressScale(interaction)
+            .clip(RoundedCornerShape(50))
+            .background(Color.White.copy(alpha = 0.08f))
+            .clickable(interactionSource = interaction, indication = null, role = Role.Button, onClick = onClick)
+            .padding(horizontal = 14.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(painterResource(R.drawable.ic_library), contentDescription = null, tint = MutedText, modifier = Modifier.size(18.dp))
+        Spacer(Modifier.width(6.dp))
+        Text(stringResource(R.string.library_open), style = MaterialTheme.typography.labelLarge, color = CappedWhite)
     }
 }

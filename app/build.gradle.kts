@@ -1,9 +1,16 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.ksp)
     alias(libs.plugins.hilt)
     alias(libs.plugins.room)
+}
+
+// Personal settings that must not be committed (local.properties is gitignored).
+val localProperties = Properties().apply {
+    rootProject.file("local.properties").takeIf { it.exists() }?.inputStream()?.use { load(it) }
 }
 
 android {
@@ -16,6 +23,9 @@ android {
         targetSdk = 35
         versionCode = 1
         versionName = "0.1.0"
+
+        // Optional Spotify library (R6). Empty = the feature explains how to set it up instead.
+        buildConfigField("String", "SPOTIFY_CLIENT_ID", "\"${localProperties.getProperty("spotify.clientId", "").trim()}\"")
     }
 
     buildTypes {
@@ -75,6 +85,9 @@ dependencies {
     implementation(libs.coil)
     implementation(libs.coil.compose)
     implementation(libs.coil.network.okhttp)
+
+    // Spotify sign-in in a Custom Tab over DeskDeck, rather than switching to a browser app.
+    implementation(libs.androidx.browser)
 
     // Small user settings (pinned apps now, the settings screen in M5).
     implementation(libs.androidx.datastore.preferences)

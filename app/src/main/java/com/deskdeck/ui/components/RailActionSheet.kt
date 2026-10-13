@@ -41,6 +41,8 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import com.deskdeck.R
+import com.deskdeck.ui.settings.LocalAppSettings
+import com.deskdeck.data.spotify.SpotifyLibrary
 import com.deskdeck.domain.RailApp
 import com.deskdeck.launcher.AppIcon
 import com.deskdeck.ui.dashboard.DashboardActions
@@ -113,6 +115,12 @@ fun RailActionSheet(
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                     )
+                }
+                if (app.installed && app.packageName == SpotifyLibrary.SPOTIFY_PACKAGE && LocalAppSettings.current.spotifyLibrary) {
+                    SheetItem(R.drawable.ic_library, stringResource(R.string.library_open)) {
+                        onDismiss()
+                        actions.onOpenLibrary()
+                    }
                 }
                 if (app.installed) {
                     SheetItem(R.drawable.ic_open_in_new, stringResource(R.string.sheet_open_app, app.label)) {

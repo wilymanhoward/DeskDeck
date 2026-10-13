@@ -43,6 +43,12 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.deskdeck.R
+import com.deskdeck.ui.spotify.StartedPlaylist
+import com.deskdeck.ui.spotify.LocalArtTarget
+import com.deskdeck.ui.spotify.LibraryOverlay
+import com.deskdeck.ui.spotify.CoverFlight
+import com.deskdeck.ui.spotify.ArtTarget
+import com.deskdeck.data.spotify.SpotifyLibrary
 import com.deskdeck.burnin.DisplayMode
 import com.deskdeck.burnin.KeepScreenOn
 import com.deskdeck.burnin.LocalInteractionTracker
@@ -101,6 +107,9 @@ fun DashboardRoute(
     val settings = LocalAppSettings.current
     var picker by rememberSaveable { mutableStateOf<PickerMode?>(null) }
     var railSheet by remember { mutableStateOf<RailSheetRequest?>(null) }
+    var libraryOpen by rememberSaveable { mutableStateOf(false) }
+    var flight by remember { mutableStateOf<StartedPlaylist?>(null) }
+    val artTarget = remember { ArtTarget() }
     val currentOnOpenSettings by rememberUpdatedState(onOpenSettings)
     // Picker and navigation are UI state, so these actions are handled here; the rest go to the ViewModel.
     val actions = remember(viewModel) {
@@ -118,6 +127,10 @@ fun DashboardRoute(
             }
 
             override fun onSettings() = currentOnOpenSettings()
+
+            override fun onOpenLibrary() {
+                libraryOpen = true
+            }
         }
     }
 
@@ -127,7 +140,7 @@ fun DashboardRoute(
         keepScreenOn = settings.keepScreenOn,
         // Any app playing counts, even one that isn't the selected source.
         isPlaying = anyPlaying,
-        enabled = burnInEnabled && picker == null && railSheet == null,
+        enabled = burnInEnabled && picker == null && railSheet == null && !libraryOpen,
     )
     KeepScreenOn(enabled = burnIn.keepScreenOn)
     val dashboardVisible = burnIn.mode == DisplayMode.ACTIVE || burnIn.mode == DisplayMode.DIMMED
@@ -142,7 +155,7 @@ fun DashboardRoute(
     val lyricsDelay = (if (settings.lyricsLatencyCompensation) audioDelay.ms else 0L) +
         (settings.lyricsRouteAdjustMs[audioRoute.id] ?: 0)
 
-    CompositionLocalProvider(LocalLyricsDelay provides lyricsDelay) {
+    CompositionLocalProvider(LocalLyricsDelay provides lyricsDelay, LocalArtTarget provides artTarget) {
     Box(Modifier.fillMaxSize()) {
         DashboardScreen(
             nowPlaying = nowPlaying,
@@ -155,10 +168,26 @@ fun DashboardRoute(
             position = position,
             railState = railState,
             emptySource = emptySource,
-            animateBackground = foreground && dashboardVisible && burnInEnabled && picker == null && railSheet == null,
+            animateBackground = foreground && dashboardVisible && burnInEnabled && picker == null && railSheet == null && !libraryOpen,
             volumeControl = { VolumeRow(Modifier.fillMaxWidth()) },
         )
         AppPickerOverlay(mode = picker, onDismiss = { picker = null })
+        if (settings.spotifyLibrary) {
+            LibraryOverlay(
+                visible = libraryOpen,
+                onDismiss = { libraryOpen = false },
+                onStarted = {
+                    libraryOpen = false
+                    flight = it
+                },
+                onOpenSpotify = { actions.onOpenApp(SpotifyLibrary.SPOTIFY_PACKAGE) },
+                onOpenSettings = {
+                    libraryOpen = false
+                    actions.onSettings()
+                },
+            )
+            CoverFlight(flight = flight, target = artTarget, onDone = { flight = null })
+        }
         RailActionSheet(
             request = railSheet,
             pinnedPackage = railState.pinnedPackage,
@@ -266,6 +295,7 @@ fun DashboardScreen(
                     onOpenApp = actions::onOpenApp,
                     onGetApp = actions::onGetApp,
                     volumeControl = volumeControl,
+                    onOpenLibrary = actions::onOpenLibrary.takeIf { settings.spotifyLibrary },
                     modifier = Modifier
                         .weight(0.47f)
                         .fillMaxHeight(),
@@ -331,6 +361,7 @@ private fun CompactPanels(
                 onOpenApp = actions::onOpenApp,
                 onGetApp = actions::onGetApp,
                 volumeControl = volumeControl,
+                onOpenLibrary = actions::onOpenLibrary.takeIf { LocalAppSettings.current.spotifyLibrary },
                 modifier = panelModifier,
             )
         }
