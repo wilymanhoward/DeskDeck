@@ -6,7 +6,7 @@ object Dimens {
     val screenPadding = 16.dp
     val zoneGap = 16.dp
     val railWidth = 72.dp
-    val cardCorner = 28.dp
+    val cardCorner = 32.dp
     val cardPadding = 28.dp
     val artCorner = 20.dp
 

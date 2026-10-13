@@ -2,7 +2,7 @@ package com.deskdeck.ui.components
 
 import android.text.format.DateFormat
 import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
@@ -21,25 +21,25 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
-import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.State
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.heading
@@ -65,9 +65,9 @@ import com.deskdeck.ui.theme.CappedWhite
 import com.deskdeck.ui.theme.Dimens
 import com.deskdeck.ui.theme.LocalMotion
 import com.deskdeck.ui.theme.MotionSpec
-import com.deskdeck.ui.theme.glass
 import com.deskdeck.ui.theme.MutedText
 import com.deskdeck.ui.theme.SurfaceHighest
+import com.deskdeck.ui.theme.glass
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 
@@ -85,8 +85,14 @@ fun NowPlayingCard(
     onGetApp: (String) -> Unit = {},
 ) {
     val motion = LocalMotion.current
-    Box(modifier = modifier.glass(RoundedCornerShape(Dimens.cardCorner))) {
+    BoxWithConstraints(modifier = modifier.glass(RoundedCornerShape(Dimens.cardCorner))) {
+        val fontScale = LocalDensity.current.fontScale.coerceAtLeast(1f)
+        val minHeight = 440.dp * fontScale
+        val contentModifier = if (maxHeight < minHeight) {
+            Modifier.fillMaxSize().verticalScroll(rememberScrollState()).height(minHeight)
+        } else Modifier.fillMaxSize()
         AnimatedContent(
+            modifier = contentModifier,
             targetState = nowPlaying,
             contentKey = { it == null },
             transitionSpec = { fadeIn(motion.fade(MotionSpec.LONG_MS)) togetherWith fadeOut(motion.fade()) },
@@ -112,7 +118,7 @@ private fun NowPlayingContent(
     val motion = LocalMotion.current
     // Apple Music-style: the cover sits large while playing and settles back when paused.
     val artScale by animateFloatAsState(
-        targetValue = if (nowPlaying.playback.isPlaying) 1f else PAUSED_ART_SCALE,
+        targetValue = if (motion.reduced || nowPlaying.playback.isPlaying) 1f else PAUSED_ART_SCALE,
         animationSpec = motion.gentle(),
         label = "artScale",
     )
@@ -215,11 +221,11 @@ private fun StaggeredText(text: String, delayMs: Int, content: @Composable (Stri
     AnimatedContent(
         targetState = text,
         transitionSpec = {
-            val enter = fadeIn(tween(MotionSpec.MEDIUM_MS, delayMillis = delayMs))
+            val enter = fadeIn(motion.fade(delayMs = delayMs))
             val slide = if (motion.reduced) {
                 enter
             } else {
-                enter + slideInVertically(tween(MotionSpec.LONG_MS, delayMillis = delayMs)) { it / 2 }
+                enter + slideInVertically(motion.fade(MotionSpec.LONG_MS, delayMs)) { it / 2 }
             }
             slide togetherWith fadeOut(motion.fade(MotionSpec.SHORT_MS))
         },
@@ -243,6 +249,7 @@ private fun EmptyNowPlaying(
     onOpenApp: (String) -> Unit,
     onGetApp: (String) -> Unit,
 ) {
+    val motion = LocalMotion.current
     val is24Hour = rememberIs24Hour()
     val showSeconds = LocalAppSettings.current.clockShowSeconds
     val now by rememberCurrentTime(withSeconds = showSeconds)
@@ -272,7 +279,7 @@ private fun EmptyNowPlaying(
         AnimatedContent(
             targetState = emptySource.takeUnless { accessMissing },
             contentKey = { it?.let { source -> "${source.packageName}:${source.reason}" } },
-            transitionSpec = { fadeIn(tween(400)) togetherWith fadeOut(tween(200)) },
+            transitionSpec = { fadeIn(motion.fade()) togetherWith fadeOut(motion.fade()) },
             label = "emptyVariant",
         ) { source ->
             Column(horizontalAlignment = Alignment.CenterHorizontally) {

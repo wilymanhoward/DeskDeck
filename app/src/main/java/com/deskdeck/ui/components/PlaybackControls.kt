@@ -7,6 +7,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -52,11 +53,9 @@ fun PlaybackControls(
     actions: PlayerActions,
     modifier: Modifier = Modifier,
 ) {
-    Row(
-        modifier = modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
+    BoxWithConstraints(modifier.fillMaxWidth()) {
+        val narrow = maxWidth < Dimens.minTouch * 2 + Dimens.skipButton * 2 + Dimens.playButton
+        val shuffle: @Composable () -> Unit = {
         ToggleControl(
             iconRes = R.drawable.ic_shuffle,
             active = playback.shuffleOn,
@@ -71,19 +70,8 @@ fun PlaybackControls(
             accent = palette.accent,
             onClick = actions::onToggleShuffle,
         )
-        TransportButton(
-            iconRes = R.drawable.ic_skip_previous,
-            description = stringResource(R.string.np_previous),
-            enabled = playback.canSkipPrevious,
-            onClick = actions::onSkipPrevious,
-        )
-        PlayPauseButton(isPlaying = playback.isPlaying, onClick = actions::onPlayPause)
-        TransportButton(
-            iconRes = R.drawable.ic_skip_next,
-            description = stringResource(R.string.np_next),
-            enabled = playback.canSkipNext,
-            onClick = actions::onSkipNext,
-        )
+        }
+        val repeat: @Composable () -> Unit = {
         ToggleControl(
             iconRes = if (playback.repeatMode == RepeatMode.ONE) R.drawable.ic_repeat_one else R.drawable.ic_repeat,
             active = playback.repeatMode != RepeatMode.OFF,
@@ -98,7 +86,32 @@ fun PlaybackControls(
             ),
             accent = palette.accent,
             onClick = actions::onCycleRepeat,
+        )        }
+        Column {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly, verticalAlignment = Alignment.CenterVertically) {
+                if (!narrow) shuffle()
+        TransportButton(
+            iconRes = R.drawable.ic_skip_previous,
+            description = stringResource(R.string.np_previous),
+            enabled = playback.canSkipPrevious,
+            onClick = actions::onSkipPrevious,
         )
+        PlayPauseButton(isPlaying = playback.isPlaying, onClick = actions::onPlayPause)
+        TransportButton(
+            iconRes = R.drawable.ic_skip_next,
+            description = stringResource(R.string.np_next),
+            enabled = playback.canSkipNext,
+            onClick = actions::onSkipNext,
+        )
+                if (!narrow) repeat()
+            }
+            if (narrow) {
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
+                    shuffle()
+                    repeat()
+                }
+            }
+        }
     }
 }
 

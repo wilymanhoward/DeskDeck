@@ -1,14 +1,22 @@
 package com.deskdeck.ui.theme
 
+import android.database.ContentObserver
+import android.os.Handler
+import android.os.Looper
 import android.provider.Settings
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.FiniteAnimationSpec
 import androidx.compose.animation.core.LinearOutSlowInEasing
+import androidx.compose.animation.core.TweenSpec
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.Immutable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.platform.LocalContext
 
@@ -25,8 +33,8 @@ import androidx.compose.ui.platform.LocalContext
  * - **Long tweens for color** (palette crossfades, background): color changing on a spring looks
  *   like flicker, a slow ease looks like light.
  * - **Reduced motion**: when the system "Remove animations" setting is on (animator duration
- *   scale 0), every spec becomes a short fade-length tween and the ambient drift stops, so
- *   nothing slides, scales or bounces.
+ *   scale 0), specs become short fade-length tweens and decorative travel/scale is disabled.
+ *   Ambient content repositions infrequently to preserve burn-in protection.
  *
  * Performance rule that goes with it: animated values are read in `graphicsLayer {}` or draw
  * lambdas wherever possible, so an animation redraws a layer instead of recomposing a tree.
@@ -44,8 +52,8 @@ class MotionSpec(val reduced: Boolean) {
         if (reduced) tween(SHORT_MS) else spring(dampingRatio = 0.5f, stiffness = 500f)
 
     /** Content crossfades (text, art, panels). */
-    fun <T> fade(durationMs: Int = MEDIUM_MS): FiniteAnimationSpec<T> =
-        tween(if (reduced) SHORT_MS else durationMs, easing = FastOutSlowInEasing)
+    fun <T> fade(durationMs: Int = MEDIUM_MS, delayMs: Int = 0): TweenSpec<T> =
+        tween(if (reduced) SHORT_MS else durationMs, delayMillis = if (reduced) 0 else delayMs, easing = FastOutSlowInEasing)
 
     /** Slow color changes: palette crossfades on track change, the background. */
     fun <T> color(): FiniteAnimationSpec<T> =
@@ -60,6 +68,8 @@ class MotionSpec(val reduced: Boolean) {
         const val LONG_MS = 520
         const val COLOR_MS = 1_200
         const val STAGGER_MS = 70
+        const val EQUALIZER_MS = 1_100
+        const val AMBIENT_MS = 1_500
 
         /** Scale of pressed buttons. */
         const val PRESSED_SCALE = 0.88f
@@ -72,8 +82,16 @@ val LocalMotion = staticCompositionLocalOf { MotionSpec(reduced = false) }
 @Composable
 fun rememberMotionSpec(): MotionSpec {
     val context = LocalContext.current
-    return remember(context) {
-        val scale = Settings.Global.getFloat(context.contentResolver, Settings.Global.ANIMATOR_DURATION_SCALE, 1f)
-        MotionSpec(reduced = scale == 0f)
+    val resolver = context.contentResolver
+    fun isReduced() = Settings.Global.getFloat(resolver, Settings.Global.ANIMATOR_DURATION_SCALE, 1f) == 0f
+    var reduced by remember(resolver) { mutableStateOf(isReduced()) }
+    DisposableEffect(resolver) {
+        val observer = object : ContentObserver(Handler(Looper.getMainLooper())) {
+            override fun onChange(selfChange: Boolean) { reduced = isReduced() }
+        }
+        resolver.registerContentObserver(Settings.Global.getUriFor(Settings.Global.ANIMATOR_DURATION_SCALE), false, observer)
+        reduced = isReduced()
+        onDispose { resolver.unregisterContentObserver(observer) }
     }
+    return remember(reduced) { MotionSpec(reduced) }
 }

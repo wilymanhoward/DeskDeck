@@ -1,14 +1,15 @@
 package com.deskdeck.ui.components
 
+import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -29,10 +30,15 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableStateMapOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -70,8 +76,11 @@ import com.deskdeck.ui.dashboard.RailState
 import com.deskdeck.ui.settings.LocalAppSettings
 import com.deskdeck.ui.theme.CappedWhite
 import com.deskdeck.ui.theme.Dimens
+import com.deskdeck.ui.theme.LocalMotion
+import com.deskdeck.ui.theme.MotionSpec
 import com.deskdeck.ui.theme.MutedText
 import com.deskdeck.ui.theme.SurfaceHighest
+import com.deskdeck.ui.theme.pressScale
 import java.time.format.DateTimeFormatter
 import kotlin.math.PI
 import kotlin.math.sin
@@ -87,12 +96,41 @@ fun LeftRail(
     onAllApps: () -> Unit,
     onSettings: () -> Unit,
     modifier: Modifier = Modifier,
+    animate: Boolean = true,
 ) {
     val railOpacity = rememberRailOpacity(LocalAppSettings.current.burnIn.railOpacityDrift)
+    val motion = LocalMotion.current
+    val centers = remember { mutableStateMapOf<String, Float>() }
+    var railTop by remember { mutableFloatStateOf(0f) }
+    // Drop positions of unpinned apps so the ring never points at an empty slot.
+    val pinned = remember(apps) { apps.map { it.packageName }.toSet() }
+    LaunchedEffect(pinned) { centers.keys.retainAll(pinned) }
+    val targetCenter = centers[state.highlightPackage]?.minus(railTop)
+    val movingCenter = remember { Animatable(0f) }
+    var ringShown by remember { mutableStateOf(false) }
+    LaunchedEffect(targetCenter, motion) {
+        when {
+            targetCenter == null -> ringShown = false
+            // The first appearance lands on the icon; only source switches travel.
+            !ringShown || motion.reduced -> { movingCenter.snapTo(targetCenter); ringShown = true }
+            else -> movingCenter.animateTo(targetCenter, motion.snappy())
+        }
+    }
+    val accent = MaterialTheme.colorScheme.primary
     Column(
         modifier = modifier
             .width(Dimens.railWidth)
             .fillMaxHeight()
+            .onGloballyPositioned { railTop = it.boundsInRoot().top }
+            .drawBehind {
+                if (targetCenter != null && ringShown) {
+                    val y = movingCenter.value
+                    val side = (Dimens.minTouch + 4.dp).toPx()
+                    val center = Offset(size.width / 2, y)
+                    drawCircle(Brush.radialGradient(listOf(accent.copy(alpha = 0.20f), Color.Transparent), center, side * 0.8f), side * 0.8f, center)
+                    drawRoundRect(accent.copy(alpha = 0.8f), Offset((size.width - side) / 2, y - side / 2), Size(side, side), CornerRadius(18.dp.toPx()), style = Stroke(1.5.dp.toPx()))
+                }
+            }
             // Read in the draw phase: the slow opacity drift never recomposes the rail.
             .graphicsLayer { alpha = railOpacity.value },
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -114,6 +152,8 @@ fun LeftRail(
                 apps.forEach { app ->
                     RailAppTile(
                         app = app,
+                        animate = animate,
+                        onPosition = { centers[app.packageName] = it },
                         highlighted = app.packageName == state.highlightPackage,
                         playing = app.packageName == state.playingPackage,
                         hasSession = app.packageName in state.sessionPackages,
@@ -156,7 +196,7 @@ private fun RailClock() {
     ) {
         Text(
             text = now.format(formatter),
-            style = MaterialTheme.typography.titleLarge,
+            style = MaterialTheme.typography.titleLarge.copy(fontFeatureSettings = "tnum"),
             fontWeight = FontWeight.SemiBold,
             color = CappedWhite,
             maxLines = 1,
@@ -211,6 +251,8 @@ private fun NotificationIndicator(count: Int) {
 @Composable
 private fun RailAppTile(
     app: RailApp,
+    animate: Boolean,
+    onPosition: (Float) -> Unit,
     highlighted: Boolean,
     playing: Boolean,
     hasSession: Boolean,
@@ -227,33 +269,30 @@ private fun RailAppTile(
     }
     val actionsLabel = stringResource(R.string.rail_app_actions)
     val accent = MaterialTheme.colorScheme.primary
-    val ringAlpha by animateFloatAsState(if (highlighted) 1f else 0f, tween(450), label = "railRing")
+    val interaction = remember { MutableInteractionSource() }
     var centerY by remember { mutableFloatStateOf(0f) }
 
     Box(
         modifier = Modifier
             .size(Dimens.minTouch + 4.dp)
-            .onGloballyPositioned { centerY = it.boundsInRoot().center.y }
-            // Selection ring with a soft glow; alpha is read here, in the draw phase.
+            .onGloballyPositioned { centerY = it.boundsInRoot().center.y; onPosition(centerY) }
+            .pressScale(interaction)
             .drawBehind {
-                if (ringAlpha <= 0f) return@drawBehind
+                if (!highlighted) return@drawBehind
                 val glowRadius = size.minDimension * 0.8f
                 drawCircle(
                     brush = Brush.radialGradient(
-                        listOf(accent.copy(alpha = 0.32f * ringAlpha), Color.Transparent),
+                        listOf(accent.copy(alpha = 0.10f), Color.Transparent),
                         center = center,
                         radius = glowRadius,
                     ),
                     radius = glowRadius,
                 )
-                drawRoundRect(
-                    color = accent.copy(alpha = 0.9f * ringAlpha),
-                    cornerRadius = CornerRadius(18.dp.toPx()),
-                    style = Stroke(width = 2.dp.toPx()),
-                )
             }
             .clip(RoundedCornerShape(18.dp))
             .combinedClickable(
+                interactionSource = interaction,
+                indication = ripple(),
                 role = Role.Button,
                 onLongClickLabel = actionsLabel,
                 onLongClick = { onLongClick(centerY) },
@@ -275,7 +314,7 @@ private fun RailAppTile(
             NotInstalledTile(app)
         }
         when {
-            playing -> EqualizerBadge(accent, Modifier.align(Alignment.BottomEnd).padding(3.dp))
+            playing -> EqualizerBadge(accent, animate, Modifier.align(Alignment.BottomEnd).padding(3.dp))
             app.installed && !hasSession -> Box(
                 Modifier
                     .align(Alignment.BottomEnd)
@@ -300,13 +339,15 @@ private fun RailAppTile(
 
 /** Three bouncing bars while the source plays. The animation is read only in the draw phase. */
 @Composable
-private fun EqualizerBadge(color: Color, modifier: Modifier = Modifier) {
-    val phase by rememberInfiniteTransition(label = "equalizer").animateFloat(
+private fun EqualizerBadge(color: Color, animate: Boolean, modifier: Modifier = Modifier) {
+    val phase = if (animate && !LocalMotion.current.reduced) {
+    rememberInfiniteTransition(label = "equalizer").animateFloat(
         initialValue = 0f,
         targetValue = (2 * PI).toFloat(),
-        animationSpec = infiniteRepeatable(tween(1_100, easing = LinearEasing)),
+        animationSpec = infiniteRepeatable(tween(MotionSpec.EQUALIZER_MS, easing = LinearEasing)),
         label = "equalizerPhase",
     )
+    } else rememberUpdatedState(0f)
     Box(
         modifier
             .size(18.dp)
@@ -316,7 +357,7 @@ private fun EqualizerBadge(color: Color, modifier: Modifier = Modifier) {
                 val maxHeight = size.height * 0.5f
                 val bottom = size.height * 0.75f
                 for (i in 0 until 3) {
-                    val level = 0.35f + 0.65f * (0.5f + 0.5f * sin(phase + i * 2.1f))
+                    val level = 0.35f + 0.65f * (0.5f + 0.5f * sin(phase.value + i * 2.1f))
                     val x = size.width * (0.3f + i * 0.2f) - barWidth / 2
                     drawRoundRect(
                         color = color,
@@ -342,7 +383,7 @@ private fun NotInstalledTile(app: RailApp) {
         ) {
             Text(
                 text = app.label.take(1),
-                style = MaterialTheme.typography.titleLarge,
+                style = MaterialTheme.typography.titleLarge.copy(fontFeatureSettings = "tnum"),
                 fontWeight = FontWeight.Bold,
                 color = CappedWhite.copy(alpha = 0.4f),
             )
@@ -367,7 +408,8 @@ private fun NotInstalledTile(app: RailApp) {
 
 @Composable
 private fun RailIconButton(iconRes: Int, description: String, onClick: () -> Unit) {
-    IconButton(onClick = onClick, modifier = Modifier.size(Dimens.minTouch)) {
+    val interaction = remember { MutableInteractionSource() }
+    IconButton(onClick = onClick, interactionSource = interaction, modifier = Modifier.size(Dimens.minTouch).pressScale(interaction)) {
         Icon(
             painter = painterResource(iconRes),
             contentDescription = description,

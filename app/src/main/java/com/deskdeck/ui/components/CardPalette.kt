@@ -1,13 +1,13 @@
 package com.deskdeck.ui.components
 
 import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.core.tween
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.graphics.Color
 import com.deskdeck.domain.ArtworkColors
 import com.deskdeck.ui.theme.DefaultAccent
+import com.deskdeck.ui.theme.LocalMotion
 import com.deskdeck.ui.theme.SurfaceHigh
 import com.deskdeck.ui.theme.SurfaceLow
 import com.deskdeck.ui.theme.withTone
@@ -52,7 +52,7 @@ data class CardPalette(
 @Composable
 fun animatedCardPalette(colors: ArtworkColors?, fallbackAccent: Color = DefaultAccent): CardPalette {
     val target = remember(colors, fallbackAccent) { CardPalette.from(colors, fallbackAccent) }
-    val spec = tween<Color>(durationMillis = 900)
+    val spec = LocalMotion.current.color<Color>()
     return CardPalette(
         top = animateColorAsState(target.top, spec, label = "paletteTop").value,
         bottom = animateColorAsState(target.bottom, spec, label = "paletteBottom").value,

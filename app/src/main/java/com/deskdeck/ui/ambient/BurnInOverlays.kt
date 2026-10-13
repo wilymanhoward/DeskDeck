@@ -2,7 +2,6 @@ package com.deskdeck.ui.ambient
 
 import android.os.SystemClock
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -15,6 +14,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
@@ -57,7 +57,11 @@ import com.deskdeck.ui.common.rememberCurrentTime
 import com.deskdeck.ui.common.rememberIs24Hour
 import com.deskdeck.ui.dashboard.LyricsUiState
 import com.deskdeck.ui.settings.LocalAppSettings
+import com.deskdeck.ui.theme.Dimens
+import com.deskdeck.ui.theme.LocalMotion
+import com.deskdeck.ui.theme.MotionSpec
 import com.deskdeck.ui.theme.TrueBlack
+import com.deskdeck.ui.theme.glass
 import kotlin.math.roundToInt
 import kotlin.random.Random
 import kotlinx.coroutines.delay
@@ -65,7 +69,7 @@ import kotlinx.coroutines.delay
 /** Black scrim over the dashboard; the first tap only wakes (it never reaches the controls below). */
 @Composable
 fun DimOverlay(visible: Boolean, level: Float, onWake: () -> Unit) {
-    val alpha by animateFloatAsState(if (visible) level else 0f, tween(if (visible) 2_000 else 300), label = "dim")
+    val alpha by animateFloatAsState(if (visible) level else 0f, LocalMotion.current.fade(if (visible) MotionSpec.AMBIENT_MS else MotionSpec.MEDIUM_MS), label = "dim")
     if (alpha <= 0f) return
     val description = stringResource(R.string.burnin_tap_to_wake)
     Box(
@@ -97,7 +101,7 @@ fun AmbientScreen(
     onWake: () -> Unit,
 ) {
     DriftingContainer(onWake = onWake) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
+        Row(modifier = Modifier.glass(RoundedCornerShape(Dimens.cardCorner), tint = Color.White.copy(alpha = 0.025f), border = Color.White.copy(alpha = 0.05f)).padding(24.dp), verticalAlignment = Alignment.CenterVertically) {
             val art = nowPlaying?.artwork
             if (art != null) {
                 val image = remember(art) { art.asImageBitmap() }
@@ -156,6 +160,7 @@ private fun AmbientClock(alpha: Float, fontSize: Int) {
     val formatter = remember(is24Hour, settings.clockShowSeconds) { clockFormatter(is24Hour, settings.clockShowSeconds) }
     Text(
         text = now.format(formatter),
+        style = MaterialTheme.typography.displayLarge.copy(fontFeatureSettings = "tnum"),
         fontSize = fontSize.sp,
         fontWeight = FontWeight.Light,
         color = Color.White.copy(alpha = alpha),
@@ -190,6 +195,7 @@ private fun CurrentLyricLine(lyrics: LyricsUiState, position: State<Long>) {
 @Composable
 private fun DriftingContainer(onWake: () -> Unit, content: @Composable () -> Unit) {
     val description = stringResource(R.string.burnin_tap_to_wake)
+    val reduced = LocalMotion.current.reduced
     BoxWithConstraints(
         Modifier
             .fillMaxSize()
@@ -203,7 +209,7 @@ private fun DriftingContainer(onWake: () -> Unit, content: @Composable () -> Uni
         var position by remember { mutableStateOf(IntOffset.Zero) }
         val stepPx = with(density) { DRIFT_STEP.toPx() }
 
-        LaunchedEffect(bounds, contentSize) {
+        LaunchedEffect(bounds, contentSize, reduced) {
             if (contentSize == IntSize.Zero) return@LaunchedEffect
             val maxX = (bounds.width - contentSize.width).toFloat()
             val maxY = (bounds.height - contentSize.height).toFloat()
@@ -213,8 +219,9 @@ private fun DriftingContainer(onWake: () -> Unit, content: @Composable () -> Uni
             var target = Drift.randomPoint(maxX, maxY, random)
             while (true) {
                 position = IntOffset(current.x.roundToInt(), current.y.roundToInt())
-                delay(DRIFT_TICK_MS)
-                current = Drift.step(current, target, stepPx)
+                // Reduced motion keeps burn-in protection via infrequent position changes.
+                delay(if (reduced) 60_000L else DRIFT_TICK_MS)
+                current = if (reduced) Drift.randomPoint(maxX, maxY, random) else Drift.step(current, target, stepPx)
                 if (current == target) target = Drift.randomPoint(maxX, maxY, random)
             }
         }

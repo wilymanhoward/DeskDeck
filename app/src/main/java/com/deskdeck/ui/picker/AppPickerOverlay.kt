@@ -2,7 +2,6 @@ package com.deskdeck.ui.picker
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
@@ -65,9 +64,11 @@ import com.deskdeck.launcher.AppIcon
 import com.deskdeck.launcher.LaunchableApp
 import com.deskdeck.ui.theme.CappedWhite
 import com.deskdeck.ui.theme.Dimens
+import com.deskdeck.ui.theme.GlassTintStrong
+import com.deskdeck.ui.theme.LocalMotion
 import com.deskdeck.ui.theme.MutedText
 import com.deskdeck.ui.theme.SurfaceHigh
-import com.deskdeck.ui.theme.SurfaceLow
+import com.deskdeck.ui.theme.glass
 
 enum class PickerMode {
     /** From the "all apps" button: tap shows the app's media here (never launches it), the pin adds it to the rail. */
@@ -83,6 +84,7 @@ enum class PickerMode {
  */
 @Composable
 fun AppPickerOverlay(mode: PickerMode?, onDismiss: () -> Unit) {
+    val motion = LocalMotion.current
     // Keep showing the last mode while the panel animates out.
     var shownMode by remember { mutableStateOf(PickerMode.LAUNCH) }
     if (mode != null) shownMode = mode
@@ -92,8 +94,8 @@ fun AppPickerOverlay(mode: PickerMode?, onDismiss: () -> Unit) {
     Box(Modifier.fillMaxSize()) {
         AnimatedVisibility(
             visible = mode != null,
-            enter = fadeIn(tween(250)),
-            exit = fadeOut(tween(250)),
+            enter = fadeIn(motion.fade()),
+            exit = fadeOut(motion.fade()),
         ) {
             Box(
                 Modifier
@@ -108,8 +110,8 @@ fun AppPickerOverlay(mode: PickerMode?, onDismiss: () -> Unit) {
         }
         AnimatedVisibility(
             visible = mode != null,
-            enter = slideInVertically(tween(350)) { it } + fadeIn(tween(350)),
-            exit = slideOutVertically(tween(250)) { it } + fadeOut(tween(250)),
+            enter = (if (motion.reduced) fadeIn(motion.fade()) else slideInVertically(motion.gentle()) { it / 5 } + fadeIn(motion.fade())),
+            exit = (if (motion.reduced) fadeOut(motion.fade()) else slideOutVertically(motion.snappy()) { it / 5 } + fadeOut(motion.fade())),
             modifier = Modifier.align(Alignment.BottomCenter),
         ) {
             AppPickerPanel(mode = shownMode, onDismiss = onDismiss)
@@ -133,8 +135,7 @@ private fun AppPickerPanel(
             .widthIn(max = 1100.dp)
             .fillMaxWidth()
             .fillMaxHeight(0.9f)
-            .clip(RoundedCornerShape(topStart = Dimens.cardCorner, topEnd = Dimens.cardCorner))
-            .background(SurfaceLow)
+            .glass(RoundedCornerShape(topStart = Dimens.cardCorner, topEnd = Dimens.cardCorner), tint = GlassTintStrong)
             // Swallow taps so they don't reach the scrim behind the panel.
             .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) {}
             .padding(horizontal = 28.dp, vertical = 20.dp),

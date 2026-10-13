@@ -1,5 +1,6 @@
 package com.deskdeck.ui.theme
 
+import android.os.Build
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.interaction.InteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
@@ -38,7 +39,7 @@ fun Modifier.glass(
         )
         val hairline = Stroke(width = 0.5.dp.toPx() * 2) // Half falls outside the clip: 0.5 dp visible.
         onDrawBehind {
-            drawOutline(outline, tint)
+            drawOutline(outline, if (Build.VERSION.SDK_INT >= 31) tint else SurfaceLow)
             drawOutline(outline, highlight)
             drawOutline(outline, border, style = hairline)
         }
@@ -53,7 +54,7 @@ val GlassBorder = Color.White.copy(alpha = 0.14f)
 fun Modifier.pressScale(interactionSource: InteractionSource, pressedScale: Float = MotionSpec.PRESSED_SCALE): Modifier {
     val pressed by interactionSource.collectIsPressedAsState()
     val motion = LocalMotion.current
-    val scale by animateFloatAsState(if (pressed) pressedScale else 1f, motion.bouncy(), label = "pressScale")
+    val scale by animateFloatAsState(if (pressed && !motion.reduced) pressedScale else 1f, motion.bouncy(), label = "pressScale")
     return graphicsLayer {
         scaleX = scale
         scaleY = scale
