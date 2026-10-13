@@ -17,11 +17,13 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -61,6 +63,8 @@ fun NowPlayingCard(
     position: State<Long>,
     palette: CardPalette,
     actions: PlayerActions,
+    accessMissing: Boolean,
+    onGrantAccess: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Box(
@@ -75,7 +79,7 @@ fun NowPlayingCard(
             label = "nowPlayingContent",
         ) { np ->
             if (np == null) {
-                EmptyNowPlaying()
+                EmptyNowPlaying(accessMissing, onGrantAccess)
             } else {
                 NowPlayingContent(np, position, palette, actions)
             }
@@ -176,9 +180,12 @@ private fun TrackHeadline(track: Track) {
     }
 }
 
-/** Shown when no media session is active: a large clock and a hint. */
+/**
+ * Shown when no media session is active: a large clock and a hint, or a way to grant
+ * notification access when that is why nothing shows up.
+ */
 @Composable
-private fun EmptyNowPlaying() {
+private fun EmptyNowPlaying(accessMissing: Boolean, onGrantAccess: () -> Unit) {
     val is24Hour = rememberIs24Hour()
     val now by rememberCurrentTime(withSeconds = false)
     val timeFormatter = remember(is24Hour) { clockFormatter(is24Hour, withSeconds = false) }
@@ -219,17 +226,24 @@ private fun EmptyNowPlaying() {
         }
         Spacer(Modifier.height(16.dp))
         Text(
-            text = stringResource(R.string.np_empty_hint),
+            text = stringResource(if (accessMissing) R.string.np_access_off else R.string.np_empty_hint),
             style = MaterialTheme.typography.headlineSmall,
             color = CappedWhite,
+            textAlign = TextAlign.Center,
         )
         Spacer(Modifier.height(8.dp))
         Text(
-            text = stringResource(R.string.np_empty_subhint),
+            text = stringResource(if (accessMissing) R.string.np_access_off_detail else R.string.np_empty_subhint),
             style = MaterialTheme.typography.bodyLarge,
             color = MutedText,
             textAlign = TextAlign.Center,
             modifier = Modifier.widthIn(max = 380.dp),
         )
+        if (accessMissing) {
+            Spacer(Modifier.height(24.dp))
+            Button(onClick = onGrantAccess, modifier = Modifier.heightIn(min = Dimens.minTouch)) {
+                Text(stringResource(R.string.np_grant_access), style = MaterialTheme.typography.labelLarge)
+            }
+        }
     }
 }

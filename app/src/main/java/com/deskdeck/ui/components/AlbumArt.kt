@@ -1,7 +1,9 @@
 package com.deskdeck.ui.components
 
+import android.graphics.Bitmap
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -10,11 +12,14 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
@@ -27,27 +32,41 @@ import com.deskdeck.ui.theme.SurfaceHighest
 import com.deskdeck.ui.theme.SurfaceMid
 import com.deskdeck.ui.theme.withTone
 
-private data class ArtKey(val trackId: String, val artwork: Any?, val colors: ArtworkColors?)
+private data class ArtKey(val trackId: String, val artwork: Bitmap?, val colors: ArtworkColors?)
 
 /**
- * Square album art that crossfades between tracks. Until images are loaded (M2) and whenever a
- * player sends no art, a placeholder gradient in the track's colors is shown.
+ * Square album art that crossfades between tracks. When a player sends no art, a placeholder
+ * gradient in the track's colors (or neutral tones) is shown instead.
  */
 @Composable
 fun AlbumArt(
     trackId: String,
-    artwork: Any?,
+    artwork: Bitmap?,
     colors: ArtworkColors?,
     modifier: Modifier = Modifier,
 ) {
     val description = stringResource(R.string.np_album_art)
     Crossfade(
-        targetState = ArtKey(trackId, artwork, colors),
+        // Colors only matter for the placeholder; with a bitmap, late-arriving colors aren't a new image.
+        targetState = ArtKey(trackId, artwork, if (artwork == null) colors else null),
         animationSpec = tween(durationMillis = 600),
         modifier = modifier.semantics { contentDescription = description },
         label = "albumArt",
     ) { key ->
-        ArtPlaceholder(key.colors, Modifier.fillMaxSize())
+        val art = key.artwork
+        if (art != null) {
+            val image = remember(art) { art.asImageBitmap() }
+            Image(
+                bitmap = image,
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .clip(RoundedCornerShape(Dimens.artCorner)),
+            )
+        } else {
+            ArtPlaceholder(key.colors, Modifier.fillMaxSize())
+        }
     }
 }
 

@@ -21,6 +21,7 @@ import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.State
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableLongStateOf
@@ -29,6 +30,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -52,18 +54,37 @@ import com.deskdeck.ui.theme.Dimens
 import com.deskdeck.ui.theme.TrueBlack
 
 @Composable
-fun DashboardRoute(viewModel: DashboardViewModel = hiltViewModel()) {
+fun DashboardRoute(
+    notificationAccessGranted: Boolean,
+    onGrantAccess: () -> Unit,
+    viewModel: DashboardViewModel = hiltViewModel(),
+) {
     val nowPlaying by viewModel.nowPlaying.collectAsStateWithLifecycle()
     val lyrics by viewModel.lyrics.collectAsStateWithLifecycle()
     val railApps by viewModel.railApps.collectAsStateWithLifecycle()
     val notificationCount by viewModel.notificationCount.collectAsStateWithLifecycle()
+
+    // Basic rule until the burn-in settings (M5): keep the screen on only while music plays.
+    KeepScreenOn(enabled = nowPlaying?.playback?.isPlaying == true)
+
     DashboardScreen(
         nowPlaying = nowPlaying,
         lyrics = lyrics,
         railApps = railApps,
         notificationCount = notificationCount,
+        notificationAccessGranted = notificationAccessGranted,
+        onGrantAccess = onGrantAccess,
         actions = viewModel,
     )
+}
+
+@Composable
+private fun KeepScreenOn(enabled: Boolean) {
+    val view = LocalView.current
+    DisposableEffect(view, enabled) {
+        view.keepScreenOn = enabled
+        onDispose { view.keepScreenOn = false }
+    }
 }
 
 @Composable
@@ -73,6 +94,8 @@ fun DashboardScreen(
     railApps: List<RailApp>,
     notificationCount: Int,
     actions: DashboardActions,
+    notificationAccessGranted: Boolean = true,
+    onGrantAccess: () -> Unit = {},
     position: State<Long> = rememberPlaybackPosition(nowPlaying?.playback, nowPlaying?.track?.durationMs),
 ) {
     val palette = animatedCardPalette(nowPlaying?.colors)
@@ -105,6 +128,8 @@ fun DashboardScreen(
                     position = position,
                     palette = palette,
                     actions = actions,
+                    accessMissing = !notificationAccessGranted,
+                    onGrantAccess = onGrantAccess,
                     modifier = Modifier
                         .weight(1f)
                         .fillMaxHeight(),
@@ -116,6 +141,8 @@ fun DashboardScreen(
                     position = position,
                     palette = palette,
                     actions = actions,
+                    accessMissing = !notificationAccessGranted,
+                    onGrantAccess = onGrantAccess,
                     modifier = Modifier
                         .weight(0.47f)
                         .fillMaxHeight(),
@@ -142,6 +169,8 @@ private fun CompactPanels(
     position: State<Long>,
     palette: CardPalette,
     actions: DashboardActions,
+    accessMissing: Boolean,
+    onGrantAccess: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     var showLyrics by rememberSaveable { mutableStateOf(false) }
@@ -167,7 +196,7 @@ private fun CompactPanels(
         if (showLyrics) {
             LyricsPanel(lyrics, position, actions::onSeek, actions::onRetryLyrics, panelModifier)
         } else {
-            NowPlayingCard(nowPlaying, position, palette, actions, panelModifier)
+            NowPlayingCard(nowPlaying, position, palette, actions, accessMissing, onGrantAccess, panelModifier)
         }
     }
 }
@@ -220,6 +249,21 @@ private fun DashboardEmptyPreview() {
             railApps = FakeData.railApps,
             notificationCount = 0,
             actions = previewActions,
+        )
+    }
+}
+
+@Preview(name = "Notification access missing", widthDp = 1280, heightDp = 800)
+@Composable
+private fun DashboardNoAccessPreview() {
+    DeskDeckTheme {
+        DashboardScreen(
+            nowPlaying = null,
+            lyrics = LyricsUiState.Idle,
+            railApps = FakeData.railApps,
+            notificationCount = 0,
+            actions = previewActions,
+            notificationAccessGranted = false,
         )
     }
 }

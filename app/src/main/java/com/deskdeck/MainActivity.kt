@@ -7,12 +7,16 @@ import androidx.activity.enableEdgeToEdge
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
-import com.deskdeck.ui.dashboard.DashboardRoute
+import com.deskdeck.media.NotificationAccess
+import com.deskdeck.ui.AppRoot
 import com.deskdeck.ui.theme.DeskDeckTheme
 import dagger.hilt.android.AndroidEntryPoint
+import javax.inject.Inject
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
+
+    @Inject lateinit var notificationAccess: NotificationAccess
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -20,9 +24,15 @@ class MainActivity : ComponentActivity() {
         hideSystemBars()
         setContent {
             DeskDeckTheme {
-                DashboardRoute()
+                AppRoot()
             }
         }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        // The user may have just toggled notification access in Settings; there's no callback for it.
+        notificationAccess.refresh()
     }
 
     override fun onWindowFocusChanged(hasFocus: Boolean) {

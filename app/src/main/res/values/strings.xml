@@ -31,6 +31,22 @@
     <string name="np_album_art">Album art</string>
     <string name="np_unknown_artist">Unknown artist</string>
 
+    <string name="np_access_off">Notification access is off</string>
+    <string name="np_access_off_detail">DeskDeck needs it to see what\'s playing in your music apps.</string>
+    <string name="np_grant_access">Grant access</string>
+
+    <!-- Onboarding -->
+    <string name="onb_title">Let DeskDeck see what\'s playing</string>
+    <string name="onb_body">DeskDeck shows and controls the music playing in Spotify, YouTube Music, Apple Music and any other player. Android only shares that through &lt;b&gt;Notification access&lt;/b&gt;.</string>
+    <string name="onb_privacy">Your notifications are never stored or sent anywhere. DeskDeck only counts them for the badge in the sidebar.</string>
+    <string name="onb_step_1">Tap &lt;b&gt;Open settings&lt;/b&gt;</string>
+    <string name="onb_step_2">Turn on &lt;b&gt;DeskDeck&lt;/b&gt; and confirm</string>
+    <string name="onb_step_3">Come back here. DeskDeck continues on its own.</string>
+    <string name="onb_open_settings">Open settings</string>
+    <string name="onb_not_now">Not now</string>
+    <string name="onb_restricted">Switch greyed out? On Android 13 and later, apps installed from a file need one extra step: open &lt;b&gt;App info&lt;/b&gt;, tap &lt;b&gt;⋮&lt;/b&gt;, choose &lt;b&gt;Allow restricted settings&lt;/b&gt;, then try again.</string>
+    <string name="onb_open_app_info">Open App info</string>
+
     <!-- Lyrics -->
     <string name="lyrics_idle">Lyrics will appear here</string>
     <string name="lyrics_loading">Finding lyrics…</string>

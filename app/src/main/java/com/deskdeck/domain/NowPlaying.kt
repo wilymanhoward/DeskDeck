@@ -1,5 +1,7 @@
 package com.deskdeck.domain
 
+import android.graphics.Bitmap
+
 /** Everything the dashboard needs about the session that is currently shown. */
 data class NowPlaying(
     val track: Track,
@@ -7,7 +9,7 @@ data class NowPlaying(
     /** Package of the app that owns the media session, e.g. `com.spotify.music`. */
     val sourcePackage: String,
     val sourceLabel: String,
-    /** Any model the image loader understands (Bitmap, Uri, URL). Null means "no art". */
-    val artwork: Any? = null,
+    /** Null when the player sent no art (or it couldn't be loaded); the UI shows a placeholder. */
+    val artwork: Bitmap? = null,
     val colors: ArtworkColors? = null,
 )
