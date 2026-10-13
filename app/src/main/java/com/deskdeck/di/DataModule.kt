@@ -1,6 +1,10 @@
 package com.deskdeck.di
 
 import android.content.Context
+import androidx.datastore.core.DataStore
+import androidx.datastore.preferences.core.PreferenceDataStoreFactory
+import androidx.datastore.preferences.core.Preferences
+import androidx.datastore.preferences.preferencesDataStoreFile
 import androidx.room.Room
 import com.deskdeck.BuildConfig
 import com.deskdeck.data.db.DeskDeckDatabase
@@ -64,4 +68,9 @@ object DataModule {
     @Provides
     @Singleton
     fun provideClock(): Clock = Clock.systemUTC()
+
+    @Provides
+    @Singleton
+    fun provideSettingsDataStore(@ApplicationContext context: Context): DataStore<Preferences> =
+        PreferenceDataStoreFactory.create { context.preferencesDataStoreFile("settings") }
 }

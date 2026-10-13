@@ -70,9 +70,14 @@ dependencies {
     implementation(libs.androidx.media)
 
     // Album art: Palette for the card colors, Coil for players that send an art URI instead of a bitmap.
+    // Coil also loads (and caches) launcher icons for the rail through a small custom fetcher.
     implementation(libs.androidx.palette)
     implementation(libs.coil)
+    implementation(libs.coil.compose)
     implementation(libs.coil.network.okhttp)
+
+    // Small user settings (pinned apps now, the settings screen in M5).
+    implementation(libs.androidx.datastore.preferences)
 
     // Lyrics: LRCLIB over Retrofit/Moshi (codegen adapters, no reflection), cached in Room.
     implementation(libs.retrofit)

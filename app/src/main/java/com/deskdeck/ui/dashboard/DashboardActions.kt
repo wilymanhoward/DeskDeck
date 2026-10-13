@@ -18,6 +18,7 @@ interface DashboardActions : PlayerActions {
     fun onAdjustLyricsOffset(deltaMs: Long) {}
     fun onResetLyricsOffset() {}
     fun onRailAppClick(app: RailApp) {}
+    fun onRailAppLongClick(app: RailApp) {}
     fun onAddRailApp() {}
     fun onAllApps() {}
     fun onSettings() {}

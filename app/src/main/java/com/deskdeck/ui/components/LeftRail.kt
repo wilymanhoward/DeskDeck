@@ -2,7 +2,7 @@ package com.deskdeck.ui.components
 
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -38,14 +38,17 @@ import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import coil3.compose.AsyncImage
 import com.deskdeck.R
 import com.deskdeck.domain.RailApp
+import com.deskdeck.launcher.AppIcon
 import com.deskdeck.ui.common.clockFormatter
 import com.deskdeck.ui.common.rememberCurrentTime
 import com.deskdeck.ui.common.rememberIs24Hour
 import com.deskdeck.ui.theme.CappedWhite
 import com.deskdeck.ui.theme.Dimens
 import com.deskdeck.ui.theme.MutedText
+import com.deskdeck.ui.theme.SurfaceHighest
 import java.time.format.DateTimeFormatter
 
 @Composable
@@ -54,6 +57,7 @@ fun LeftRail(
     activePackage: String?,
     notificationCount: Int,
     onAppClick: (RailApp) -> Unit,
+    onAppLongClick: (RailApp) -> Unit,
     onAddApp: () -> Unit,
     onAllApps: () -> Unit,
     onSettings: () -> Unit,
@@ -84,6 +88,7 @@ fun LeftRail(
                         app = app,
                         active = app.packageName == activePackage,
                         onClick = { onAppClick(app) },
+                        onLongClick = { onAppLongClick(app) },
                     )
                 }
                 RailIconButton(R.drawable.ic_add, stringResource(R.string.rail_add_app), onAddApp)
@@ -164,12 +169,13 @@ private fun NotificationIndicator(count: Int) {
 }
 
 @Composable
-private fun RailAppTile(app: RailApp, active: Boolean, onClick: () -> Unit) {
-    val description = if (active) {
-        stringResource(R.string.rail_now_playing_app, app.label)
-    } else {
-        stringResource(R.string.rail_open_app, app.label)
+private fun RailAppTile(app: RailApp, active: Boolean, onClick: () -> Unit, onLongClick: () -> Unit) {
+    val description = when {
+        !app.installed -> stringResource(R.string.rail_get_app, app.label)
+        active -> stringResource(R.string.rail_now_playing_app, app.label)
+        else -> stringResource(R.string.rail_open_app, app.label)
     }
+    val editLabel = stringResource(R.string.rail_edit_apps)
     val indicatorHeight by animateDpAsState(if (active) 28.dp else 0.dp, label = "railIndicator")
     Box(contentAlignment = Alignment.Center) {
         // Android Auto-style pill marking the app that owns the current media session.
@@ -184,27 +190,60 @@ private fun RailAppTile(app: RailApp, active: Boolean, onClick: () -> Unit) {
             modifier = Modifier
                 .size(Dimens.minTouch)
                 .clip(RoundedCornerShape(16.dp))
-                .clickable(role = Role.Button, onClick = onClick)
+                .combinedClickable(
+                    role = Role.Button,
+                    onLongClickLabel = editLabel,
+                    onLongClick = onLongClick,
+                    onClick = onClick,
+                )
                 .semantics { contentDescription = description },
             contentAlignment = Alignment.Center,
         ) {
-            // Letter tile until real launcher icons arrive with the app picker (M4).
-            val tileAlpha = if (app.installed) 1f else 0.35f
-            Box(
-                modifier = Modifier
-                    .clearAndSetSemantics { }
-                    .size(46.dp)
-                    .clip(RoundedCornerShape(14.dp))
-                    .background(Color(app.tileColor).copy(alpha = 0.85f * tileAlpha)),
-                contentAlignment = Alignment.Center,
-            ) {
-                Text(
-                    text = app.label.take(1),
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold,
-                    color = CappedWhite.copy(alpha = tileAlpha),
+            if (app.installed) {
+                AsyncImage(
+                    model = AppIcon(app.packageName),
+                    contentDescription = null,
+                    modifier = Modifier.size(46.dp),
                 )
+            } else {
+                NotInstalledTile(app)
             }
+        }
+    }
+}
+
+/** Greyed-out letter tile with a download badge; tapping it opens the Play Store page. */
+@Composable
+private fun NotInstalledTile(app: RailApp) {
+    Box(Modifier.clearAndSetSemantics { }) {
+        Box(
+            modifier = Modifier
+                .size(46.dp)
+                .clip(RoundedCornerShape(14.dp))
+                .background(Color(app.tileColor).copy(alpha = 0.3f)),
+            contentAlignment = Alignment.Center,
+        ) {
+            Text(
+                text = app.label.take(1),
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold,
+                color = CappedWhite.copy(alpha = 0.4f),
+            )
+        }
+        Box(
+            modifier = Modifier
+                .align(Alignment.BottomEnd)
+                .offset(x = 4.dp, y = 4.dp)
+                .size(20.dp)
+                .background(SurfaceHighest, CircleShape),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                painter = painterResource(R.drawable.ic_download),
+                contentDescription = null,
+                tint = MutedText,
+                modifier = Modifier.size(14.dp),
+            )
         }
     }
 }
