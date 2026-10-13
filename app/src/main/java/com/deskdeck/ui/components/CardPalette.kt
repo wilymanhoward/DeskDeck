@@ -21,15 +21,18 @@ data class CardPalette(
     val onAccent: Color,
 ) {
     companion object {
-        val Default = CardPalette(
+        /** Neutral card tinted only by the user's accent color. */
+        fun neutral(accent: Color) = CardPalette(
             top = SurfaceHigh,
             bottom = SurfaceLow,
-            accent = DefaultAccent,
-            onAccent = DefaultAccent.withTone(0.12f),
+            accent = accent,
+            onAccent = accent.withTone(0.12f),
         )
 
-        fun from(colors: ArtworkColors?): CardPalette {
-            if (colors == null) return Default
+        val Default = neutral(DefaultAccent)
+
+        fun from(colors: ArtworkColors?, fallbackAccent: Color = DefaultAccent): CardPalette {
+            if (colors == null) return neutral(fallbackAccent)
             val primary = Color(colors.primary)
             val secondary = Color(colors.secondary)
             return CardPalette(
@@ -42,10 +45,13 @@ data class CardPalette(
     }
 }
 
-/** [CardPalette] for [colors], animating smoothly from the previous track's palette. */
+/**
+ * [CardPalette] for [colors] (null: neutral with [fallbackAccent]), animating smoothly from the
+ * previous track's palette.
+ */
 @Composable
-fun animatedCardPalette(colors: ArtworkColors?): CardPalette {
-    val target = remember(colors) { CardPalette.from(colors) }
+fun animatedCardPalette(colors: ArtworkColors?, fallbackAccent: Color = DefaultAccent): CardPalette {
+    val target = remember(colors, fallbackAccent) { CardPalette.from(colors, fallbackAccent) }
     val spec = tween<Color>(durationMillis = 900)
     return CardPalette(
         top = animateColorAsState(target.top, spec, label = "paletteTop").value,

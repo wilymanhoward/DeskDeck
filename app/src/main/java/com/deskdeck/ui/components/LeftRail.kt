@@ -29,6 +29,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
@@ -40,11 +41,13 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import com.deskdeck.R
+import com.deskdeck.burnin.rememberRailOpacity
 import com.deskdeck.domain.RailApp
 import com.deskdeck.launcher.AppIcon
 import com.deskdeck.ui.common.clockFormatter
 import com.deskdeck.ui.common.rememberCurrentTime
 import com.deskdeck.ui.common.rememberIs24Hour
+import com.deskdeck.ui.settings.LocalAppSettings
 import com.deskdeck.ui.theme.CappedWhite
 import com.deskdeck.ui.theme.Dimens
 import com.deskdeck.ui.theme.MutedText
@@ -63,10 +66,13 @@ fun LeftRail(
     onSettings: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val railOpacity = rememberRailOpacity(LocalAppSettings.current.burnIn.railOpacityDrift)
     Column(
         modifier = modifier
             .width(Dimens.railWidth)
-            .fillMaxHeight(),
+            .fillMaxHeight()
+            // Read in the draw phase: the slow opacity drift never recomposes the rail.
+            .graphicsLayer { alpha = railOpacity.value },
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         RailClock()
@@ -104,9 +110,18 @@ fun LeftRail(
 @Composable
 private fun RailClock() {
     val is24Hour = rememberIs24Hour()
-    val now by rememberCurrentTime(withSeconds = false)
+    val showSeconds = LocalAppSettings.current.clockShowSeconds
+    val now by rememberCurrentTime(withSeconds = showSeconds)
+    // The rail is too narrow for "12:45:30" at this size, so seconds go on the small second line.
     val formatter = remember(is24Hour) { clockFormatter(is24Hour, withSeconds = false) }
-    val amPm = remember { DateTimeFormatter.ofPattern("a") }
+    val secondLine = remember(is24Hour, showSeconds) {
+        when {
+            showSeconds && !is24Hour -> DateTimeFormatter.ofPattern("ss · a")
+            showSeconds -> DateTimeFormatter.ofPattern("ss")
+            !is24Hour -> DateTimeFormatter.ofPattern("a")
+            else -> null
+        }
+    }
     Column(
         modifier = Modifier
             .height(Dimens.minTouch)
@@ -122,9 +137,9 @@ private fun RailClock() {
             maxLines = 1,
             softWrap = false,
         )
-        if (!is24Hour) {
+        if (secondLine != null) {
             Text(
-                text = now.format(amPm),
+                text = now.format(secondLine),
                 style = MaterialTheme.typography.labelSmall,
                 color = MutedText,
                 maxLines = 1,

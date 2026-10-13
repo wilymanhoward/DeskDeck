@@ -47,6 +47,7 @@ import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -64,7 +65,11 @@ import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.unit.dp
@@ -75,6 +80,8 @@ import com.deskdeck.domain.MediaKind
 import com.deskdeck.domain.activeIndexAt
 import com.deskdeck.ui.dashboard.DashboardActions
 import com.deskdeck.ui.dashboard.LyricsUiState
+import com.deskdeck.ui.lyrics.Romanizer
+import com.deskdeck.ui.settings.LocalAppSettings
 import com.deskdeck.ui.theme.ActiveLyricWhite
 import com.deskdeck.ui.theme.CappedWhite
 import com.deskdeck.ui.theme.Dimens
@@ -83,7 +90,9 @@ import com.deskdeck.ui.theme.MutedText
 import com.deskdeck.ui.theme.SurfaceHigh
 import com.deskdeck.ui.theme.SurfaceLowest
 import kotlin.math.abs
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.withContext
 
 /** How long auto-follow stays paused after the user scrolls the lyrics manually. */
 private const val RESUME_FOLLOW_AFTER_MS = 5_000L
@@ -154,6 +163,9 @@ private fun SyncedLyrics(
     actions: DashboardActions,
 ) {
     val listState = rememberLazyListState()
+    val settings = LocalAppSettings.current
+    val style = rememberLyricStyle(settings.lyricsFontSizeSp)
+    val romanized = rememberRomanized(lines.map { it.text }, settings.showRomanization)
     // Changes only when the line changes, so per-frame position updates don't recompose the list.
     val activeIndex by remember(lines, offsetMs) {
         derivedStateOf { lines.activeIndexAt(position.value + offsetMs) }
@@ -202,6 +214,8 @@ private fun SyncedLyrics(
             items(count = lines.size, key = { it }) { index ->
                 LyricLineItem(
                     text = lines[index].text,
+                    romanized = romanized.getOrNull(index),
+                    style = style,
                     distance = index - activeIndex,
                     clickLabel = seekLabel,
                     onClick = {
@@ -302,6 +316,8 @@ private fun offsetLabel(offsetMs: Long): String {
 @Composable
 private fun LyricLineItem(
     text: String,
+    romanized: String?,
+    style: TextStyle,
     distance: Int,
     clickLabel: String,
     onClick: () -> Unit,
@@ -318,12 +334,7 @@ private fun LyricLineItem(
         animationSpec = spring(dampingRatio = 0.8f, stiffness = Spring.StiffnessLow),
         label = "lineScale",
     )
-    Text(
-        // Empty LRC lines mark instrumental breaks.
-        text = text.ifBlank { "♪" },
-        style = LyricTextStyle,
-        color = if (active) ActiveLyricWhite else CappedWhite,
-        textAlign = TextAlign.Center,
+    Column(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(16.dp))
@@ -334,7 +345,42 @@ private fun LyricLineItem(
                 scaleX = scale
                 scaleY = scale
             },
-    )
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Text(
+            // Empty LRC lines mark instrumental breaks.
+            text = text.ifBlank { "♪" },
+            style = style,
+            color = if (active) ActiveLyricWhite else CappedWhite,
+            textAlign = TextAlign.Center,
+        )
+        if (romanized != null) {
+            Text(
+                text = romanized,
+                style = style.copy(fontSize = style.fontSize * 0.55f, lineHeight = style.lineHeight * 0.55f, fontWeight = FontWeight.Normal),
+                color = MutedText,
+                textAlign = TextAlign.Center,
+            )
+        }
+    }
+}
+
+@Composable
+private fun rememberLyricStyle(sizeSp: Int): TextStyle = remember(sizeSp) {
+    LyricTextStyle.copy(fontSize = sizeSp.sp, lineHeight = (sizeSp * 4 / 3).sp)
+}
+
+/** Romanized form of each text (null where not needed), computed off the main thread. */
+@Composable
+private fun rememberRomanized(texts: List<String>, enabled: Boolean): List<String?> {
+    val result by produceState(initialValue = emptyList<String?>(), texts, enabled) {
+        value = if (enabled && Romanizer.isSupported) {
+            withContext(Dispatchers.Default) { texts.map(Romanizer::romanize) }
+        } else {
+            emptyList()
+        }
+    }
+    return result
 }
 
 /** Scrolls so that item [index] is vertically centered in the viewport. */
@@ -367,6 +413,24 @@ private fun Modifier.edgeFade(): Modifier = this
 
 @Composable
 private fun PlainLyrics(text: String) {
+    val settings = LocalAppSettings.current
+    val lines = remember(text) { text.lines() }
+    val romanized = rememberRomanized(lines, settings.showRomanization)
+    val size = settings.lyricsFontSizeSp * 4 / 5
+    val annotated = remember(lines, romanized) {
+        buildAnnotatedString {
+            lines.forEachIndexed { i, line ->
+                if (i > 0) append('\n')
+                append(line)
+                romanized.getOrNull(i)?.let { roman ->
+                    append('\n')
+                    withStyle(SpanStyle(fontSize = (size * 0.6f).sp, fontWeight = FontWeight.Normal, color = MutedText)) {
+                        append(roman)
+                    }
+                }
+            }
+        }
+    }
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -381,8 +445,8 @@ private fun PlainLyrics(text: String) {
         )
         Spacer(Modifier.height(20.dp))
         Text(
-            text = text,
-            style = LyricTextStyle.copy(fontSize = 24.sp, lineHeight = 36.sp, fontWeight = FontWeight.Medium),
+            text = annotated,
+            style = LyricTextStyle.copy(fontSize = size.sp, lineHeight = (size * 3 / 2).sp, fontWeight = FontWeight.Medium),
             color = CappedWhite.copy(alpha = 0.85f),
             textAlign = TextAlign.Center,
         )

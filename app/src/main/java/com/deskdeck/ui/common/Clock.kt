@@ -6,6 +6,8 @@ import androidx.compose.runtime.State
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalContext
+import com.deskdeck.data.settings.ClockFormat
+import com.deskdeck.ui.settings.LocalAppSettings
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 import java.time.temporal.ChronoField
@@ -31,11 +33,18 @@ fun rememberCurrentTime(withSeconds: Boolean): State<LocalDateTime> =
         }
     }
 
-/** Follows the system 12/24-hour setting. A user override arrives with settings in M5. */
+/** 12/24-hour from settings, or from the system when set to "System". */
 @Composable
 fun rememberIs24Hour(): Boolean {
     val context = LocalContext.current
-    return remember(context) { DateFormat.is24HourFormat(context) }
+    val format = LocalAppSettings.current.clockFormat
+    return remember(context, format) {
+        when (format) {
+            ClockFormat.SYSTEM -> DateFormat.is24HourFormat(context)
+            ClockFormat.H12 -> false
+            ClockFormat.H24 -> true
+        }
+    }
 }
 
 fun clockFormatter(is24Hour: Boolean, withSeconds: Boolean): DateTimeFormatter {
