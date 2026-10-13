@@ -2,8 +2,10 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
-    <!-- Album art that players publish as an http(s) URI; lyrics (M3). -->
+    <!-- Lyrics from LRCLIB, and album art that players publish as an http(s) URI. -->
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- Retry lyrics as soon as the connection comes back. -->
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 
     <!--
         Android 11+ package visibility: make launchable apps visible so we can show the label of the

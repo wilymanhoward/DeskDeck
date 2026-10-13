@@ -26,7 +26,7 @@ object Romanizer {
 
     /** Romanized form, or null when not needed or not supported on this Android version. */
     fun romanize(text: String): String? {
-        if (!needsRomanization(text)) return null
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q || !needsRomanization(text)) return null
         val t = transliterator ?: return null
         // ICU transliterators aren't documented as thread-safe.
         return synchronized(t) { t.transliterate(text) }.takeIf { it != text }

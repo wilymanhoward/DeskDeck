@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<lint>
+    <!-- targetSdk stays at 35 by project decision (compileSdk is 37); revisit when moving to 36+. -->
+    <issue id="OldTargetApi" severity="ignore" />
+
+    <!-- OkHttp stays on 4.12: Retrofit 3 and Coil's network module are both built against 4.x. -->
+    <issue id="NewerVersionAvailable">
+        <ignore regexp="okhttp" />
+    </issue>
+</lint>

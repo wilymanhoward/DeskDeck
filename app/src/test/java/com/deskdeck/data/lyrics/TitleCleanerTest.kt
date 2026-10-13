@@ -115,6 +115,28 @@ class TitleCleanerTest {
     }
 
     @Test
+    fun `display text for a youtube video is cleaned and split`() {
+        val track = Track("yt|x", "The Weeknd - Save Your Tears (Official Music Video)", "TheWeekndVEVO", null, 249_000)
+        assertEquals(TitleCleaner.DisplayText("Save Your Tears", "The Weeknd"), TitleCleaner.forDisplay(track))
+    }
+
+    @Test
+    fun `display text keeps version info and featured artists`() {
+        val live = Track("s|x", "Hotel California - Live", "Eagles", "Hell Freezes Over", 400_000)
+        assertEquals(TitleCleaner.DisplayText("Hotel California - Live", "Eagles"), TitleCleaner.forDisplay(live))
+        val feat = Track("s|x", "Stay (feat. Justin Bieber)", "The Kid LAROI", null, 141_000)
+        assertEquals("Stay (feat. Justin Bieber)", TitleCleaner.forDisplay(feat).title)
+        val remaster = Track("s|x", "Here Comes the Sun (Remastered 2009)", "The Beatles", null, 185_000)
+        assertEquals("Here Comes the Sun (Remastered 2009)", TitleCleaner.forDisplay(remaster).title)
+    }
+
+    @Test
+    fun `display text leaves normal music metadata alone`() {
+        val track = Track("s|x", "Never Say Never", "Justin Bieber, Jaden", "Never Say Never - The Remixes", 228_000)
+        assertEquals(TitleCleaner.DisplayText("Never Say Never", "Justin Bieber, Jaden"), TitleCleaner.forDisplay(track))
+    }
+
+    @Test
     fun `normalize removes accents, punctuation and case`() {
         assertEquals("beyonce halo", TitleCleaner.normalize("Beyoncé – Halo!"))
         assertEquals("simon and garfunkel", TitleCleaner.normalize("Simon & Garfunkel"))

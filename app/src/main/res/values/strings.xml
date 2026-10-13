@@ -3,7 +3,6 @@
     <string name="app_name">DeskDeck</string>
 
     <!-- Left rail -->
-    <string name="rail_notifications">%1$d notifications</string>
     <string name="rail_no_notifications">No notifications</string>
     <string name="rail_open_app">Open %1$s</string>
     <string name="rail_now_playing_app">%1$s, now playing</string>
@@ -175,4 +174,8 @@
     <!-- Compact (split-screen) layout -->
     <string name="tab_now_playing">Now playing</string>
     <string name="tab_lyrics">Lyrics</string>
+    <plurals name="rail_notifications">
+        <item quantity="one">%1$d notification</item>
+        <item quantity="other">%1$d notifications</item>
+    </plurals>
 </resources>

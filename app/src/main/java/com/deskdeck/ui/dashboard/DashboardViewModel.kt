@@ -2,6 +2,7 @@ package com.deskdeck.ui.dashboard
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.deskdeck.data.NetworkMonitor
 import com.deskdeck.data.lyrics.LyricsRepository
 import com.deskdeck.domain.MediaKind
 import com.deskdeck.domain.NowPlaying
@@ -20,7 +21,10 @@ import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.drop
+import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
@@ -38,6 +42,7 @@ class DashboardViewModel @Inject constructor(
     notificationCounter: NotificationCounter,
     notificationAccess: NotificationAccess,
     private val appLauncher: AppLauncher,
+    networkMonitor: NetworkMonitor,
 ) : ViewModel(), DashboardActions {
 
     val nowPlaying: StateFlow<NowPlaying?> = media.nowPlaying
@@ -66,6 +71,15 @@ class DashboardViewModel @Inject constructor(
         }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), LyricsUiState.Idle)
 
+    init {
+        // A desk tablet loses Wi-Fi now and then: retry a failed lookup as soon as it's back.
+        viewModelScope.launch {
+            networkMonitor.isOnline.drop(1).filter { it }.collect {
+                if (lyrics.value is LyricsUiState.Error) onRetryLyrics()
+            }
+        }
+    }
+
     private fun lyricsFor(track: Track?): Flow<LyricsUiState> = when {
         track == null -> flowOf(LyricsUiState.Idle)
         track.kind != MediaKind.MUSIC -> flowOf(LyricsUiState.Unavailable(track.kind))
@@ -74,6 +88,8 @@ class DashboardViewModel @Inject constructor(
             .onStart { emit(false) }
             .transformLatest { forceRefresh ->
                 emit(LyricsUiState.Loading)
+                // Skipping through tracks quickly cancels this before any request goes out.
+                if (!forceRefresh) delay(LOOKUP_DEBOUNCE_MS)
                 emit(lyricsRepository.lyricsFor(track, forceRefresh).toUiState(track.id))
             }
     }
@@ -108,5 +124,6 @@ class DashboardViewModel @Inject constructor(
 
     private companion object {
         const val MAX_OFFSET_MS = 10_000L
+        const val LOOKUP_DEBOUNCE_MS = 300L
     }
 }

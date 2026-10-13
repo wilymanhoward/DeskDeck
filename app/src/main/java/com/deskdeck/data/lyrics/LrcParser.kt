@@ -18,6 +18,8 @@ object LrcParser {
 
     private val TIMESTAMP = Regex("""\[(\d{1,3}):(\d{1,2})(?:[.:](\d{1,3}))?]""")
     private val LEADING_TAG = Regex("""^\[([a-zA-Z#]+):([^\]]*)]""")
+    /** U+FEFF, written as a char code so no invisible character lives in the source. */
+    private val BYTE_ORDER_MARK = 0xFEFF.toChar().toString()
     private val WORD_STAMP = Regex("""<\d{1,3}:\d{1,2}(?:[.:]\d{1,3})?>""")
 
     fun parse(lrc: String): List<LyricLine> {
@@ -25,7 +27,7 @@ object LrcParser {
         val lines = mutableListOf<LyricLine>()
 
         for (rawLine in lrc.lineSequence()) {
-            val line = rawLine.trim().removePrefix("﻿")
+            val line = rawLine.trim().removePrefix(BYTE_ORDER_MARK)
             if (line.isEmpty()) continue
 
             val tag = LEADING_TAG.find(line)

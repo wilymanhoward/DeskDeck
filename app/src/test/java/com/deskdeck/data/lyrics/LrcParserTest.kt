@@ -105,7 +105,8 @@ class LrcParserTest {
 
     @Test
     fun `windows line endings and BOM are handled`() {
-        val lines = LrcParser.parse("﻿[00:01.00]a\r\n[00:02.00]b\r\n")
+        val bom = 0xFEFF.toChar()
+        val lines = LrcParser.parse("$bom[00:01.00]a\r\n[00:02.00]b\r\n")
         assertEquals(listOf(LyricLine(1_000, "a"), LyricLine(2_000, "b")), lines)
     }
 

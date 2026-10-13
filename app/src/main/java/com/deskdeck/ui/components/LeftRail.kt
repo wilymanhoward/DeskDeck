@@ -31,6 +31,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
@@ -151,7 +152,7 @@ private fun RailClock() {
 @Composable
 private fun NotificationIndicator(count: Int) {
     val description = if (count > 0) {
-        stringResource(R.string.rail_notifications, count)
+        pluralStringResource(R.plurals.rail_notifications, count, count)
     } else {
         stringResource(R.string.rail_no_notifications)
     }

@@ -80,8 +80,6 @@ fun DashboardRoute(
     val railApps by viewModel.railApps.collectAsStateWithLifecycle()
     val notificationCount by viewModel.notificationCount.collectAsStateWithLifecycle()
     val settings = LocalAppSettings.current
-    val position = rememberPlaybackPosition(nowPlaying?.playback, nowPlaying?.track?.durationMs)
-
     var picker by rememberSaveable { mutableStateOf<PickerMode?>(null) }
     val currentOnOpenSettings by rememberUpdatedState(onOpenSettings)
     // Picker and navigation are UI state, so these actions are handled here; the rest go to the ViewModel.
@@ -111,6 +109,8 @@ fun DashboardRoute(
         enabled = burnInEnabled && picker == null,
     )
     KeepScreenOn(enabled = burnIn.keepScreenOn)
+    val dashboardVisible = burnIn.mode == DisplayMode.ACTIVE || burnIn.mode == DisplayMode.DIMMED
+    val position = rememberPlaybackPosition(nowPlaying?.playback, nowPlaying?.track?.durationMs, everyFrame = dashboardVisible)
     val wake = { tracker.onInteraction(force = true) }
 
     Box(Modifier.fillMaxSize()) {

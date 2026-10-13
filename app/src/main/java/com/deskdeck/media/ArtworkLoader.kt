@@ -24,10 +24,19 @@ class ArtworkLoader @Inject constructor(
     @param:ApplicationContext private val context: Context,
 ) {
 
-    suspend fun resolve(bitmap: Bitmap?, uri: String?): ResolvedArtwork {
-        val art = bitmap ?: uri?.let { load(it) }
-        return ResolvedArtwork(art, art?.let { colorsOf(it) })
+    /** @param cropLetterbox remove black bars around video thumbnails (see [Letterbox]). */
+    suspend fun resolve(bitmap: Bitmap?, uri: String?, cropLetterbox: Boolean): ResolvedArtwork {
+        val art = (bitmap ?: uri?.let { load(it) }) ?: return ResolvedArtwork(null, null)
+        val shown = withContext(Dispatchers.Default) {
+            val readable = art.readable() ?: return@withContext art
+            if (cropLetterbox) Letterbox.crop(readable) else readable
+        }
+        return ResolvedArtwork(shown, colorsOf(shown))
     }
+
+    /** Hardware bitmaps can't be read pixel by pixel (Palette, letterbox detection). */
+    private fun Bitmap.readable(): Bitmap? =
+        if (config == Bitmap.Config.HARDWARE) copy(Bitmap.Config.ARGB_8888, false) else this
 
     private suspend fun load(uri: String): Bitmap? = try {
         val request = ImageRequest.Builder(context)
@@ -45,11 +54,7 @@ class ArtworkLoader @Inject constructor(
     }
 
     private suspend fun colorsOf(bitmap: Bitmap): ArtworkColors? = withContext(Dispatchers.Default) {
-        val readable = if (bitmap.config == Bitmap.Config.HARDWARE) {
-            bitmap.copy(Bitmap.Config.ARGB_8888, false) ?: return@withContext null
-        } else {
-            bitmap
-        }
+        val readable = bitmap.readable() ?: return@withContext null
         val palette = Palette.from(readable).maximumColorCount(16).generate()
         val primary = palette.vibrantSwatch ?: palette.dominantSwatch ?: palette.mutedSwatch
             ?: return@withContext null
