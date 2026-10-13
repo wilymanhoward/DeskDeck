@@ -59,7 +59,11 @@ class ArtworkLoader @Inject constructor(
         val primary = palette.vibrantSwatch ?: palette.dominantSwatch ?: palette.mutedSwatch
             ?: return@withContext null
         val secondary = palette.darkMutedSwatch ?: palette.darkVibrantSwatch ?: palette.dominantSwatch ?: primary
-        ArtworkColors(primary = primary.rgb, secondary = secondary.rgb)
+        val swatches = listOfNotNull(
+            palette.vibrantSwatch, palette.dominantSwatch, palette.darkVibrantSwatch,
+            palette.mutedSwatch, palette.lightVibrantSwatch, palette.darkMutedSwatch,
+        ).distinctBy { it.rgb }.take(5).map { it.rgb }
+        ArtworkColors(primary = primary.rgb, secondary = secondary.rgb, swatches = swatches)
     }
 
     private companion object {

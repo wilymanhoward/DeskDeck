@@ -29,6 +29,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.State
 import androidx.compose.runtime.getValue
@@ -36,6 +37,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -57,8 +60,12 @@ import com.deskdeck.ui.common.rememberIs24Hour
 import com.deskdeck.ui.dashboard.EmptySourceUi
 import com.deskdeck.ui.dashboard.PlayerActions
 import com.deskdeck.ui.settings.LocalAppSettings
+import com.deskdeck.ui.theme.ActiveLyricWhite
 import com.deskdeck.ui.theme.CappedWhite
 import com.deskdeck.ui.theme.Dimens
+import com.deskdeck.ui.theme.LocalMotion
+import com.deskdeck.ui.theme.MotionSpec
+import com.deskdeck.ui.theme.glass
 import com.deskdeck.ui.theme.MutedText
 import com.deskdeck.ui.theme.SurfaceHighest
 import java.time.format.DateTimeFormatter
@@ -77,15 +84,12 @@ fun NowPlayingCard(
     onOpenApp: (String) -> Unit = {},
     onGetApp: (String) -> Unit = {},
 ) {
-    Box(
-        modifier = modifier
-            .clip(RoundedCornerShape(Dimens.cardCorner))
-            .background(Brush.verticalGradient(listOf(palette.top, palette.bottom))),
-    ) {
+    val motion = LocalMotion.current
+    Box(modifier = modifier.glass(RoundedCornerShape(Dimens.cardCorner))) {
         AnimatedContent(
             targetState = nowPlaying,
             contentKey = { it == null },
-            transitionSpec = { fadeIn(tween(500)) togetherWith fadeOut(tween(300)) },
+            transitionSpec = { fadeIn(motion.fade(MotionSpec.LONG_MS)) togetherWith fadeOut(motion.fade()) },
             label = "nowPlayingContent",
         ) { np ->
             if (np == null) {
@@ -105,6 +109,13 @@ private fun NowPlayingContent(
     actions: PlayerActions,
 ) {
     val track = nowPlaying.track
+    val motion = LocalMotion.current
+    // Apple Music-style: the cover sits large while playing and settles back when paused.
+    val artScale by animateFloatAsState(
+        targetValue = if (nowPlaying.playback.isPlaying) 1f else PAUSED_ART_SCALE,
+        animationSpec = motion.gentle(),
+        label = "artScale",
+    )
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -132,7 +143,17 @@ private fun NowPlayingContent(
                     trackId = track.id,
                     artwork = nowPlaying.artwork,
                     colors = nowPlaying.colors,
-                    modifier = Modifier.aspectRatio(1f, matchHeightConstraintsFirst = true),
+                    modifier = Modifier
+                        .aspectRatio(1f, matchHeightConstraintsFirst = true)
+                        // Scale and depth shadow in one layer, read in the draw phase.
+                        .graphicsLayer {
+                            scaleX = artScale
+                            scaleY = artScale
+                            shadowElevation = 32.dp.toPx()
+                            shape = RoundedCornerShape(Dimens.artCorner)
+                            ambientShadowColor = Color.Black
+                            spotShadowColor = Color.Black
+                        },
                 )
             }
         }
@@ -145,7 +166,7 @@ private fun NowPlayingContent(
             durationMs = track.durationMs,
             seekEnabled = nowPlaying.playback.canSeek,
             isLive = track.kind == MediaKind.LIVE,
-            activeColor = palette.accent,
+            activeColor = ActiveLyricWhite,
             onSeek = actions::onSeek,
             modifier = Modifier.fillMaxWidth(),
         )
@@ -158,30 +179,27 @@ private fun NowPlayingContent(
     }
 }
 
+/** Title, then artist a beat later, slide up into place on a track change. */
 @Composable
 private fun TrackHeadline(track: Track) {
-    AnimatedContent(
-        targetState = track,
-        contentKey = { it.id },
-        transitionSpec = {
-            (fadeIn(tween(450)) + slideInVertically(tween(450)) { it / 3 }) togetherWith fadeOut(tween(200))
-        },
-        label = "trackHeadline",
-        modifier = Modifier.fillMaxWidth(),
-    ) { t ->
-        val display = remember(t) { TitleCleaner.forDisplay(t) }
-        Column(Modifier.fillMaxWidth()) {
+    val motion = LocalMotion.current
+    val display = remember(track) { TitleCleaner.forDisplay(track) }
+    val artistLine = listOfNotNull(display.artist ?: stringResource(R.string.np_unknown_artist), track.album)
+        .joinToString(" · ")
+    Column(Modifier.fillMaxWidth()) {
+        StaggeredText(display.title, delayMs = 0) { text ->
             Text(
-                text = display.title,
+                text = text,
                 style = MaterialTheme.typography.headlineMedium,
                 color = CappedWhite,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.semantics { heading() },
             )
+        }
+        StaggeredText(artistLine, delayMs = motion.staggerMs) { text ->
             Text(
-                text = listOfNotNull(display.artist ?: stringResource(R.string.np_unknown_artist), t.album)
-                    .joinToString(" • "),
+                text = text,
                 style = MaterialTheme.typography.titleMedium,
                 color = MutedText,
                 maxLines = 1,
@@ -190,6 +208,27 @@ private fun TrackHeadline(track: Track) {
         }
     }
 }
+
+@Composable
+private fun StaggeredText(text: String, delayMs: Int, content: @Composable (String) -> Unit) {
+    val motion = LocalMotion.current
+    AnimatedContent(
+        targetState = text,
+        transitionSpec = {
+            val enter = fadeIn(tween(MotionSpec.MEDIUM_MS, delayMillis = delayMs))
+            val slide = if (motion.reduced) {
+                enter
+            } else {
+                enter + slideInVertically(tween(MotionSpec.LONG_MS, delayMillis = delayMs)) { it / 2 }
+            }
+            slide togetherWith fadeOut(motion.fade(MotionSpec.SHORT_MS))
+        },
+        label = "staggeredText",
+        modifier = Modifier.fillMaxWidth(),
+    ) { content(it) }
+}
+
+private const val PAUSED_ART_SCALE = 0.86f
 
 /**
  * Shown when nothing is playing: a large clock, then either a way to grant notification access, the
