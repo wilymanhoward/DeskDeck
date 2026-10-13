@@ -72,6 +72,7 @@ import com.deskdeck.ui.theme.LocalMotion
 import com.deskdeck.ui.theme.MotionSpec
 import com.deskdeck.ui.theme.TrueBlack
 import com.deskdeck.ui.theme.screenEntrance
+import com.deskdeck.ui.volume.VolumeRow
 
 @Composable
 fun DashboardRoute(
@@ -143,6 +144,7 @@ fun DashboardRoute(
             railState = railState,
             emptySource = emptySource,
             animateBackground = foreground && dashboardVisible && burnInEnabled && picker == null && railSheet == null,
+            volumeControl = { VolumeRow(Modifier.fillMaxWidth()) },
         )
         AppPickerOverlay(mode = picker, onDismiss = { picker = null })
         RailActionSheet(
@@ -183,6 +185,8 @@ fun DashboardScreen(
     railState: RailState = RailState(highlightPackage = nowPlaying?.sourcePackage),
     emptySource: EmptySourceUi? = null,
     animateBackground: Boolean = false,
+    /** The card's volume row; a slot so previews work without the volume ViewModel. */
+    volumeControl: (@Composable () -> Unit)? = null,
 ) {
     val settings = LocalAppSettings.current
     val palette = animatedCardPalette(
@@ -230,6 +234,7 @@ fun DashboardScreen(
                     accessMissing = !notificationAccessGranted,
                     onGrantAccess = onGrantAccess,
                     emptySource = emptySource,
+                    volumeControl = volumeControl,
                     modifier = Modifier
                         .weight(1f)
                         .fillMaxHeight(),
@@ -246,6 +251,7 @@ fun DashboardScreen(
                     emptySource = emptySource,
                     onOpenApp = actions::onOpenApp,
                     onGetApp = actions::onGetApp,
+                    volumeControl = volumeControl,
                     modifier = Modifier
                         .weight(0.47f)
                         .fillMaxHeight(),
@@ -274,6 +280,7 @@ private fun CompactPanels(
     accessMissing: Boolean,
     onGrantAccess: () -> Unit,
     emptySource: EmptySourceUi?,
+    volumeControl: (@Composable () -> Unit)?,
     modifier: Modifier = Modifier,
 ) {
     var showLyrics by rememberSaveable { mutableStateOf(false) }
@@ -309,6 +316,7 @@ private fun CompactPanels(
                 emptySource = emptySource,
                 onOpenApp = actions::onOpenApp,
                 onGetApp = actions::onGetApp,
+                volumeControl = volumeControl,
                 modifier = panelModifier,
             )
         }

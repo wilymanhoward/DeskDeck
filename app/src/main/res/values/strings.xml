@@ -202,4 +202,11 @@
         <item quantity="one">%1$d notification</item>
         <item quantity="other">%1$d notifications</item>
     </plurals>
+
+    <!-- Volume -->
+    <string name="volume_hud">Volume</string>
+    <string name="volume_percent">%1$d%%</string>
+    <string name="volume_muted">Muted</string>
+    <string name="volume_mute">Mute</string>
+    <string name="volume_unmute">Unmute</string>
 </resources>

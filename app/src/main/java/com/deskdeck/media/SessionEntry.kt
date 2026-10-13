@@ -28,7 +28,8 @@ import com.deskdeck.domain.Track
  */
 internal class SessionEntry(
     val id: Long,
-    private val controller: MediaController,
+    /** Exposed for volume, which acts on the session itself rather than through transport controls. */
+    internal val controller: MediaController,
     context: Context,
     private val onChanged: (SessionEntry) -> Unit,
 ) {

@@ -1,6 +1,7 @@
 package com.deskdeck
 
 import android.os.Bundle
+import android.view.KeyEvent
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -8,6 +9,7 @@ import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import com.deskdeck.media.NotificationAccess
+import com.deskdeck.media.VolumeController
 import com.deskdeck.ui.AppRoot
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
@@ -16,6 +18,7 @@ import javax.inject.Inject
 class MainActivity : ComponentActivity() {
 
     @Inject lateinit var notificationAccess: NotificationAccess
+    @Inject lateinit var volume: VolumeController
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -26,6 +29,23 @@ class MainActivity : ComponentActivity() {
             AppRoot()
         }
     }
+
+    override fun onStart() {
+        super.onStart()
+        volume.start()
+    }
+
+    override fun onStop() {
+        volume.stop()
+        super.onStop()
+    }
+
+    // Volume keys go to DeskDeck's own HUD; handling them here keeps the system panel from showing.
+    override fun onKeyDown(keyCode: Int, event: KeyEvent): Boolean =
+        (keyCode in VOLUME_KEYS && volume.onKey(keyCode, repeat = event.repeatCount > 0)) || super.onKeyDown(keyCode, event)
+
+    override fun onKeyUp(keyCode: Int, event: KeyEvent): Boolean =
+        (keyCode in VOLUME_KEYS && !volume.state.value.fixed) || super.onKeyUp(keyCode, event)
 
     override fun onResume() {
         super.onResume()
@@ -47,3 +67,5 @@ class MainActivity : ComponentActivity() {
         }
     }
 }
+
+private val VOLUME_KEYS = setOf(KeyEvent.KEYCODE_VOLUME_UP, KeyEvent.KEYCODE_VOLUME_DOWN, KeyEvent.KEYCODE_VOLUME_MUTE)

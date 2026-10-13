@@ -59,6 +59,11 @@ class MediaSessionRepository @Inject constructor(
     private val _anyPlaying = MutableStateFlow(false)
     override val anyPlaying: StateFlow<Boolean> = _anyPlaying.asStateFlow()
 
+    private val _shownController = MutableStateFlow<MediaController?>(null)
+
+    /** The shown session's controller, so [VolumeController] can follow it to a remote device. */
+    internal val shownController: StateFlow<MediaController?> = _shownController.asStateFlow()
+
     private val sessionsListener = MediaSessionManager.OnActiveSessionsChangedListener { controllers ->
         updateSessions(controllers.orEmpty(), alreadyRunning = false)
     }
@@ -117,6 +122,7 @@ class MediaSessionRepository @Inject constructor(
         val decision = SessionSelector.select(entries.map { it.candidate() }, selected?.id, _selection.value)
         _selection.value = decision.selection
         selected = entries.firstOrNull { it.id == decision.sessionId }
+        _shownController.value = selected?.controller
         _sessionPackages.value = entries.filter { it.hasMetadata }.mapTo(mutableSetOf()) { it.packageName }
         _anyPlaying.value = entries.any { it.isPlaying }
         publish()
