@@ -52,6 +52,18 @@ data class BurnInSettings(
     val railOpacityDrift: Boolean = true,
 )
 
+/** DeskDeck's own notification banners (it's full-screen, so the system's are easy to miss). */
+data class NotificationSettings(
+    val banners: Boolean = true,
+    /** Apps whose notifications never show a banner. */
+    val mutedPackages: Set<String> = emptySet(),
+    /** Show only the app name and a generic line. */
+    val hideContent: Boolean = false,
+    /** Follow the system's Do Not Disturb, including its exceptions (priority contacts, alarms). */
+    val respectDnd: Boolean = true,
+    val durationSec: Int = 5,
+)
+
 data class AppSettings(
     val clockFormat: ClockFormat = ClockFormat.SYSTEM,
     val clockShowSeconds: Boolean = false,
@@ -64,6 +76,7 @@ data class AppSettings(
     /** Also try an app's MediaBrowserService when starting it (usually refused, so off by default). */
     val mediaBrowserResume: Boolean = false,
     val burnIn: BurnInSettings = BurnInSettings(),
+    val notifications: NotificationSettings = NotificationSettings(),
 )
 
 /** Allowed values, shared by the settings UI and input validation. */
@@ -74,4 +87,5 @@ object SettingsRanges {
     val lyricsFontSizeSp = 22..42
     val dimLevel = 0.2f..0.8f
     val brightnessCap = 0.5f..1f
+    val bannerDurationSec = 3..10
 }

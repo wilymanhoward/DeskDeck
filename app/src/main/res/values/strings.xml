@@ -209,4 +209,21 @@
     <string name="volume_muted">Muted</string>
     <string name="volume_mute">Mute</string>
     <string name="volume_unmute">Unmute</string>
+
+    <!-- Notification banners -->
+    <string name="banner_hidden_content">New notification</string>
+    <string name="banner_clear">Clear</string>
+    <string name="banner_close">Close</string>
+    <string name="banner_dismiss">Dismiss banner</string>
+    <string name="settings_cat_notifications">Notifications</string>
+    <string name="settings_banners">Notification banners</string>
+    <string name="settings_banners_detail">Show new notifications as banners at the top of DeskDeck</string>
+    <string name="settings_banner_hide_content">Hide message content</string>
+    <string name="settings_banner_hide_content_detail">Show only the app name, not the title or text</string>
+    <string name="settings_banner_dnd">Respect Do Not Disturb</string>
+    <string name="settings_banner_dnd_detail">While Do Not Disturb is on, only notifications it lets through show a banner</string>
+    <string name="settings_banner_duration">Banner duration</string>
+    <string name="settings_seconds">%1$d s</string>
+    <string name="settings_banner_apps">Apps</string>
+    <string name="settings_banner_apps_detail">Apps appear here once they post a notification. Turn one off to stop its banners; its notifications still count in the sidebar.</string>
 </resources>

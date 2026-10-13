@@ -35,6 +35,7 @@ import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.unit.dp
 import com.deskdeck.R
 import com.deskdeck.ui.common.formatPlaybackTime
+import com.deskdeck.ui.notifications.HoldBannersWhile
 import com.deskdeck.ui.theme.LocalMotion
 import com.deskdeck.ui.theme.MutedText
 
@@ -69,6 +70,8 @@ fun SeekBar(
         animationSpec = LocalMotion.current.snappy(),
         label = "trackHeight",
     )
+    // A banner sliding in mid-seek would steal attention (and maybe the touch); hold it until release.
+    HoldBannersWhile(touched || dragFraction != null)
     val elapsedSeconds by remember { derivedStateOf { position.value / 1000 } }
     val shownMs = dragFraction?.let { f -> duration?.let { (f * it).toLong() } } ?: (elapsedSeconds * 1000)
 

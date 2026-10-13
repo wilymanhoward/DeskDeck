@@ -9,6 +9,7 @@ import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import com.deskdeck.media.NotificationAccess
+import com.deskdeck.media.NotificationBanners
 import com.deskdeck.media.VolumeController
 import com.deskdeck.ui.AppRoot
 import dagger.hilt.android.AndroidEntryPoint
@@ -19,6 +20,7 @@ class MainActivity : ComponentActivity() {
 
     @Inject lateinit var notificationAccess: NotificationAccess
     @Inject lateinit var volume: VolumeController
+    @Inject lateinit var banners: NotificationBanners
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -33,10 +35,12 @@ class MainActivity : ComponentActivity() {
     override fun onStart() {
         super.onStart()
         volume.start()
+        banners.setVisible(true)
     }
 
     override fun onStop() {
         volume.stop()
+        banners.setVisible(false)
         super.onStop()
     }
 

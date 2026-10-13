@@ -37,6 +37,7 @@ import com.deskdeck.R
 import com.deskdeck.domain.SpeakerLevel
 import com.deskdeck.domain.VolumeState
 import com.deskdeck.ui.components.SpeakerIcon
+import com.deskdeck.ui.notifications.HoldBannersWhile
 import com.deskdeck.ui.theme.Dimens
 import com.deskdeck.ui.theme.LocalMotion
 import com.deskdeck.ui.theme.MutedText
@@ -69,6 +70,7 @@ fun VolumeSlider(
         animationSpec = LocalMotion.current.snappy(),
         label = "volumeTrackHeight",
     )
+    HoldBannersWhile(touched || dragFraction != null)
     // While dragging, follow the finger rather than the stepped system level.
     val fraction = dragFraction ?: state.fraction
     val level = if (dragFraction != null) SpeakerLevel.of(fraction, muted = false) else state.speaker

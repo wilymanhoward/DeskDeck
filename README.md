@@ -127,6 +127,16 @@ button instead of the player.
     (Bluetooth speaker buttons, another device) shows the HUD too.
   - When the shown app plays on a remote device with adjustable volume (Cast, some Spotify Connect
     speakers), the volume follows that device; otherwise it's the tablet's media volume.
+- **Notification banners:**
+  - New notifications slide down from the top as banners while DeskDeck is on screen. They close
+    after a few seconds (the thin line shows how long is left), or swipe one up to hide it.
+  - Tap a banner to read the full text. **Clear** also removes the notification from the system
+    (the sidebar count follows); swiping or **Close** only hides the banner.
+  - Silent notifications, ongoing ones (downloads, navigation), the music apps' own player
+    notifications and group summaries never show a banner. New banners wait while you're dragging
+    the seek bar or the volume slider.
+  - **Settings › Notifications**: turn banners off, hide message content, follow Do Not Disturb
+    (with its exceptions), set how long banners stay, and turn banners off per app.
 - **Settings** (gear icon): screen & burn-in, lyrics, clock, appearance, sidebar.
 
 ### Burn-in protection
@@ -217,6 +227,11 @@ screen plus two overlays), and transliteration libraries (Android's built-in ICU
 - **Samsung taskbar handle:** with gesture navigation and the taskbar enabled, One UI draws a small
   handle at the bottom that apps can't hide. Turn it off under **Settings › Display › Taskbar** (or
   the navigation bar's gesture hint).
+- **System pop-ups:** Android may still draw its own heads-up notification above DeskDeck, and
+  apps can't suppress it. If you only want DeskDeck's banners, turn off pop-ups for those apps in
+  Android's notification settings (on Samsung: **Settings › Notifications › Notification pop-up
+  style**, or per app). Banner text is read only for notifications that will show a banner and is
+  kept in memory, never stored.
 - **Volume keys** are only DeskDeck's while it's on screen; elsewhere the system panel appears as
   usual. Spotify reports its session as a remote route with fixed volume even when it plays on the
   tablet, so DeskDeck (like Android itself) adjusts the tablet's media volume for it. Raising volume

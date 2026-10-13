@@ -8,6 +8,7 @@ import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.floatPreferencesKey
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
+import androidx.datastore.preferences.core.stringSetPreferencesKey
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlinx.coroutines.flow.Flow
@@ -48,6 +49,11 @@ private object Keys {
     val screenOffWhenPaused = booleanPreferencesKey("burnin_screen_off_when_paused")
     val brightnessCap = floatPreferencesKey("burnin_brightness_cap")
     val railOpacityDrift = booleanPreferencesKey("burnin_rail_opacity_drift")
+    val banners = booleanPreferencesKey("notif_banners")
+    val bannerMuted = stringSetPreferencesKey("notif_muted_packages")
+    val bannerHideContent = booleanPreferencesKey("notif_hide_content")
+    val bannerRespectDnd = booleanPreferencesKey("notif_respect_dnd")
+    val bannerDuration = intPreferencesKey("notif_duration_sec")
 }
 
 private inline fun <reified T : Enum<T>> enumOr(name: String?, default: T): T =
@@ -57,6 +63,7 @@ private inline fun <reified T : Enum<T>> enumOr(name: String?, default: T): T =
 internal fun readSettings(prefs: Preferences): AppSettings {
     val d = AppSettings()
     val b = d.burnIn
+    val n = d.notifications
     return AppSettings(
         clockFormat = enumOr(prefs[Keys.clockFormat], d.clockFormat),
         clockShowSeconds = prefs[Keys.clockSeconds] ?: d.clockShowSeconds,
@@ -80,6 +87,13 @@ internal fun readSettings(prefs: Preferences): AppSettings {
             screenOffWhenPaused = prefs[Keys.screenOffWhenPaused] ?: b.screenOffWhenPaused,
             brightnessCap = (prefs[Keys.brightnessCap] ?: b.brightnessCap).coerceIn(SettingsRanges.brightnessCap),
             railOpacityDrift = prefs[Keys.railOpacityDrift] ?: b.railOpacityDrift,
+        ),
+        notifications = NotificationSettings(
+            banners = prefs[Keys.banners] ?: n.banners,
+            mutedPackages = prefs[Keys.bannerMuted] ?: n.mutedPackages,
+            hideContent = prefs[Keys.bannerHideContent] ?: n.hideContent,
+            respectDnd = prefs[Keys.bannerRespectDnd] ?: n.respectDnd,
+            durationSec = (prefs[Keys.bannerDuration] ?: n.durationSec).coerceIn(SettingsRanges.bannerDurationSec),
         ),
     )
 }
@@ -107,4 +121,10 @@ internal fun writeSettings(prefs: MutablePreferences, s: AppSettings) {
     prefs[Keys.screenOffWhenPaused] = b.screenOffWhenPaused
     prefs[Keys.brightnessCap] = b.brightnessCap
     prefs[Keys.railOpacityDrift] = b.railOpacityDrift
+    val n = s.notifications
+    prefs[Keys.banners] = n.banners
+    prefs[Keys.bannerMuted] = n.mutedPackages
+    prefs[Keys.bannerHideContent] = n.hideContent
+    prefs[Keys.bannerRespectDnd] = n.respectDnd
+    prefs[Keys.bannerDuration] = n.durationSec
 }
