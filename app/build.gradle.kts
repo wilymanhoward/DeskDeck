@@ -3,6 +3,7 @@ plugins {
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.ksp)
     alias(libs.plugins.hilt)
+    alias(libs.plugins.room)
 }
 
 android {
@@ -35,7 +36,13 @@ android {
 
     buildFeatures {
         compose = true
+        buildConfig = true
     }
+}
+
+room {
+    // Exported schemas are committed so future migrations can be written and tested against them.
+    schemaDirectory("$projectDir/schemas")
 }
 
 dependencies {
@@ -66,6 +73,16 @@ dependencies {
     implementation(libs.androidx.palette)
     implementation(libs.coil)
     implementation(libs.coil.network.okhttp)
+
+    // Lyrics: LRCLIB over Retrofit/Moshi (codegen adapters, no reflection), cached in Room.
+    implementation(libs.retrofit)
+    implementation(libs.retrofit.converter.moshi)
+    implementation(libs.okhttp)
+    implementation(libs.moshi)
+    ksp(libs.moshi.kotlin.codegen)
+    implementation(libs.room.runtime)
+    implementation(libs.room.ktx)
+    ksp(libs.room.compiler)
 
     testImplementation(libs.junit)
     testImplementation(libs.kotlinx.coroutines.test)

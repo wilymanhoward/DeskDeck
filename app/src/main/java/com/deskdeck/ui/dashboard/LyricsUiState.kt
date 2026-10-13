@@ -9,7 +9,8 @@ sealed interface LyricsUiState {
     /** Nothing is playing. */
     data object Idle : LyricsUiState
     data object Loading : LyricsUiState
-    data class Synced(val trackId: String, val lines: List<LyricLine>) : LyricsUiState
+    /** [offsetMs]: user sync correction, positive = lyrics shown earlier. */
+    data class Synced(val trackId: String, val lines: List<LyricLine>, val offsetMs: Long = 0) : LyricsUiState
     data class Plain(val trackId: String, val text: String) : LyricsUiState
     data object Instrumental : LyricsUiState
     data object NotFound : LyricsUiState
