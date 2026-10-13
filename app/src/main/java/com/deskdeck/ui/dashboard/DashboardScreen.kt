@@ -2,6 +2,7 @@ package com.deskdeck.ui.dashboard
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -49,6 +50,8 @@ import com.deskdeck.ui.components.LeftRail
 import com.deskdeck.ui.components.LyricsPanel
 import com.deskdeck.ui.components.NowPlayingCard
 import com.deskdeck.ui.components.animatedCardPalette
+import com.deskdeck.ui.picker.AppPickerOverlay
+import com.deskdeck.ui.picker.PickerMode
 import com.deskdeck.ui.theme.DeskDeckTheme
 import com.deskdeck.ui.theme.Dimens
 import com.deskdeck.ui.theme.TrueBlack
@@ -67,15 +70,36 @@ fun DashboardRoute(
     // Basic rule until the burn-in settings (M5): keep the screen on only while music plays.
     KeepScreenOn(enabled = nowPlaying?.playback?.isPlaying == true)
 
-    DashboardScreen(
-        nowPlaying = nowPlaying,
-        lyrics = lyrics,
-        railApps = railApps,
-        notificationCount = notificationCount,
-        notificationAccessGranted = notificationAccessGranted,
-        onGrantAccess = onGrantAccess,
-        actions = viewModel,
-    )
+    var picker by rememberSaveable { mutableStateOf<PickerMode?>(null) }
+    // The picker is UI state, so these rail actions are handled here; everything else goes to the ViewModel.
+    val actions = remember(viewModel) {
+        object : DashboardActions by viewModel {
+            override fun onAllApps() {
+                picker = PickerMode.LAUNCH
+            }
+
+            override fun onAddRailApp() {
+                picker = PickerMode.EDIT
+            }
+
+            override fun onRailAppLongClick(app: RailApp) {
+                picker = PickerMode.EDIT
+            }
+        }
+    }
+
+    Box(Modifier.fillMaxSize()) {
+        DashboardScreen(
+            nowPlaying = nowPlaying,
+            lyrics = lyrics,
+            railApps = railApps,
+            notificationCount = notificationCount,
+            notificationAccessGranted = notificationAccessGranted,
+            onGrantAccess = onGrantAccess,
+            actions = actions,
+        )
+        AppPickerOverlay(mode = picker, onDismiss = { picker = null })
+    }
 }
 
 @Composable
@@ -117,6 +141,7 @@ fun DashboardScreen(
                 activePackage = nowPlaying?.sourcePackage,
                 notificationCount = notificationCount,
                 onAppClick = actions::onRailAppClick,
+                onAppLongClick = actions::onRailAppLongClick,
                 onAddApp = actions::onAddRailApp,
                 onAllApps = actions::onAllApps,
                 onSettings = actions::onSettings,
