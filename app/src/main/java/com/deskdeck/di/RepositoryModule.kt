@@ -1,6 +1,6 @@
 package com.deskdeck.di
 
-import com.deskdeck.data.fake.FakeLyricsRepository
+import com.deskdeck.data.lyrics.DefaultLyricsRepository
 import com.deskdeck.data.lyrics.LyricsRepository
 import com.deskdeck.media.MediaRepository
 import com.deskdeck.media.MediaSessionRepository
@@ -17,5 +17,5 @@ abstract class RepositoryModule {
     abstract fun bindMediaRepository(impl: MediaSessionRepository): MediaRepository
 
     @Binds
-    abstract fun bindLyricsRepository(impl: FakeLyricsRepository): LyricsRepository
+    abstract fun bindLyricsRepository(impl: DefaultLyricsRepository): LyricsRepository
 }

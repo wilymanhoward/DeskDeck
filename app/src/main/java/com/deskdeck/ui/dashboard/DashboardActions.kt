@@ -14,6 +14,9 @@ interface PlayerActions {
 
 interface DashboardActions : PlayerActions {
     fun onRetryLyrics() {}
+    /** [deltaMs] > 0 shows lyrics earlier. */
+    fun onAdjustLyricsOffset(deltaMs: Long) {}
+    fun onResetLyricsOffset() {}
     fun onRailAppClick(app: RailApp) {}
     fun onAddRailApp() {}
     fun onAllApps() {}

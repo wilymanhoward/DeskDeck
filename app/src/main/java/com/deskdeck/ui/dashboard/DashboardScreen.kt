@@ -150,8 +150,7 @@ fun DashboardScreen(
                 LyricsPanel(
                     state = lyrics,
                     position = position,
-                    onSeek = actions::onSeek,
-                    onRetry = actions::onRetryLyrics,
+                    actions = actions,
                     modifier = Modifier
                         .weight(0.53f)
                         .fillMaxHeight(),
@@ -194,7 +193,7 @@ private fun CompactPanels(
             .weight(1f)
             .fillMaxWidth()
         if (showLyrics) {
-            LyricsPanel(lyrics, position, actions::onSeek, actions::onRetryLyrics, panelModifier)
+            LyricsPanel(lyrics, position, actions, panelModifier)
         } else {
             NowPlayingCard(nowPlaying, position, palette, actions, accessMissing, onGrantAccess, panelModifier)
         }

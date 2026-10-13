@@ -53,6 +53,7 @@
     <string name="lyrics_not_found">No lyrics found</string>
     <string name="lyrics_not_found_detail">We couldn\'t find lyrics for this track.</string>
     <string name="lyrics_error">Couldn\'t load lyrics</string>
+    <string name="lyrics_error_detail">Check your internet connection and try again.</string>
     <string name="lyrics_retry">Retry</string>
     <string name="lyrics_instrumental">Instrumental</string>
     <string name="lyrics_unsynced">Not time-synced</string>
@@ -60,6 +61,14 @@
     <string name="lyrics_podcast">Lyrics aren\'t available for podcasts.</string>
     <string name="lyrics_live">Live stream. Synced lyrics aren\'t available.</string>
     <string name="lyrics_seek_to_line">Jump to this line</string>
+    <string name="lyrics_timing">Adjust lyrics timing</string>
+    <string name="lyrics_timing_earlier">Earlier</string>
+    <string name="lyrics_timing_later">Later</string>
+    <string name="lyrics_timing_reset">Reset</string>
+    <string name="lyrics_timing_close">Close timing controls</string>
+    <string name="lyrics_offset_none">In sync</string>
+    <string name="lyrics_offset_earlier">%1$s s earlier</string>
+    <string name="lyrics_offset_later">%1$s s later</string>
 
     <!-- Compact (split-screen) layout -->
     <string name="tab_now_playing">Now playing</string>

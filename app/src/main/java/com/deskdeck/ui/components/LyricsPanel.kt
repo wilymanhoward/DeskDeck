@@ -2,6 +2,7 @@ package com.deskdeck.ui.components
 
 import android.os.SystemClock
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
@@ -17,6 +18,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -34,8 +36,10 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.State
@@ -69,24 +73,28 @@ import com.deskdeck.R
 import com.deskdeck.domain.LyricLine
 import com.deskdeck.domain.MediaKind
 import com.deskdeck.domain.activeIndexAt
+import com.deskdeck.ui.dashboard.DashboardActions
 import com.deskdeck.ui.dashboard.LyricsUiState
 import com.deskdeck.ui.theme.ActiveLyricWhite
 import com.deskdeck.ui.theme.CappedWhite
 import com.deskdeck.ui.theme.Dimens
 import com.deskdeck.ui.theme.LyricTextStyle
 import com.deskdeck.ui.theme.MutedText
+import com.deskdeck.ui.theme.SurfaceHigh
 import com.deskdeck.ui.theme.SurfaceLowest
+import kotlin.math.abs
 import kotlinx.coroutines.delay
 
 /** How long auto-follow stays paused after the user scrolls the lyrics manually. */
 private const val RESUME_FOLLOW_AFTER_MS = 5_000L
+private const val OFFSET_STEP_MS = 100L
+private const val TIMING_CONTROLS_AUTO_CLOSE_MS = 6_000L
 
 @Composable
 fun LyricsPanel(
     state: LyricsUiState,
     position: State<Long>,
-    onSeek: (Long) -> Unit,
-    onRetry: () -> Unit,
+    actions: DashboardActions,
     modifier: Modifier = Modifier,
 ) {
     AnimatedContent(
@@ -101,7 +109,7 @@ fun LyricsPanel(
         when (s) {
             LyricsUiState.Idle -> MessageState(R.drawable.ic_lyrics, stringResource(R.string.lyrics_idle))
             LyricsUiState.Loading -> LoadingState()
-            is LyricsUiState.Synced -> SyncedLyrics(s.lines, position, onSeek)
+            is LyricsUiState.Synced -> SyncedLyrics(s.lines, s.offsetMs, position, actions)
             is LyricsUiState.Plain -> PlainLyrics(s.text)
             LyricsUiState.Instrumental ->
                 MessageState(R.drawable.ic_music_note, stringResource(R.string.lyrics_instrumental))
@@ -109,13 +117,13 @@ fun LyricsPanel(
                 iconRes = R.drawable.ic_lyrics,
                 title = stringResource(R.string.lyrics_not_found),
                 detail = stringResource(R.string.lyrics_not_found_detail),
-                onRetry = onRetry,
+                onRetry = actions::onRetryLyrics,
             )
             is LyricsUiState.Error -> MessageState(
                 iconRes = R.drawable.ic_lyrics,
                 title = stringResource(R.string.lyrics_error),
-                detail = s.message,
-                onRetry = onRetry,
+                detail = stringResource(R.string.lyrics_error_detail),
+                onRetry = actions::onRetryLyrics,
             )
             is LyricsUiState.Unavailable -> MessageState(
                 iconRes = R.drawable.ic_music_note,
@@ -141,12 +149,15 @@ private fun LyricsUiState.contentKey(): Any = when (this) {
 @Composable
 private fun SyncedLyrics(
     lines: List<LyricLine>,
+    offsetMs: Long,
     position: State<Long>,
-    onSeek: (Long) -> Unit,
+    actions: DashboardActions,
 ) {
     val listState = rememberLazyListState()
     // Changes only when the line changes, so per-frame position updates don't recompose the list.
-    val activeIndex by remember(lines) { derivedStateOf { lines.activeIndexAt(position.value) } }
+    val activeIndex by remember(lines, offsetMs) {
+        derivedStateOf { lines.activeIndexAt(position.value + offsetMs) }
+    }
 
     var following by remember { mutableStateOf(true) }
     var lastUserScrollAt by remember { mutableLongStateOf(0L) }
@@ -195,11 +206,96 @@ private fun SyncedLyrics(
                     clickLabel = seekLabel,
                     onClick = {
                         following = true
-                        onSeek(lines[index].timeMs)
+                        actions.onSeek((lines[index].timeMs - offsetMs).coerceAtLeast(0))
                     },
                 )
             }
         }
+        TimingControls(
+            offsetMs = offsetMs,
+            onAdjust = actions::onAdjustLyricsOffset,
+            onReset = actions::onResetLyricsOffset,
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .padding(12.dp),
+        )
+    }
+}
+
+/** Collapsed: a small button. Expanded: Earlier / offset / Later / Reset, closing itself after a while. */
+@Composable
+private fun TimingControls(
+    offsetMs: Long,
+    onAdjust: (Long) -> Unit,
+    onReset: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    var expanded by remember { mutableStateOf(false) }
+    var lastInteraction by remember { mutableLongStateOf(0L) }
+    LaunchedEffect(expanded, lastInteraction) {
+        if (expanded) {
+            delay(TIMING_CONTROLS_AUTO_CLOSE_MS)
+            expanded = false
+        }
+    }
+    fun touch() {
+        lastInteraction = SystemClock.uptimeMillis()
+    }
+
+    Row(
+        modifier = modifier
+            .clip(RoundedCornerShape(28.dp))
+            .background(if (expanded) SurfaceHigh else Color.Transparent),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        AnimatedVisibility(visible = expanded) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                TextButton(
+                    onClick = { touch(); onAdjust(OFFSET_STEP_MS) },
+                    modifier = Modifier.heightIn(min = Dimens.minTouch),
+                ) { Text(stringResource(R.string.lyrics_timing_earlier)) }
+                Text(
+                    text = offsetLabel(offsetMs),
+                    style = MaterialTheme.typography.labelLarge.copy(fontFeatureSettings = "tnum"),
+                    color = CappedWhite,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.widthIn(min = 96.dp),
+                )
+                TextButton(
+                    onClick = { touch(); onAdjust(-OFFSET_STEP_MS) },
+                    modifier = Modifier.heightIn(min = Dimens.minTouch),
+                ) { Text(stringResource(R.string.lyrics_timing_later)) }
+                TextButton(
+                    onClick = { touch(); onReset() },
+                    enabled = offsetMs != 0L,
+                    modifier = Modifier.heightIn(min = Dimens.minTouch),
+                ) { Text(stringResource(R.string.lyrics_timing_reset)) }
+            }
+        }
+        IconButton(
+            onClick = { expanded = !expanded; touch() },
+            modifier = Modifier.size(Dimens.minTouch),
+        ) {
+            Icon(
+                painter = painterResource(R.drawable.ic_tune),
+                contentDescription = stringResource(
+                    if (expanded) R.string.lyrics_timing_close else R.string.lyrics_timing,
+                ),
+                // A non-zero offset stays visible as an accent tint even when collapsed.
+                tint = if (offsetMs != 0L) MaterialTheme.colorScheme.primary else MutedText.copy(alpha = 0.6f),
+                modifier = Modifier.size(24.dp),
+            )
+        }
+    }
+}
+
+@Composable
+private fun offsetLabel(offsetMs: Long): String {
+    val seconds = "%.1f".format(abs(offsetMs) / 1000.0)
+    return when {
+        offsetMs > 0 -> stringResource(R.string.lyrics_offset_earlier, seconds)
+        offsetMs < 0 -> stringResource(R.string.lyrics_offset_later, seconds)
+        else -> stringResource(R.string.lyrics_offset_none)
     }
 }
 

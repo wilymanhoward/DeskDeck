@@ -18,6 +18,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
@@ -25,6 +26,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.transformLatest
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalCoroutinesApi::class)
 @HiltViewModel
@@ -41,10 +43,18 @@ class DashboardViewModel @Inject constructor(
 
     private val retryRequests = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
 
-    val lyrics: StateFlow<LyricsUiState> = media.nowPlaying
+    private val lyricsTrack: StateFlow<Track?> = media.nowPlaying
         .map { it?.track }
         .distinctUntilChanged { old, new -> old?.id == new?.id && old?.kind == new?.kind }
-        .flatMapLatest(::lyricsFor)
+        .stateIn(viewModelScope, SharingStarted.Eagerly, null)
+
+    val lyrics: StateFlow<LyricsUiState> = lyricsTrack
+        .flatMapLatest { track ->
+            val offset = if (track == null) flowOf(0L) else lyricsRepository.offsetFor(track)
+            combine(lyricsFor(track), offset) { state, offsetMs ->
+                if (state is LyricsUiState.Synced) state.copy(offsetMs = offsetMs) else state
+            }
+        }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), LyricsUiState.Idle)
 
     private fun lyricsFor(track: Track?): Flow<LyricsUiState> = when {
@@ -68,5 +78,22 @@ class DashboardViewModel @Inject constructor(
 
     override fun onRetryLyrics() {
         retryRequests.tryEmit(Unit)
+    }
+
+    override fun onAdjustLyricsOffset(deltaMs: Long) {
+        val track = lyricsTrack.value ?: return
+        val current = (lyrics.value as? LyricsUiState.Synced)?.offsetMs ?: 0L
+        viewModelScope.launch {
+            lyricsRepository.setOffset(track, (current + deltaMs).coerceIn(-MAX_OFFSET_MS, MAX_OFFSET_MS))
+        }
+    }
+
+    override fun onResetLyricsOffset() {
+        val track = lyricsTrack.value ?: return
+        viewModelScope.launch { lyricsRepository.setOffset(track, 0) }
+    }
+
+    private companion object {
+        const val MAX_OFFSET_MS = 10_000L
     }
 }
