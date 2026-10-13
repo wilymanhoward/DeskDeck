@@ -1,6 +1,5 @@
 package com.deskdeck.di
 
-import com.deskdeck.media.sources.BriefOpenSource
 import com.deskdeck.media.sources.MediaBrowserSource
 import com.deskdeck.media.sources.MediaButtonSource
 import com.deskdeck.media.sources.PlaybackSource
@@ -20,6 +19,5 @@ object SourcesModule {
         sessionKey: SessionKeySource,
         mediaButton: MediaButtonSource,
         mediaBrowser: MediaBrowserSource,
-        briefOpen: BriefOpenSource,
-    ): List<PlaybackSource> = listOf(sessionKey, mediaButton, mediaBrowser, briefOpen)
+    ): List<PlaybackSource> = listOf(sessionKey, mediaButton, mediaBrowser)
 }

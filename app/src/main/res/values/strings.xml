@@ -282,8 +282,6 @@
     <string name="spotify_err_no_device_detail">DeskDeck tried to wake it in the background. Open Spotify once, then try again.</string>
     <string name="spotify_err_other">Spotify didn\'t respond as expected</string>
     <string name="spotify_err_other_detail">Error %1$d.</string>
-    <string name="settings_wake_by_opening">Open apps briefly to wake them</string>
-    <string name="settings_wake_by_opening_detail">If a sidebar app isn\'t running, Android often won\'t let it start in the background (YouTube Music, Apple Music). DeskDeck then opens it for a moment so it loads your music, and comes straight back. Nothing starts playing.</string>
     <string name="settings_spotify_library">Spotify library</string>
     <string name="settings_spotify_library_detail">Browse and start your Spotify playlists from DeskDeck</string>
     <string name="settings_spotify_account">Spotify account</string>

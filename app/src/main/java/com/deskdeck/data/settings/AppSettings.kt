@@ -82,8 +82,6 @@ data class AppSettings(
     val sourceMode: SourceMode = SourceMode.AUTO_FOLLOW,
     /** Also try an app's MediaBrowserService when starting it (usually refused, so off by default). */
     val mediaBrowserResume: Boolean = false,
-    /** If an app ignores background wake-ups, open it for a moment so it loads its music, then come back. */
-    val wakeByOpening: Boolean = true,
     /** Browse and start Spotify playlists from DeskDeck (needs a Client ID and sign-in). */
     val spotifyLibrary: Boolean = false,
     val burnIn: BurnInSettings = BurnInSettings(),
