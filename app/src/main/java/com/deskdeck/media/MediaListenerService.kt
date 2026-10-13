@@ -106,6 +106,7 @@ class MediaListenerService : NotificationListenerService() {
         isOngoing = isOngoing,
         isClearable = isClearable,
         isGroupSummary = notification.flags and Notification.FLAG_GROUP_SUMMARY != 0,
+        channelId = notification.channelId,
     )
 
     private fun recount() {

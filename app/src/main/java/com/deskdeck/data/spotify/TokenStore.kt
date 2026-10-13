@@ -4,6 +4,7 @@ import android.content.Context
 import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyProperties
 import android.util.Base64
+import androidx.core.content.edit
 import dagger.hilt.android.qualifiers.ApplicationContext
 import java.security.KeyStore
 import javax.crypto.Cipher
@@ -31,7 +32,7 @@ data class SpotifyTokens(
  * user signs in again.
  */
 @Singleton
-class TokenStore @Inject constructor(@param:ApplicationContext context: Context) {
+class TokenStore @Inject constructor(@ApplicationContext context: Context) {
     private val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
 
     fun save(tokens: SpotifyTokens) {
@@ -44,10 +45,10 @@ class TokenStore @Inject constructor(@param:ApplicationContext context: Context)
             .toString()
         val cipher = Cipher.getInstance(TRANSFORMATION).apply { init(Cipher.ENCRYPT_MODE, key()) }
         val sealed = cipher.doFinal(json.toByteArray(Charsets.UTF_8))
-        prefs.edit()
-            .putString(KEY_IV, Base64.encodeToString(cipher.iv, Base64.NO_WRAP))
-            .putString(KEY_DATA, Base64.encodeToString(sealed, Base64.NO_WRAP))
-            .apply()
+        prefs.edit {
+            putString(KEY_IV, Base64.encodeToString(cipher.iv, Base64.NO_WRAP))
+            putString(KEY_DATA, Base64.encodeToString(sealed, Base64.NO_WRAP))
+        }
     }
 
     fun load(): SpotifyTokens? = runCatching {
@@ -68,7 +69,7 @@ class TokenStore @Inject constructor(@param:ApplicationContext context: Context)
     }
 
     fun clear() {
-        prefs.edit().clear().apply()
+        prefs.edit { clear() }
     }
 
     private fun key(): SecretKey {

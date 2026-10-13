@@ -50,6 +50,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import com.deskdeck.R
+import androidx.compose.material3.minimumInteractiveComponentSize
 import com.deskdeck.ui.theme.pressScale
 import androidx.compose.foundation.layout.Row
 import androidx.compose.ui.draw.clip
@@ -411,6 +412,8 @@ private fun LibraryButton(onClick: () -> Unit) {
     val interaction = remember { MutableInteractionSource() }
     Row(
         modifier = Modifier
+            // The pill is small; its touch target still meets the 48 dp minimum.
+            .minimumInteractiveComponentSize()
             .pressScale(interaction)
             .clip(RoundedCornerShape(50))
             .background(Color.White.copy(alpha = 0.08f))
