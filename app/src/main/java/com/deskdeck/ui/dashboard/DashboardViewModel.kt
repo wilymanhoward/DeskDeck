@@ -1,0 +1,72 @@
+package com.deskdeck.ui.dashboard
+
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import com.deskdeck.data.fake.FakeData
+import com.deskdeck.data.lyrics.LyricsRepository
+import com.deskdeck.domain.MediaKind
+import com.deskdeck.domain.NowPlaying
+import com.deskdeck.domain.RailApp
+import com.deskdeck.domain.Track
+import com.deskdeck.media.MediaRepository
+import dagger.hilt.android.lifecycle.HiltViewModel
+import javax.inject.Inject
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.onStart
+import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.transformLatest
+
+@OptIn(ExperimentalCoroutinesApi::class)
+@HiltViewModel
+class DashboardViewModel @Inject constructor(
+    private val media: MediaRepository,
+    private val lyricsRepository: LyricsRepository,
+) : ViewModel(), DashboardActions {
+
+    val nowPlaying: StateFlow<NowPlaying?> = media.nowPlaying
+
+    // Sample values until the app launcher and notification listener land (M2/M4).
+    val railApps: StateFlow<List<RailApp>> = MutableStateFlow(FakeData.railApps).asStateFlow()
+    val notificationCount: StateFlow<Int> = MutableStateFlow(3).asStateFlow()
+
+    private val retryRequests = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
+
+    val lyrics: StateFlow<LyricsUiState> = media.nowPlaying
+        .map { it?.track }
+        .distinctUntilChanged { old, new -> old?.id == new?.id && old?.kind == new?.kind }
+        .flatMapLatest(::lyricsFor)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), LyricsUiState.Idle)
+
+    private fun lyricsFor(track: Track?): Flow<LyricsUiState> = when {
+        track == null -> flowOf(LyricsUiState.Idle)
+        track.kind != MediaKind.MUSIC -> flowOf(LyricsUiState.Unavailable(track.kind))
+        else -> retryRequests
+            .map { true }
+            .onStart { emit(false) }
+            .transformLatest { forceRefresh ->
+                emit(LyricsUiState.Loading)
+                emit(lyricsRepository.lyricsFor(track, forceRefresh).toUiState(track.id))
+            }
+    }
+
+    override fun onPlayPause() = media.playPause()
+    override fun onSkipNext() = media.skipNext()
+    override fun onSkipPrevious() = media.skipPrevious()
+    override fun onSeek(positionMs: Long) = media.seekTo(positionMs)
+    override fun onToggleShuffle() = media.toggleShuffle()
+    override fun onCycleRepeat() = media.cycleRepeat()
+
+    override fun onRetryLyrics() {
+        retryRequests.tryEmit(Unit)
+    }
+}
