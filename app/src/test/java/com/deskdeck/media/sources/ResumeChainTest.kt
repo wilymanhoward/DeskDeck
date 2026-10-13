@@ -69,4 +69,16 @@ class ResumeChainTest {
         ResumeChain(listOf(FakeSource("a")), stepTimeoutMs = 1_234).run(pkg) { seenTimeout = it; true }
         assertEquals(1_234L, seenTimeout)
     }
+
+    @Test
+    fun `a source can ask for its own session wait`() = runTest {
+        val quick = object : PlaybackSource {
+            override val name = "quick"
+            override val sessionTimeoutMs = 500L
+            override suspend fun requestPlay(packageName: String) = true
+        }
+        val waits = mutableListOf<Long>()
+        ResumeChain(listOf(quick, FakeSource("default")), stepTimeoutMs = 3_000).run(pkg) { waits += it; false }
+        assertEquals(listOf(500L, 3_000L), waits)
+    }
 }
