@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">DeskDeck</string>
+
+    <!-- Left rail -->
+    <string name="rail_notifications">%1$d notifications</string>
+    <string name="rail_no_notifications">No notifications</string>
+    <string name="rail_open_app">Open %1$s</string>
+    <string name="rail_now_playing_app">%1$s, now playing</string>
+    <string name="rail_add_app">Add app</string>
+    <string name="rail_all_apps">All apps</string>
+    <string name="rail_settings">Settings</string>
+
+    <!-- Now playing -->
+    <string name="np_playing_on">Playing on %1$s</string>
+    <string name="np_empty_hint">Open a music app</string>
+    <string name="np_empty_subhint">Start something in Spotify, YouTube Music or any player and it will show up here.</string>
+    <string name="np_play">Play</string>
+    <string name="np_pause">Pause</string>
+    <string name="np_next">Next track</string>
+    <string name="np_previous">Previous track</string>
+    <string name="np_shuffle_on">Shuffle on</string>
+    <string name="np_shuffle_off">Shuffle off</string>
+    <string name="np_shuffle_unavailable">Shuffle not available in this app</string>
+    <string name="np_repeat_off">Repeat off</string>
+    <string name="np_repeat_all">Repeat all</string>
+    <string name="np_repeat_one">Repeat one</string>
+    <string name="np_repeat_unavailable">Repeat not available in this app</string>
+    <string name="np_seek_bar">Playback position</string>
+    <string name="np_live">LIVE</string>
+    <string name="np_album_art">Album art</string>
+    <string name="np_unknown_artist">Unknown artist</string>
+
+    <!-- Lyrics -->
+    <string name="lyrics_idle">Lyrics will appear here</string>
+    <string name="lyrics_loading">Finding lyrics…</string>
+    <string name="lyrics_not_found">No lyrics found</string>
+    <string name="lyrics_not_found_detail">We couldn\'t find lyrics for this track.</string>
+    <string name="lyrics_error">Couldn\'t load lyrics</string>
+    <string name="lyrics_retry">Retry</string>
+    <string name="lyrics_instrumental">Instrumental</string>
+    <string name="lyrics_unsynced">Not time-synced</string>
+    <string name="lyrics_ad">An ad is playing. Lyrics will be back after the break.</string>
+    <string name="lyrics_podcast">Lyrics aren\'t available for podcasts.</string>
+    <string name="lyrics_live">Live stream. Synced lyrics aren\'t available.</string>
+    <string name="lyrics_seek_to_line">Jump to this line</string>
+
+    <!-- Compact (split-screen) layout -->
+    <string name="tab_now_playing">Now playing</string>
+    <string name="tab_lyrics">Lyrics</string>
+</resources>
