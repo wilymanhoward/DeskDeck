@@ -139,6 +139,12 @@ class MediaSessionRepository @Inject constructor(
         reselect()
     }
 
+    override fun requestPrepare(packageName: String): Boolean {
+        val entry = entries.firstOrNull { it.packageName == packageName } ?: return false
+        entry.prepare()
+        return true
+    }
+
     override fun requestPlay(packageName: String): Boolean {
         val entry = entries.firstOrNull { it.packageName == packageName } ?: return false
         entry.sendPlayKey()

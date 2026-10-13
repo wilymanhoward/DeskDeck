@@ -28,6 +28,13 @@ interface MediaRepository {
      */
     fun requestPlay(packageName: String): Boolean
 
+    /**
+     * Asks [packageName]'s session to load its queue *without* playing (`prepare`), so a player
+     * started in the background shows its last song, as if opened by hand.
+     * @return false when the app has no session yet.
+     */
+    fun requestPrepare(packageName: String): Boolean
+
     fun playPause()
     fun skipNext()
     fun skipPrevious()

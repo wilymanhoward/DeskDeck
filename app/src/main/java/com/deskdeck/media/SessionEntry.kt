@@ -145,6 +145,9 @@ internal class SessionEntry(
 
     fun play() = transport.play()
 
+    /** Load the last queue without starting playback. */
+    fun prepare() = transport.prepare()
+
     /** A MEDIA_PLAY key press, as a headset button would send; wakes sessions that ignore play(). */
     fun sendPlayKey() {
         for (action in listOf(KeyEvent.ACTION_DOWN, KeyEvent.ACTION_UP)) {

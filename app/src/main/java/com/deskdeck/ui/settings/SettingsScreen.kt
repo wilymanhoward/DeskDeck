@@ -298,11 +298,6 @@ private fun SourceSettings(s: AppSettings, vm: SettingsViewModel) {
             onSelect = { v -> vm.update { it.copy(sourceMode = v) } },
         )
         SwitchRow(
-            title = stringResource(R.string.settings_wake_by_opening),
-            subtitle = stringResource(R.string.settings_wake_by_opening_detail),
-            checked = s.wakeByOpening,
-        ) { v -> vm.update { it.copy(wakeByOpening = v) } }
-        SwitchRow(
             title = stringResource(R.string.settings_media_browser),
             subtitle = stringResource(R.string.settings_media_browser_detail),
             checked = s.mediaBrowserResume,

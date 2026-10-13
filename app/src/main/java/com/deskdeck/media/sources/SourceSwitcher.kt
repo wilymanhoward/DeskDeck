@@ -39,9 +39,10 @@ sealed interface SourceStatus {
 
 /**
  * Rail taps land here. Selecting an app shows its session right away if it has one; otherwise the
- * [ResumeChain] wakes it: first in the background, and as a last resort (setting, on by default)
- * by opening it for a moment and coming straight back ([BriefOpenSource]). Opening an app to use
- * it only happens from an explicit "Open …" button.
+ * [ResumeChain] tries to wake it in the background. This class never shows another app: that
+ * only happens from an explicit "Open …" button. Apps like YouTube Music and Apple Music can't be
+ * woken without showing them (Android 12+ blocks their background service start, and their
+ * player stays empty or inactive until their UI opens), so they get that button quickly.
  */
 @Singleton
 class SourceSwitcher @Inject constructor(

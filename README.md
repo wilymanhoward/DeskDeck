@@ -339,9 +339,13 @@ screen plus two overlays), and transliteration libraries (Android's built-in ICU
 
 ## Known limitations
 
-- **Starting an idle app** without opening it is best-effort: a play key, a media-button
-  broadcast, or (optional) its media browser. Some apps ignore all three until they've been opened
-  once; then the card says "Start playing from …" with an **Open …** button.
+- **Starting an idle app** without opening it is best-effort: asking its session to load its last
+  song, a media-button broadcast, or (optional) its media browser, about 1.5 s each. Since
+  Android 12 an app woken by another app may not start its player service, and **YouTube Music**
+  and **Apple Music** can't be started without showing them: their player stays inactive or empty
+  until their own screen opens (tested on the Tab S9 FE). DeskDeck never shows another app on its
+  own, so for them the card says "Start playing from …" with an **Open …** button. Once opened,
+  they stay available in DeskDeck while Android keeps them in memory.
 - **Shuffle/repeat** are best-effort. With apps built on Android's media compat libraries (Spotify,
   YouTube Music) they work with real state. Apps that only offer custom actions can be toggled, but
   their state isn't shown. Otherwise the buttons are disabled.
