@@ -9,7 +9,6 @@ import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import com.deskdeck.media.NotificationAccess
 import com.deskdeck.ui.AppRoot
-import com.deskdeck.ui.theme.DeskDeckTheme
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
 
@@ -23,9 +22,8 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         hideSystemBars()
         setContent {
-            DeskDeckTheme {
-                AppRoot()
-            }
+            // The theme lives in AppRoot because the accent color is a user setting.
+            AppRoot()
         }
     }
 

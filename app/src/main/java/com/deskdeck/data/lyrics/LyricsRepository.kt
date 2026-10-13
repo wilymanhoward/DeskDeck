@@ -13,4 +13,6 @@ interface LyricsRepository {
     suspend fun setOffset(track: Track, offsetMs: Long)
 
     suspend fun clearCache()
+
+    suspend fun resetAllOffsets()
 }

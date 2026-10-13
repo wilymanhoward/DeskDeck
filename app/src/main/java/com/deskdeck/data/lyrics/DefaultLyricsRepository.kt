@@ -77,6 +77,8 @@ class DefaultLyricsRepository @Inject constructor(
 
     override suspend fun clearCache() = dao.clearCache()
 
+    override suspend fun resetAllOffsets() = dao.clearOffsets()
+
     private fun LyricsCacheEntity.toResult(): LyricsResult {
         if (notFound) return LyricsResult.NotFound
         val lines = syncedLrc?.let(LrcParser::parse).orEmpty()

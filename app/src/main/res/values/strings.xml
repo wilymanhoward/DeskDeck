@@ -90,6 +90,88 @@
     <string name="lyrics_offset_earlier">%1$s s earlier</string>
     <string name="lyrics_offset_later">%1$s s later</string>
 
+    <!-- Burn-in overlays -->
+    <string name="burnin_tap_to_wake">Tap to wake</string>
+
+    <!-- Settings -->
+    <string name="settings_title">Settings</string>
+    <string name="settings_back">Back to dashboard</string>
+    <string name="settings_cat_screen">Screen &amp; burn-in</string>
+    <string name="settings_cat_lyrics">Lyrics</string>
+    <string name="settings_cat_clock">Clock</string>
+    <string name="settings_cat_appearance">Appearance</string>
+    <string name="settings_cat_sidebar">Sidebar</string>
+    <string name="settings_about">DeskDeck %1$s · Lyrics from LRCLIB (lrclib.net)</string>
+    <string name="settings_minutes">%1$d min</string>
+    <string name="settings_dp">%1$d dp</string>
+    <string name="settings_percent">%1$d%%</string>
+    <string name="settings_sp">%1$d sp</string>
+
+    <string name="settings_keep_screen_on">Keep screen on</string>
+    <string name="settings_keep_always">Always</string>
+    <string name="settings_keep_while_playing">While playing</string>
+    <string name="settings_keep_screen_on_detail">“While playing” also keeps it on through the paused-clock wait, then lets your tablet\'s screen timeout take over.</string>
+
+    <string name="settings_pixel_shift">Pixel shift</string>
+    <string name="settings_pixel_shift_detail">Moves everything a few pixels about once a minute.</string>
+    <string name="settings_pixel_shift_amount">Shift distance</string>
+
+    <string name="settings_idle_dim">Dim when idle</string>
+    <string name="settings_idle_dim_detail">Darkens the screen when nobody has touched it for a while. The first tap only wakes it.</string>
+    <string name="settings_dim_after">Dim after</string>
+    <string name="settings_dim_level">Dim amount</string>
+
+    <string name="settings_ambient">Ambient mode</string>
+    <string name="settings_ambient_detail">A minimal drifting view with the cover, title, current lyric and clock.</string>
+    <string name="settings_ambient_after">Ambient after dimming</string>
+    <string name="settings_ambient_after_no_dim">Ambient after</string>
+
+    <string name="settings_paused_clock">Clock when nothing plays</string>
+    <string name="settings_paused_clock_detail">Shows only a very dim, moving clock after music has been paused for a while.</string>
+    <string name="settings_paused_after">Show clock after</string>
+    <string name="settings_screen_off">Turn screen off with the clock</string>
+    <string name="settings_screen_off_detail">Releases the keep-on hold so your tablet\'s own timeout turns the screen off. Only applies to “Always”.</string>
+
+    <string name="settings_brightness_cap">Brightness cap</string>
+    <string name="settings_brightness_cap_detail">Limits how bright DeskDeck can get, on top of the tablet\'s brightness.</string>
+    <string name="settings_rail_drift">Vary sidebar icon brightness</string>
+    <string name="settings_rail_drift_detail">Slowly changes the sidebar icons\' opacity so they don\'t sit at one level for hours.</string>
+
+    <string name="settings_lyrics_size">Lyrics size</string>
+    <string name="settings_lyrics_preview">The current line looks like this</string>
+    <string name="settings_romanization">Show romanization</string>
+    <string name="settings_romanization_detail">Adds a Latin-script reading under lyrics in other scripts. Approximate for Japanese.</string>
+    <string name="settings_romanization_unsupported">Needs Android 10 or later.</string>
+    <string name="settings_reset_offsets">Reset timing adjustments</string>
+    <string name="settings_reset_offsets_detail">Removes every per-song “Earlier / Later” correction.</string>
+    <string name="settings_reset">Reset</string>
+    <string name="settings_clear_cache">Clear saved lyrics</string>
+    <string name="settings_clear_cache_detail">Lyrics are saved so repeat plays work offline. They are fetched again when needed.</string>
+    <string name="settings_clear">Clear</string>
+    <string name="settings_done">Done</string>
+
+    <string name="settings_clock_format">Time format</string>
+    <string name="settings_clock_system">System</string>
+    <string name="settings_clock_12">12-hour</string>
+    <string name="settings_clock_24">24-hour</string>
+    <string name="settings_clock_seconds">Show seconds</string>
+
+    <string name="settings_dynamic_colors">Colors from album art</string>
+    <string name="settings_dynamic_colors_detail">Tints the now-playing card and controls with the cover\'s colors.</string>
+    <string name="settings_accent">Accent color</string>
+    <string name="settings_accent_detail">Used for highlights, and for the card when album-art colors are off or unavailable.</string>
+    <string name="settings_accent_option">%1$s accent</string>
+    <string name="accent_blue">Blue</string>
+    <string name="accent_teal">Teal</string>
+    <string name="accent_green">Green</string>
+    <string name="accent_amber">Amber</string>
+    <string name="accent_rose">Rose</string>
+    <string name="accent_lavender">Lavender</string>
+
+    <string name="settings_sidebar_apps">Sidebar apps</string>
+    <string name="settings_sidebar_apps_detail">Choose and order the apps in the sidebar. You can also long-press an app in the sidebar.</string>
+    <string name="settings_edit">Edit</string>
+
     <!-- Compact (split-screen) layout -->
     <string name="tab_now_playing">Now playing</string>
     <string name="tab_lyrics">Lyrics</string>

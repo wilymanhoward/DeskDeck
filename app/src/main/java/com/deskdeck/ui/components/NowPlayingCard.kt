@@ -50,6 +50,7 @@ import com.deskdeck.ui.common.clockFormatter
 import com.deskdeck.ui.common.rememberCurrentTime
 import com.deskdeck.ui.common.rememberIs24Hour
 import com.deskdeck.ui.dashboard.PlayerActions
+import com.deskdeck.ui.settings.LocalAppSettings
 import com.deskdeck.ui.theme.CappedWhite
 import com.deskdeck.ui.theme.Dimens
 import com.deskdeck.ui.theme.MutedText
@@ -187,8 +188,9 @@ private fun TrackHeadline(track: Track) {
 @Composable
 private fun EmptyNowPlaying(accessMissing: Boolean, onGrantAccess: () -> Unit) {
     val is24Hour = rememberIs24Hour()
-    val now by rememberCurrentTime(withSeconds = false)
-    val timeFormatter = remember(is24Hour) { clockFormatter(is24Hour, withSeconds = false) }
+    val showSeconds = LocalAppSettings.current.clockShowSeconds
+    val now by rememberCurrentTime(withSeconds = showSeconds)
+    val timeFormatter = remember(is24Hour, showSeconds) { clockFormatter(is24Hour, showSeconds) }
     val dateFormatter = remember {
         DateTimeFormatter.ofPattern(DateFormat.getBestDateTimePattern(Locale.getDefault(), "EEEEdMMMM"))
     }
