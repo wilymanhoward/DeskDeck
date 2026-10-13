@@ -223,6 +223,7 @@ fun DashboardScreen(
                 onAddApp = actions::onAddRailApp,
                 onAllApps = actions::onAllApps,
                 onSettings = actions::onSettings,
+                onNotifications = actions::onOpenNotifications,
             )
             if (compact) {
                 CompactPanels(

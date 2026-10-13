@@ -8,6 +8,7 @@ import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
@@ -61,6 +62,8 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.onClick
+import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -97,6 +100,7 @@ fun LeftRail(
     onSettings: () -> Unit,
     modifier: Modifier = Modifier,
     animate: Boolean = true,
+    onNotifications: () -> Unit = {},
 ) {
     val railOpacity = rememberRailOpacity(LocalAppSettings.current.burnIn.railOpacityDrift)
     val motion = LocalMotion.current
@@ -137,7 +141,7 @@ fun LeftRail(
     ) {
         RailClock()
         Spacer(Modifier.height(4.dp))
-        NotificationIndicator(notificationCount)
+        NotificationIndicator(notificationCount, onNotifications)
 
         // Shortcuts are centered in the free space and scroll if many apps are pinned.
         Box(
@@ -214,16 +218,24 @@ private fun RailClock() {
 }
 
 @Composable
-private fun NotificationIndicator(count: Int) {
+private fun NotificationIndicator(count: Int, onClick: () -> Unit) {
     val description = if (count > 0) {
         pluralStringResource(R.plurals.rail_notifications, count, count)
     } else {
         stringResource(R.string.rail_no_notifications)
     }
+    val interaction = remember { MutableInteractionSource() }
     Box(
         modifier = Modifier
             .size(Dimens.minTouch)
-            .clearAndSetSemantics { contentDescription = description },
+            .pressScale(interaction)
+            .clip(CircleShape)
+            .clickable(interactionSource = interaction, indication = ripple(), role = Role.Button, onClick = onClick)
+            .clearAndSetSemantics {
+                contentDescription = description
+                role = Role.Button
+                onClick { onClick(); true }
+            },
         contentAlignment = Alignment.Center,
     ) {
         BadgedBox(

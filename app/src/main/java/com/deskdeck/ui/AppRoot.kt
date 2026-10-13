@@ -39,6 +39,7 @@ import com.deskdeck.ui.theme.rememberMotionSpec
 import com.deskdeck.ui.notifications.BannerHold
 import com.deskdeck.ui.notifications.BannerHost
 import com.deskdeck.ui.notifications.LocalBannerHold
+import com.deskdeck.ui.notifications.NotificationCenter
 import com.deskdeck.ui.volume.VolumeHud
 import kotlin.math.roundToInt
 
@@ -109,6 +110,7 @@ fun AppRoot(viewModel: AppViewModel = hiltViewModel()) {
                     }
                     // Above every screen (settings, ambient too) and inside the pixel shift.
                     BannerHost()
+                    NotificationCenter()
                     VolumeHud()
                 }
                 BrightnessCapOverlay(cap = settings.burnIn.brightnessCap)

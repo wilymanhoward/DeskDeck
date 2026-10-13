@@ -1,7 +1,6 @@
 package com.deskdeck.ui.notifications
 
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.MutableTransitionState
@@ -9,28 +8,31 @@ import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
 import androidx.compose.animation.shrinkVertically
-import androidx.compose.animation.slideInVertically
-import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.detectVerticalDragGestures
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.displayCutout
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -50,6 +52,7 @@ import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.res.painterResource
@@ -70,17 +73,22 @@ import com.deskdeck.launcher.AppIcon
 import com.deskdeck.media.Banner
 import com.deskdeck.ui.settings.LocalAppSettings
 import com.deskdeck.ui.theme.CappedWhite
+import com.deskdeck.ui.theme.Dimens
 import com.deskdeck.ui.theme.LocalMotion
 import com.deskdeck.ui.theme.MutedText
 import com.deskdeck.ui.theme.glass
 import com.deskdeck.ui.theme.pressScale
 import kotlinx.coroutines.launch
 
-private val BannerMaxWidth = 560.dp
-private val BannerShape = RoundedCornerShape(28.dp)
+private val BannerHeight = 56.dp
+private val BannerShape = RoundedCornerShape(BannerHeight / 2)
 
-// Denser than other glass: banners sit over album art and lyrics, and their text must stay readable.
-private val BannerTint = Color(0xFF1C1D21).copy(alpha = 0.95f)
+/** Where banners and the panel start: just right of the rail. Banners line up with its bell. */
+internal val RailEdge = Dimens.screenPadding + Dimens.railWidth + 8.dp
+private val BellTop = Dimens.screenPadding + Dimens.minTouch + 4.dp
+
+// Denser than other glass: banners sit over album art, and their text must stay readable.
+internal val DenseGlass = Color(0xFF1C1D21).copy(alpha = 0.95f)
 
 /** A banner on screen, kept around after it leaves the queue so it can animate out. */
 private class BannerEntry(banner: Banner) {
@@ -90,11 +98,12 @@ private class BannerEntry(banner: Banner) {
 }
 
 /**
- * In-app notification banners: glass pills that slide down from the top center, newest on top,
- * at most [NotificationBanners.MAX_QUEUED][com.deskdeck.media.NotificationBanners.MAX_QUEUED].
- * Each one closes itself after the configured time (the thin line shows how long is left), can be
- * swiped up, and expands on tap. They stay in the top part of the screen, clear of the transport
- * controls, and new ones wait while the user is seeking or setting the volume ([LocalBannerHold]).
+ * In-app notification banners: compact glass pills that slide out from the rail's bell, newest on
+ * top, at most [NotificationBanners.MAX_QUEUED][com.deskdeck.media.NotificationBanners.MAX_QUEUED].
+ * Each closes itself after the configured time (the thin line shows how long is left) or with a
+ * swipe left; a tap opens the notification panel. They stay in the top-left corner, clear of the
+ * transport controls, and new ones wait while the user is seeking or setting the volume
+ * ([LocalBannerHold]).
  */
 @Composable
 fun BannerHost(modifier: Modifier = Modifier, viewModel: BannerViewModel = hiltViewModel()) {
@@ -124,17 +133,10 @@ fun BannerHost(modifier: Modifier = Modifier, viewModel: BannerViewModel = hiltV
             }
         }
     }
-    var expandedKey by remember { mutableStateOf<String?>(null) }
 
-    BoxWithConstraints(modifier.fillMaxSize(), contentAlignment = Alignment.TopCenter) {
-        // One expanded banner plus two collapsed ones stay within the top ~60% of the screen.
-        val expandedLines = if (maxHeight < 700.dp) 4 else 8
+    Box(modifier.fillMaxSize().windowInsetsPadding(WindowInsets.displayCutout)) {
         Column(
-            modifier = Modifier
-                .padding(top = 16.dp)
-                .widthIn(max = BannerMaxWidth)
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp),
+            modifier = Modifier.padding(start = RailEdge, top = BellTop),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             entries.forEach { entry ->
@@ -144,34 +146,28 @@ fun BannerHost(modifier: Modifier = Modifier, viewModel: BannerViewModel = hiltV
                         enter = if (motion.reduced) {
                             fadeIn(motion.fade()) + expandVertically(motion.fade(), expandFrom = Alignment.Top)
                         } else {
+                            // Grows out of the bell.
                             expandVertically(motion.gentle(), expandFrom = Alignment.Top) +
-                                slideInVertically(motion.bouncy()) { -it * 2 } +
+                                slideInHorizontally(motion.bouncy()) { -it / 3 } +
+                                scaleIn(motion.bouncy(), initialScale = 0.6f, transformOrigin = TransformOrigin(0f, 0.5f)) +
                                 fadeIn(motion.fade())
                         },
                         exit = if (motion.reduced) {
                             fadeOut(motion.fade()) + shrinkVertically(motion.fade())
                         } else {
-                            fadeOut(motion.fade()) + slideOutVertically(motion.snappy()) { -it } +
+                            fadeOut(motion.fade()) + slideOutHorizontally(motion.snappy()) { -it / 2 } +
                                 shrinkVertically(motion.snappy(), shrinkTowards = Alignment.Top)
                         },
                     ) {
                         DisposableEffect(Unit) {
-                            onDispose {
-                                if (!entry.visibility.targetState) {
-                                    entries.remove(entry)
-                                    if (expandedKey == entry.key) expandedKey = null
-                                }
-                            }
+                            onDispose { if (!entry.visibility.targetState) entries.remove(entry) }
                         }
-                        BannerCard(
+                        BannerPill(
                             banner = entry.banner,
                             hideContent = settings.hideContent,
                             durationMs = settings.durationSec * 1_000,
-                            expanded = expandedKey == entry.key,
-                            expandedLines = expandedLines,
-                            onToggleExpanded = { expandedKey = if (expandedKey == entry.key) null else entry.key },
+                            onOpen = viewModel::openCenter,
                             onDismiss = { viewModel.dismiss(entry.key) },
-                            onClear = { viewModel.clear(entry.key) },
                         )
                     }
                 }
@@ -181,15 +177,12 @@ fun BannerHost(modifier: Modifier = Modifier, viewModel: BannerViewModel = hiltV
 }
 
 @Composable
-private fun BannerCard(
+private fun BannerPill(
     banner: Banner,
     hideContent: Boolean,
     durationMs: Int,
-    expanded: Boolean,
-    expandedLines: Int,
-    onToggleExpanded: () -> Unit,
+    onOpen: () -> Unit,
     onDismiss: () -> Unit,
-    onClear: () -> Unit,
 ) {
     val motion = LocalMotion.current
     val scope = rememberCoroutineScope()
@@ -197,60 +190,63 @@ private fun BannerCard(
     val interaction = remember { MutableInteractionSource() }
     val pressed by interaction.collectIsPressedAsState()
     var dragging by remember { mutableStateOf(false) }
-    val offsetY = remember { Animatable(0f) }
+    val offsetX = remember { Animatable(0f) }
 
-    // Time left, 1 → 0. Paused while expanded or touched; an update to the notification restarts it.
+    // Time left, 1 → 0. Paused while touched; an update to the notification restarts it.
     val remaining = remember { Animatable(1f) }
     var timedFor by remember { mutableLongStateOf(banner.postedAt) }
-    val paused = expanded || pressed || dragging
-    LaunchedEffect(paused, banner.postedAt, durationMs) {
+    LaunchedEffect(pressed || dragging, banner.postedAt, durationMs) {
         if (timedFor != banner.postedAt) {
             remaining.snapTo(1f)
             timedFor = banner.postedAt
         }
-        if (paused) return@LaunchedEffect
+        if (pressed || dragging) return@LaunchedEffect
         remaining.animateTo(0f, tween((remaining.value * durationMs).toInt(), easing = LinearEasing))
         currentOnDismiss()
     }
 
     val dismissLabel = stringResource(R.string.banner_dismiss)
     val lineColor = CappedWhite.copy(alpha = 0.35f)
-    Column(
+    val primary = if (hideContent) banner.appLabel else banner.title?.takeIf { it.isNotBlank() } ?: banner.appLabel
+    val secondary = if (hideContent) stringResource(R.string.banner_hidden_content) else banner.text?.takeIf { it.isNotBlank() }
+
+    Row(
         modifier = Modifier
-            .fillMaxWidth()
+            .height(BannerHeight)
+            .widthIn(min = 220.dp, max = 380.dp)
             .graphicsLayer {
-                translationY = offsetY.value
-                alpha = (1f + offsetY.value / (size.height.coerceAtLeast(1f))).coerceIn(0f, 1f)
+                translationX = offsetX.value
+                alpha = (1f + offsetX.value / size.width.coerceAtLeast(1f)).coerceIn(0f, 1f)
             }
-            .pressScale(interaction, pressedScale = 0.98f)
-            .glass(BannerShape, tint = BannerTint)
+            .pressScale(interaction, pressedScale = 0.96f)
+            .glass(BannerShape, tint = DenseGlass)
             .pointerInput(Unit) {
-                detectVerticalDragGestures(
+                detectHorizontalDragGestures(
                     onDragStart = { dragging = true },
-                    onVerticalDrag = { change, dy ->
+                    onHorizontalDrag = { change, dx ->
                         change.consume()
-                        // Free upward, resistant downward.
-                        val next = offsetY.value + if (offsetY.value + dy > 0) dy * 0.2f else dy
-                        scope.launch { offsetY.snapTo(next) }
+                        // Free toward the rail, resistant the other way.
+                        val next = offsetX.value + if (offsetX.value + dx > 0) dx * 0.2f else dx
+                        scope.launch { offsetX.snapTo(next) }
                     },
                     onDragEnd = {
                         dragging = false
                         scope.launch {
-                            if (offsetY.value < -size.height * 0.3f) {
-                                offsetY.animateTo(-size.height * 1.5f, motion.snappy())
+                            if (offsetX.value < -size.width * 0.3f) {
+                                offsetX.animateTo(-size.width * 1.2f, motion.snappy())
                                 currentOnDismiss()
                             } else {
-                                offsetY.animateTo(0f, motion.bouncy())
+                                offsetX.animateTo(0f, motion.bouncy())
                             }
                         }
                     },
                     onDragCancel = {
                         dragging = false
-                        scope.launch { offsetY.animateTo(0f, motion.bouncy()) }
+                        scope.launch { offsetX.animateTo(0f, motion.bouncy()) }
                     },
                 )
             }
-            .clickable(interactionSource = interaction, indication = null, onClick = onToggleExpanded)
+            .clickable(interactionSource = interaction, indication = null, onClick = onOpen)
             .semantics(mergeDescendants = true) {
                 liveRegion = LiveRegionMode.Polite
                 customActions = listOf(CustomAccessibilityAction(dismissLabel) { onDismiss(); true })
@@ -258,64 +254,38 @@ private fun BannerCard(
             // The countdown line along the bottom edge, drawn from the animated value.
             .drawWithContent {
                 drawContent()
-                val inset = 28.dp.toPx()
+                val inset = BannerHeight.toPx() / 2
                 val y = size.height - 1.5.dp.toPx()
                 val end = inset + (size.width - 2 * inset) * remaining.value
                 if (end > inset) drawLine(lineColor, Offset(inset, y), Offset(end, y), 1.5.dp.toPx(), StrokeCap.Round)
             }
-            .animateContentSize(motion.gentle())
-            .padding(horizontal = 18.dp, vertical = 14.dp),
+            .padding(start = 10.dp, end = 20.dp),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
-        Row(verticalAlignment = Alignment.Top) {
-            AsyncImage(
-                model = AppIcon(banner.packageName),
-                contentDescription = null,
-                error = painterResource(R.drawable.ic_notifications),
-                modifier = Modifier.size(40.dp).clip(RoundedCornerShape(10.dp)),
+        AsyncImage(
+            model = AppIcon(banner.packageName),
+            contentDescription = banner.appLabel,
+            error = painterResource(R.drawable.ic_notifications),
+            modifier = Modifier.size(36.dp).clip(RoundedCornerShape(18.dp)),
+        )
+        Spacer(Modifier.width(12.dp))
+        Column {
+            Text(
+                text = primary,
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.SemiBold,
+                color = CappedWhite,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
             )
-            Spacer(Modifier.width(14.dp))
-            Column(Modifier.weight(1f)) {
+            if (secondary != null) {
                 Text(
-                    text = banner.appLabel,
-                    style = MaterialTheme.typography.labelMedium,
+                    text = secondary,
+                    style = MaterialTheme.typography.bodySmall,
                     color = MutedText,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
-                if (hideContent) {
-                    Text(
-                        text = stringResource(R.string.banner_hidden_content),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = CappedWhite,
-                    )
-                } else {
-                    banner.title?.takeIf { it.isNotBlank() }?.let {
-                        Text(
-                            text = it,
-                            style = MaterialTheme.typography.titleSmall,
-                            fontWeight = FontWeight.SemiBold,
-                            color = CappedWhite,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                        )
-                    }
-                    val body = if (expanded) banner.expandedText ?: banner.text else banner.text
-                    body?.takeIf { it.isNotBlank() }?.let {
-                        Text(
-                            text = it,
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = CappedWhite.copy(alpha = 0.85f),
-                            maxLines = if (expanded) expandedLines else 2,
-                            overflow = TextOverflow.Ellipsis,
-                        )
-                    }
-                }
-            }
-        }
-        if (expanded) {
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                TextButton(onClick = onClear) { Text(stringResource(R.string.banner_clear)) }
-                TextButton(onClick = onDismiss) { Text(stringResource(R.string.banner_close)) }
             }
         }
     }

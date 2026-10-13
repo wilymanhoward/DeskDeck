@@ -10,8 +10,8 @@ import javax.inject.Inject
 /**
  * The notification listener. Being enabled is what lets [MediaSessionRepository] read other apps'
  * media sessions; it also keeps the rail's notification count and feeds [NotificationBanners].
- * Content (title and text) is read only for a notification that will show a banner, and is kept
- * in memory just while that banner is queued; nothing is written to disk.
+ * Content (title and text) is read only for a notification that will show a banner, or while the
+ * notification panel is open, and is kept in memory only while shown; nothing is written to disk.
  */
 @AndroidEntryPoint
 class MediaListenerService : NotificationListenerService() {
@@ -27,6 +27,7 @@ class MediaListenerService : NotificationListenerService() {
     override fun onListenerConnected() {
         super.onListenerConnected()
         banners.canceller = { key -> runCatching { cancelNotification(key) } }
+        banners.activeReader = ::readActive
         notificationAccess.refresh()
         recount()
     }
@@ -34,6 +35,7 @@ class MediaListenerService : NotificationListenerService() {
     override fun onListenerDisconnected() {
         super.onListenerDisconnected()
         banners.canceller = null
+        banners.activeReader = null
         notificationCounter.reset()
         notificationAccess.refresh()
     }
@@ -68,20 +70,43 @@ class MediaListenerService : NotificationListenerService() {
             alreadyAlerted = banners.wasAlerted(sbn.key),
             hasContent = !title.isNullOrBlank() || !text.isNullOrBlank(),
         )
-        banners.onPosted(sbn.key, facts, ownPackage = packageName) {
-            val lines = extras.getCharSequenceArray(Notification.EXTRA_TEXT_LINES)?.joinToString("\n")
-            val expanded = extras.getCharSequence(Notification.EXTRA_BIG_TEXT)?.toString() ?: lines ?: text?.toString()
-            Banner(
-                key = sbn.key,
-                packageName = sbn.packageName,
-                appLabel = appLabels.labelOf(sbn.packageName),
-                title = title?.toString()?.trim(),
-                text = text?.toString()?.trim(),
-                expandedText = expanded?.trim(),
-                postedAt = sbn.postTime,
-            )
-        }
+        banners.onPosted(sbn.key, facts, ownPackage = packageName) { sbn.toBanner() }
     }
+
+    private fun StatusBarNotification.toBanner(): Banner {
+        val extras = notification.extras
+        val title = extras.getCharSequence(Notification.EXTRA_TITLE_BIG) ?: extras.getCharSequence(Notification.EXTRA_TITLE)
+        val text = extras.getCharSequence(Notification.EXTRA_TEXT)
+        val lines = extras.getCharSequenceArray(Notification.EXTRA_TEXT_LINES)?.joinToString("\n")
+        val expanded = extras.getCharSequence(Notification.EXTRA_BIG_TEXT)?.toString() ?: lines ?: text?.toString()
+        return Banner(
+            key = key,
+            packageName = packageName,
+            appLabel = appLabels.labelOf(packageName),
+            title = title?.toString()?.trim(),
+            text = text?.toString()?.trim(),
+            expandedText = expanded?.trim(),
+            postedAt = postTime,
+        )
+    }
+
+    /** The notifications the rail counts, with content, for the notification panel. */
+    private fun readActive(): List<Banner> {
+        val active = try {
+            activeNotifications.orEmpty()
+        } catch (_: SecurityException) {
+            return emptyList()
+        }
+        // The same rule as the rail count, so the panel lists exactly what the badge counts.
+        return active.filter { isUserNotification(it.facts(), ownPackage = packageName) }.map { it.toBanner() }
+    }
+
+    private fun StatusBarNotification.facts() = NotificationFacts(
+        packageName = packageName,
+        isOngoing = isOngoing,
+        isClearable = isClearable,
+        isGroupSummary = notification.flags and Notification.FLAG_GROUP_SUMMARY != 0,
+    )
 
     private fun recount() {
         val active = try {
@@ -90,15 +115,9 @@ class MediaListenerService : NotificationListenerService() {
             // Called while not (or no longer) connected.
             return
         }
-        val facts = active.map { sbn ->
-            NotificationFacts(
-                packageName = sbn.packageName,
-                isOngoing = sbn.isOngoing,
-                isClearable = sbn.isClearable,
-                isGroupSummary = sbn.notification.flags and Notification.FLAG_GROUP_SUMMARY != 0,
-            )
-        }
+        val facts = active.map { it.facts() }
         notificationCounter.update(items = facts, ownPackage = packageName)
+        banners.onActiveChanged()
         banners.addKnownPackages(
             facts.filter { !it.isOngoing && !it.isGroupSummary && it.packageName != packageName }.map { it.packageName },
         )

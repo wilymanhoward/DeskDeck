@@ -32,4 +32,7 @@ interface DashboardActions : PlayerActions {
     fun onAddRailApp() {}
     fun onAllApps() {}
     fun onSettings() {}
+
+    /** Opens the notification panel (the bell). */
+    fun onOpenNotifications() {}
 }
