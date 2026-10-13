@@ -8,6 +8,9 @@ import com.deskdeck.data.settings.BurnInSettings
 import com.deskdeck.data.settings.NotificationSettings
 import com.deskdeck.data.settings.SettingsRepository
 import com.deskdeck.media.AppLabels
+import com.deskdeck.media.AudioDelay
+import com.deskdeck.media.OutputLatency
+import com.deskdeck.media.OutputRoute
 import com.deskdeck.media.NotificationBanners
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
@@ -23,7 +26,16 @@ class SettingsViewModel @Inject constructor(
     private val lyricsRepository: LyricsRepository,
     banners: NotificationBanners,
     appLabels: AppLabels,
+    outputLatency: OutputLatency,
 ) : ViewModel() {
+
+    val audioDelay: StateFlow<AudioDelay> = outputLatency.delay
+    val audioRoute: StateFlow<OutputRoute> = outputLatency.route
+
+    fun setRouteAdjust(routeId: String, ms: Int) = update {
+        val map = if (ms == 0) it.lyricsRouteAdjustMs - routeId else it.lyricsRouteAdjustMs + (routeId to ms)
+        it.copy(lyricsRouteAdjustMs = map)
+    }
 
     val settings: StateFlow<AppSettings> = settingsRepository.settings
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), AppSettings())

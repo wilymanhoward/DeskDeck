@@ -238,4 +238,15 @@
     <string name="center_time_now">now</string>
     <string name="center_time_minutes">%1$d min</string>
     <string name="center_time_hours">%1$d h</string>
+
+    <!-- Lyrics sync -->
+    <string name="settings_latency">Match audio delay</string>
+    <string name="settings_latency_measured">Lyrics wait for the sound to reach you. %1$s: %2$d ms, measured</string>
+    <string name="settings_latency_estimated">Lyrics wait for the sound to reach you. %1$s: about %2$d ms</string>
+    <string name="settings_output_bluetooth">Bluetooth</string>
+    <string name="settings_output_device">This tablet</string>
+    <string name="settings_sync_adjust">Extra delay for %1$s</string>
+    <string name="settings_sync_adjust_detail">If lyrics still come early on this speaker, move this right until they match. It\'s remembered for this speaker only.</string>
+    <string name="settings_sync_later">%1$d ms later</string>
+    <string name="settings_sync_earlier">%1$d ms earlier</string>
 </resources>

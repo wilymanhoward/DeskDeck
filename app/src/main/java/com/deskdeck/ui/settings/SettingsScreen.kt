@@ -373,6 +373,36 @@ private fun LyricsSettings(s: AppSettings, vm: SettingsViewModel) {
         ) { v -> vm.update { it.copy(showRomanization = v) } }
     }
     SettingCard {
+        val delay by vm.audioDelay.collectAsStateWithLifecycle()
+        val route by vm.audioRoute.collectAsStateWithLifecycle()
+        val output = route.name ?: stringResource(if (route.bluetooth) R.string.settings_output_bluetooth else R.string.settings_output_device)
+        SwitchRow(
+            title = stringResource(R.string.settings_latency),
+            subtitle = stringResource(
+                if (delay.measured) R.string.settings_latency_measured else R.string.settings_latency_estimated,
+                output,
+                delay.ms,
+            ),
+            checked = s.lyricsLatencyCompensation,
+        ) { v -> vm.update { it.copy(lyricsLatencyCompensation = v) } }
+        SliderRow(
+            title = stringResource(R.string.settings_sync_adjust, output),
+            subtitle = stringResource(R.string.settings_sync_adjust_detail),
+            value = (s.lyricsRouteAdjustMs[route.id] ?: 0).toFloat(),
+            range = SettingsRanges.lyricsSyncAdjustMs.first.toFloat()..SettingsRanges.lyricsSyncAdjustMs.last.toFloat(),
+            steps = (SettingsRanges.lyricsSyncAdjustMs.last - SettingsRanges.lyricsSyncAdjustMs.first) / 50 - 1,
+            valueLabel = {
+                val ms = it.roundToInt()
+                when {
+                    ms > 0 -> stringResource(R.string.settings_sync_later, ms)
+                    ms < 0 -> stringResource(R.string.settings_sync_earlier, -ms)
+                    else -> stringResource(R.string.lyrics_offset_none)
+                }
+            },
+            onValueChangeFinished = { v -> vm.setRouteAdjust(route.id, (v / 50).roundToInt() * 50) },
+        )
+    }
+    SettingCard {
         ConfirmingActionRow(
             title = stringResource(R.string.settings_reset_offsets),
             subtitle = stringResource(R.string.settings_reset_offsets_detail),

@@ -32,6 +32,8 @@ private object Keys {
     val clockSeconds = booleanPreferencesKey("clock_seconds")
     val lyricsFontSize = intPreferencesKey("lyrics_font_size")
     val romanization = booleanPreferencesKey("lyrics_romanization")
+    val latencyCompensation = booleanPreferencesKey("lyrics_latency_compensation")
+    val routeAdjust = stringSetPreferencesKey("lyrics_route_adjust_ms")
     val dynamicColors = booleanPreferencesKey("dynamic_colors")
     val accent = stringPreferencesKey("accent")
     val keepScreenOn = stringPreferencesKey("keep_screen_on")
@@ -69,6 +71,8 @@ internal fun readSettings(prefs: Preferences): AppSettings {
         clockShowSeconds = prefs[Keys.clockSeconds] ?: d.clockShowSeconds,
         lyricsFontSizeSp = (prefs[Keys.lyricsFontSize] ?: d.lyricsFontSizeSp).coerceIn(SettingsRanges.lyricsFontSizeSp),
         showRomanization = prefs[Keys.romanization] ?: d.showRomanization,
+        lyricsLatencyCompensation = prefs[Keys.latencyCompensation] ?: d.lyricsLatencyCompensation,
+        lyricsRouteAdjustMs = prefs[Keys.routeAdjust]?.let(::decodeRouteAdjust) ?: d.lyricsRouteAdjustMs,
         dynamicColors = prefs[Keys.dynamicColors] ?: d.dynamicColors,
         accent = enumOr(prefs[Keys.accent], d.accent),
         keepScreenOn = enumOr(prefs[Keys.keepScreenOn], d.keepScreenOn),
@@ -103,6 +107,8 @@ internal fun writeSettings(prefs: MutablePreferences, s: AppSettings) {
     prefs[Keys.clockSeconds] = s.clockShowSeconds
     prefs[Keys.lyricsFontSize] = s.lyricsFontSizeSp
     prefs[Keys.romanization] = s.showRomanization
+    prefs[Keys.latencyCompensation] = s.lyricsLatencyCompensation
+    prefs[Keys.routeAdjust] = s.lyricsRouteAdjustMs.map { (route, ms) -> "$ms|$route" }.toSet()
     prefs[Keys.dynamicColors] = s.dynamicColors
     prefs[Keys.accent] = s.accent.name
     prefs[Keys.keepScreenOn] = s.keepScreenOn.name
@@ -128,3 +134,10 @@ internal fun writeSettings(prefs: MutablePreferences, s: AppSettings) {
     prefs[Keys.bannerRespectDnd] = n.respectDnd
     prefs[Keys.bannerDuration] = n.durationSec
 }
+
+/** "ms|route" entries; the route id may itself contain '|', so split at the first one only. */
+private fun decodeRouteAdjust(entries: Set<String>): Map<String, Int> = entries.mapNotNull { entry ->
+    val ms = entry.substringBefore('|').toIntOrNull() ?: return@mapNotNull null
+    val route = entry.substringAfter('|', missingDelimiterValue = "").ifEmpty { return@mapNotNull null }
+    route to ms.coerceIn(SettingsRanges.lyricsSyncAdjustMs)
+}.toMap()

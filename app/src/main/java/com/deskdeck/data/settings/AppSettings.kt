@@ -69,6 +69,13 @@ data class AppSettings(
     val clockShowSeconds: Boolean = false,
     val lyricsFontSizeSp: Int = 30,
     val showRomanization: Boolean = false,
+    /** Delay lyrics by the measured audio output latency (Bluetooth adds a third of a second). */
+    val lyricsLatencyCompensation: Boolean = true,
+    /**
+     * Extra lyrics delay per audio output (keyed by [com.deskdeck.media.OutputRoute.id]), for
+     * speakers that buffer more than they report. Positive = lyrics later.
+     */
+    val lyricsRouteAdjustMs: Map<String, Int> = emptyMap(),
     val dynamicColors: Boolean = true,
     val accent: AccentColor = AccentColor.BLUE,
     val keepScreenOn: KeepScreenOn = KeepScreenOn.WHILE_PLAYING,
@@ -88,4 +95,5 @@ object SettingsRanges {
     val dimLevel = 0.2f..0.8f
     val brightnessCap = 0.5f..1f
     val bannerDurationSec = 3..10
+    val lyricsSyncAdjustMs = -1_000..2_000
 }
