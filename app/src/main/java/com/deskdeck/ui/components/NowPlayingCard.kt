@@ -24,8 +24,10 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.State
@@ -42,14 +44,17 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import coil3.compose.AsyncImage
 import com.deskdeck.R
 import com.deskdeck.data.lyrics.TitleCleaner
 import com.deskdeck.domain.MediaKind
 import com.deskdeck.domain.NowPlaying
 import com.deskdeck.domain.Track
+import com.deskdeck.launcher.AppIcon
 import com.deskdeck.ui.common.clockFormatter
 import com.deskdeck.ui.common.rememberCurrentTime
 import com.deskdeck.ui.common.rememberIs24Hour
+import com.deskdeck.ui.dashboard.EmptySourceUi
 import com.deskdeck.ui.dashboard.PlayerActions
 import com.deskdeck.ui.settings.LocalAppSettings
 import com.deskdeck.ui.theme.CappedWhite
@@ -68,6 +73,9 @@ fun NowPlayingCard(
     accessMissing: Boolean,
     onGrantAccess: () -> Unit,
     modifier: Modifier = Modifier,
+    emptySource: EmptySourceUi? = null,
+    onOpenApp: (String) -> Unit = {},
+    onGetApp: (String) -> Unit = {},
 ) {
     Box(
         modifier = modifier
@@ -81,7 +89,7 @@ fun NowPlayingCard(
             label = "nowPlayingContent",
         ) { np ->
             if (np == null) {
-                EmptyNowPlaying(accessMissing, onGrantAccess)
+                EmptyNowPlaying(accessMissing, onGrantAccess, emptySource, onOpenApp, onGetApp)
             } else {
                 NowPlayingContent(np, position, palette, actions)
             }
@@ -184,11 +192,18 @@ private fun TrackHeadline(track: Track) {
 }
 
 /**
- * Shown when no media session is active: a large clock and a hint, or a way to grant
- * notification access when that is why nothing shows up.
+ * Shown when nothing is playing: a large clock, then either a way to grant notification access, the
+ * selected app's state ("Starting Spotify…", "Nothing playing in Spotify" + "Open Spotify"), or a
+ * general hint.
  */
 @Composable
-private fun EmptyNowPlaying(accessMissing: Boolean, onGrantAccess: () -> Unit) {
+private fun EmptyNowPlaying(
+    accessMissing: Boolean,
+    onGrantAccess: () -> Unit,
+    emptySource: EmptySourceUi?,
+    onOpenApp: (String) -> Unit,
+    onGetApp: (String) -> Unit,
+) {
     val is24Hour = rememberIs24Hour()
     val showSeconds = LocalAppSettings.current.clockShowSeconds
     val now by rememberCurrentTime(withSeconds = showSeconds)
@@ -215,39 +230,103 @@ private fun EmptyNowPlaying(accessMissing: Boolean, onGrantAccess: () -> Unit) {
             color = MutedText,
         )
         Spacer(Modifier.height(48.dp))
-        Box(
-            modifier = Modifier
-                .size(64.dp)
-                .background(SurfaceHighest, CircleShape),
-            contentAlignment = Alignment.Center,
-        ) {
-            Icon(
-                painter = painterResource(R.drawable.ic_music_note),
-                contentDescription = null,
-                tint = MutedText,
-                modifier = Modifier.size(32.dp),
-            )
+        AnimatedContent(
+            targetState = emptySource.takeUnless { accessMissing },
+            contentKey = { it?.let { source -> "${source.packageName}:${source.reason}" } },
+            transitionSpec = { fadeIn(tween(400)) togetherWith fadeOut(tween(200)) },
+            label = "emptyVariant",
+        ) { source ->
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                if (source != null) {
+                    SourceEmptyState(source, onOpenApp, onGetApp)
+                } else {
+                    GeneralEmptyState(accessMissing, onGrantAccess)
+                }
+            }
         }
-        Spacer(Modifier.height(16.dp))
-        Text(
-            text = stringResource(if (accessMissing) R.string.np_access_off else R.string.np_empty_hint),
-            style = MaterialTheme.typography.headlineSmall,
-            color = CappedWhite,
-            textAlign = TextAlign.Center,
-        )
+    }
+}
+
+@Composable
+private fun GeneralEmptyState(accessMissing: Boolean, onGrantAccess: () -> Unit) {
+    EmptyIcon { Icon(painterResource(R.drawable.ic_music_note), null, tint = MutedText, modifier = Modifier.size(32.dp)) }
+    EmptyTexts(
+        title = stringResource(if (accessMissing) R.string.np_access_off else R.string.np_empty_hint),
+        detail = stringResource(if (accessMissing) R.string.np_access_off_detail else R.string.np_empty_subhint),
+    )
+    if (accessMissing) {
+        Spacer(Modifier.height(24.dp))
+        Button(onClick = onGrantAccess, modifier = Modifier.heightIn(min = Dimens.minTouch)) {
+            Text(stringResource(R.string.np_grant_access), style = MaterialTheme.typography.labelLarge)
+        }
+    }
+}
+
+/** The selected app has nothing to show. The buttons here are the only way the card leaves DeskDeck. */
+@Composable
+private fun SourceEmptyState(source: EmptySourceUi, onOpenApp: (String) -> Unit, onGetApp: (String) -> Unit) {
+    val label = source.label
+    if (source.reason == EmptySourceUi.Reason.NOT_INSTALLED) {
+        EmptyIcon { Icon(painterResource(R.drawable.ic_download), null, tint = MutedText, modifier = Modifier.size(32.dp)) }
+    } else {
+        AsyncImage(model = AppIcon(source.packageName), contentDescription = null, modifier = Modifier.size(64.dp))
+    }
+    when (source.reason) {
+        EmptySourceUi.Reason.STARTING -> {
+            EmptyTexts(
+                title = stringResource(R.string.np_source_starting, label),
+                detail = stringResource(R.string.np_source_starting_detail, label),
+            )
+            Spacer(Modifier.height(24.dp))
+            CircularProgressIndicator(color = MutedText, strokeWidth = 3.dp, modifier = Modifier.size(32.dp))
+        }
+        EmptySourceUi.Reason.NO_SESSION -> {
+            EmptyTexts(
+                title = stringResource(R.string.np_source_no_session, label),
+                detail = stringResource(R.string.np_source_no_session_detail, label),
+            )
+            Spacer(Modifier.height(24.dp))
+            OutlinedButton(onClick = { onOpenApp(source.packageName) }, modifier = Modifier.heightIn(min = Dimens.minTouch)) {
+                Text(stringResource(R.string.np_source_open, label), style = MaterialTheme.typography.labelLarge)
+            }
+        }
+        EmptySourceUi.Reason.NOT_INSTALLED -> {
+            EmptyTexts(title = stringResource(R.string.np_source_not_installed, label), detail = null)
+            Spacer(Modifier.height(24.dp))
+            OutlinedButton(onClick = { onGetApp(source.packageName) }, modifier = Modifier.heightIn(min = Dimens.minTouch)) {
+                Text(stringResource(R.string.np_source_get), style = MaterialTheme.typography.labelLarge)
+            }
+        }
+    }
+}
+
+@Composable
+private fun EmptyIcon(content: @Composable () -> Unit) {
+    Box(
+        modifier = Modifier
+            .size(64.dp)
+            .background(SurfaceHighest, CircleShape),
+        contentAlignment = Alignment.Center,
+    ) { content() }
+}
+
+@Composable
+private fun EmptyTexts(title: String, detail: String?) {
+    Spacer(Modifier.height(16.dp))
+    Text(
+        text = title,
+        style = MaterialTheme.typography.headlineSmall,
+        color = CappedWhite,
+        textAlign = TextAlign.Center,
+    )
+    if (detail != null) {
         Spacer(Modifier.height(8.dp))
         Text(
-            text = stringResource(if (accessMissing) R.string.np_access_off_detail else R.string.np_empty_subhint),
+            text = detail,
             style = MaterialTheme.typography.bodyLarge,
             color = MutedText,
             textAlign = TextAlign.Center,
             modifier = Modifier.widthIn(max = 380.dp),
         )
-        if (accessMissing) {
-            Spacer(Modifier.height(24.dp))
-            Button(onClick = onGrantAccess, modifier = Modifier.heightIn(min = Dimens.minTouch)) {
-                Text(stringResource(R.string.np_grant_access), style = MaterialTheme.typography.labelLarge)
-            }
-        }
     }
 }

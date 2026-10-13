@@ -34,6 +34,8 @@ private object Keys {
     val dynamicColors = booleanPreferencesKey("dynamic_colors")
     val accent = stringPreferencesKey("accent")
     val keepScreenOn = stringPreferencesKey("keep_screen_on")
+    val sourceMode = stringPreferencesKey("source_mode")
+    val mediaBrowserResume = booleanPreferencesKey("source_media_browser")
     val pixelShift = booleanPreferencesKey("burnin_pixel_shift")
     val pixelShiftDp = intPreferencesKey("burnin_pixel_shift_dp")
     val idleDim = booleanPreferencesKey("burnin_idle_dim")
@@ -63,6 +65,8 @@ internal fun readSettings(prefs: Preferences): AppSettings {
         dynamicColors = prefs[Keys.dynamicColors] ?: d.dynamicColors,
         accent = enumOr(prefs[Keys.accent], d.accent),
         keepScreenOn = enumOr(prefs[Keys.keepScreenOn], d.keepScreenOn),
+        sourceMode = enumOr(prefs[Keys.sourceMode], d.sourceMode),
+        mediaBrowserResume = prefs[Keys.mediaBrowserResume] ?: d.mediaBrowserResume,
         burnIn = BurnInSettings(
             pixelShift = prefs[Keys.pixelShift] ?: b.pixelShift,
             pixelShiftDp = (prefs[Keys.pixelShiftDp] ?: b.pixelShiftDp).coerceIn(SettingsRanges.pixelShiftDp),
@@ -88,6 +92,8 @@ internal fun writeSettings(prefs: MutablePreferences, s: AppSettings) {
     prefs[Keys.dynamicColors] = s.dynamicColors
     prefs[Keys.accent] = s.accent.name
     prefs[Keys.keepScreenOn] = s.keepScreenOn.name
+    prefs[Keys.sourceMode] = s.sourceMode.name
+    prefs[Keys.mediaBrowserResume] = s.mediaBrowserResume
     val b = s.burnIn
     prefs[Keys.pixelShift] = b.pixelShift
     prefs[Keys.pixelShiftDp] = b.pixelShiftDp

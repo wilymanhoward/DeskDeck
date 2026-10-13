@@ -12,6 +12,7 @@ import android.media.session.MediaSession
 import android.media.session.PlaybackState
 import android.os.Handler
 import android.os.SystemClock
+import android.view.KeyEvent
 import android.support.v4.media.session.MediaControllerCompat
 import android.support.v4.media.session.MediaSessionCompat
 import android.support.v4.media.session.PlaybackStateCompat
@@ -88,6 +89,7 @@ internal class SessionEntry(
 
     fun candidate(): SessionCandidate = SessionCandidate(
         id = id,
+        packageName = packageName,
         isPlaying = isPlaying,
         hasMetadata = !destroyed && track() != null,
         lastStartedPlayingAt = lastStartedPlayingAt,
@@ -141,6 +143,15 @@ internal class SessionEntry(
     private val transport get() = controller.transportControls
 
     fun play() = transport.play()
+
+    /** A MEDIA_PLAY key press, as a headset button would send; wakes sessions that ignore play(). */
+    fun sendPlayKey() {
+        for (action in listOf(KeyEvent.ACTION_DOWN, KeyEvent.ACTION_UP)) {
+            controller.dispatchMediaButtonEvent(KeyEvent(action, KeyEvent.KEYCODE_MEDIA_PLAY))
+        }
+    }
+
+    val hasMetadata: Boolean get() = !destroyed && track() != null
     fun pause() = transport.pause()
     fun skipNext() = transport.skipToNext()
     fun skipPrevious() = transport.skipToPrevious()

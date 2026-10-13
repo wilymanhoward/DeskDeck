@@ -3,10 +3,30 @@ package com.deskdeck.media
 import com.deskdeck.domain.NowPlaying
 import kotlinx.coroutines.flow.StateFlow
 
-/** The currently shown media session and the commands that can be sent to it. */
+/** The media sessions of other apps: the one currently shown, source selection, and commands. */
 interface MediaRepository {
-    /** Null when no session is active. */
+    /** Null when nothing is shown (no session, or the selected app has none yet). */
     val nowPlaying: StateFlow<NowPlaying?>
+
+    /** The app chosen in the rail, or null while following whatever plays. */
+    val selection: StateFlow<SourceSelection?>
+
+    /** Packages that currently have a media session with something to show. */
+    val sessionPackages: StateFlow<Set<String>>
+
+    /** True when any app is playing, shown or not (burn-in uses this, not just the shown session). */
+    val anyPlaying: StateFlow<Boolean>
+
+    /** Shows [packageName]'s session (or its empty state) from now on. Never launches the app. */
+    fun select(packageName: String, pinned: Boolean)
+
+    fun setPinned(pinned: Boolean)
+
+    /**
+     * Sends a MEDIA_PLAY key to [packageName]'s session, if it has one.
+     * @return false when the app has no session to send it to.
+     */
+    fun requestPlay(packageName: String): Boolean
 
     fun playPause()
     fun skipNext()

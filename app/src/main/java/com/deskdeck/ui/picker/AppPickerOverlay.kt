@@ -70,7 +70,7 @@ import com.deskdeck.ui.theme.SurfaceHigh
 import com.deskdeck.ui.theme.SurfaceLow
 
 enum class PickerMode {
-    /** From the "all apps" button: tap opens an app, the pin adds it to the rail. */
+    /** From the "all apps" button: tap shows the app's media here (never launches it), the pin adds it to the rail. */
     LAUNCH,
 
     /** From "+" or a long-press on the rail: tap pins/unpins, pinned apps can be reordered. */
@@ -220,7 +220,7 @@ private fun AppPickerPanel(
                             viewModel.togglePin(app.packageName)
                         } else {
                             onDismiss()
-                            viewModel.launch(app.packageName)
+                            viewModel.select(app.packageName)
                         }
                     },
                     onTogglePin = { viewModel.togglePin(app.packageName) },
