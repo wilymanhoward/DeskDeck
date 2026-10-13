@@ -87,6 +87,7 @@ import kotlinx.coroutines.delay
 private enum class Category(val titleRes: Int) {
     SCREEN(R.string.settings_cat_screen),
     SOURCES(R.string.settings_cat_sources),
+    NOTIFICATIONS(R.string.settings_cat_notifications),
     LYRICS(R.string.settings_cat_lyrics),
     CLOCK(R.string.settings_cat_clock),
     APPEARANCE(R.string.settings_cat_appearance),
@@ -155,6 +156,7 @@ fun SettingsScreen(onBack: () -> Unit, viewModel: SettingsViewModel = hiltViewMo
                 when (category) {
                     Category.SCREEN -> ScreenSettings(settings, viewModel)
                     Category.SOURCES -> SourceSettings(settings, viewModel)
+                    Category.NOTIFICATIONS -> BannerSettings(settings, viewModel)
                     Category.LYRICS -> LyricsSettings(settings, viewModel)
                     Category.CLOCK -> ClockSettings(settings, viewModel)
                     Category.APPEARANCE -> AppearanceSettings(settings, viewModel)
@@ -294,6 +296,51 @@ private fun SourceSettings(s: AppSettings, vm: SettingsViewModel) {
             subtitle = stringResource(R.string.settings_media_browser_detail),
             checked = s.mediaBrowserResume,
         ) { v -> vm.update { it.copy(mediaBrowserResume = v) } }
+    }
+}
+
+@Composable
+private fun BannerSettings(s: AppSettings, vm: SettingsViewModel) {
+    val n = s.notifications
+    val apps by vm.notificationApps.collectAsStateWithLifecycle()
+    SettingCard {
+        SwitchRow(stringResource(R.string.settings_banners), stringResource(R.string.settings_banners_detail), n.banners) { v ->
+            vm.updateNotifications { it.copy(banners = v) }
+        }
+        SwitchRow(
+            title = stringResource(R.string.settings_banner_hide_content),
+            subtitle = stringResource(R.string.settings_banner_hide_content_detail),
+            checked = n.hideContent,
+            enabled = n.banners,
+        ) { v -> vm.updateNotifications { it.copy(hideContent = v) } }
+        SwitchRow(
+            title = stringResource(R.string.settings_banner_dnd),
+            subtitle = stringResource(R.string.settings_banner_dnd_detail),
+            checked = n.respectDnd,
+            enabled = n.banners,
+        ) { v -> vm.updateNotifications { it.copy(respectDnd = v) } }
+        SliderRow(
+            title = stringResource(R.string.settings_banner_duration),
+            value = n.durationSec.toFloat(),
+            range = SettingsRanges.bannerDurationSec.first.toFloat()..SettingsRanges.bannerDurationSec.last.toFloat(),
+            steps = SettingsRanges.bannerDurationSec.last - SettingsRanges.bannerDurationSec.first - 1,
+            valueLabel = { stringResource(R.string.settings_seconds, it.roundToInt()) },
+            enabled = n.banners,
+            onValueChangeFinished = { v -> vm.updateNotifications { it.copy(durationSec = v.roundToInt()) } },
+        )
+    }
+    SettingCard {
+        RowText(
+            title = stringResource(R.string.settings_banner_apps),
+            subtitle = stringResource(R.string.settings_banner_apps_detail),
+            enabled = n.banners,
+            modifier = Modifier.padding(horizontal = 24.dp, vertical = 14.dp),
+        )
+        apps.forEach { app ->
+            SwitchRow(title = app.label, subtitle = null, checked = !app.muted, enabled = n.banners) { allowed ->
+                vm.setBannersMuted(app.packageName, muted = !allowed)
+            }
+        }
     }
 }
 

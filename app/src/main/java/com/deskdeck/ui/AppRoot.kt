@@ -36,6 +36,9 @@ import com.deskdeck.ui.theme.DeskDeckTheme
 import com.deskdeck.ui.theme.LocalMotion
 import com.deskdeck.ui.theme.MotionSpec
 import com.deskdeck.ui.theme.rememberMotionSpec
+import com.deskdeck.ui.notifications.BannerHold
+import com.deskdeck.ui.notifications.BannerHost
+import com.deskdeck.ui.notifications.LocalBannerHold
 import com.deskdeck.ui.volume.VolumeHud
 import kotlin.math.roundToInt
 
@@ -54,6 +57,7 @@ fun AppRoot(viewModel: AppViewModel = hiltViewModel()) {
 
     val tracker = remember { InteractionTracker() }
     val motion = rememberMotionSpec()
+    val bannerHold = remember { BannerHold() }
     val shift by rememberPixelShift(settings.burnIn.pixelShift, settings.burnIn.pixelShiftDp)
 
     // DeskDeck never leaves the screen by itself: Back on the dashboard does nothing. Overlays
@@ -65,6 +69,7 @@ fun AppRoot(viewModel: AppViewModel = hiltViewModel()) {
             LocalAppSettings provides settings,
             LocalInteractionTracker provides tracker,
             LocalMotion provides motion,
+            LocalBannerHold provides bannerHold,
         ) {
             Box(
                 Modifier
@@ -103,6 +108,7 @@ fun AppRoot(viewModel: AppViewModel = hiltViewModel()) {
                         SettingsScreen(onBack = { settingsOpen = false })
                     }
                     // Above every screen (settings, ambient too) and inside the pixel shift.
+                    BannerHost()
                     VolumeHud()
                 }
                 BrightnessCapOverlay(cap = settings.burnIn.brightnessCap)

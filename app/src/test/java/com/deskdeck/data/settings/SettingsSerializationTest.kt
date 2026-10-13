@@ -40,6 +40,13 @@ class SettingsSerializationTest {
                 brightnessCap = 0.6f,
                 railOpacityDrift = false,
             ),
+            notifications = NotificationSettings(
+                banners = false,
+                mutedPackages = setOf("com.whatsapp", "com.google.android.gm"),
+                hideContent = true,
+                respectDnd = false,
+                durationSec = 8,
+            ),
         )
         val prefs = mutablePreferencesOf()
         writeSettings(prefs, custom)
@@ -53,11 +60,13 @@ class SettingsSerializationTest {
             intPreferencesKey("lyrics_font_size") to 500,
             floatPreferencesKey("burnin_brightness_cap") to 0.01f,
             intPreferencesKey("burnin_dim_after_min") to -3,
+            intPreferencesKey("notif_duration_sec") to 60,
         )
         val s = readSettings(prefs)
         assertEquals(AccentColor.BLUE, s.accent)
         assertEquals(SettingsRanges.lyricsFontSizeSp.last, s.lyricsFontSizeSp)
         assertEquals(SettingsRanges.brightnessCap.start, s.burnIn.brightnessCap)
         assertEquals(1, s.burnIn.dimAfterMin)
+        assertEquals(SettingsRanges.bannerDurationSec.last, s.notifications.durationSec)
     }
 }
