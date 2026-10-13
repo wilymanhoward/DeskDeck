@@ -64,6 +64,8 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.deskdeck.BuildConfig
 import com.deskdeck.R
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.platform.LocalContext
 import com.deskdeck.ui.spotify.openSignIn
 import com.deskdeck.ui.spotify.errorText
@@ -611,8 +613,18 @@ private fun <T> ChoiceRow(
     Column(Modifier.padding(horizontal = 24.dp, vertical = 12.dp)) {
         RowText(title, subtitle, enabled)
         Spacer(Modifier.height(10.dp))
+        // Segments share the row equally, so size it for the longest label plus the checkmark,
+        // rather than a fixed width that clips longer labels ("Stay on my choice").
+        val labels = options.map { label(it) }
+        val measurer = rememberTextMeasurer()
+        val labelStyle = MaterialTheme.typography.labelLarge
+        val density = LocalDensity.current
+        val segmentWidth = remember(labels, labelStyle, density) {
+            val longest = labels.maxOfOrNull { measurer.measure(it, labelStyle).size.width } ?: 0
+            with(density) { longest.toDp() } + SEGMENT_CHROME
+        }
         Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState())) {
-            SingleChoiceSegmentedButtonRow(Modifier.widthIn(min = (options.size * 140).dp.coerceAtMost(640.dp), max = 640.dp)) {
+            SingleChoiceSegmentedButtonRow(Modifier.widthIn(min = maxOf(140.dp, segmentWidth) * options.size)) {
                 options.forEachIndexed { index, option ->
                     SegmentedButton(
                         selected = option == selected,
@@ -620,7 +632,7 @@ private fun <T> ChoiceRow(
                         shape = SegmentedButtonDefaults.itemShape(index, options.size),
                         enabled = enabled,
                         modifier = Modifier.heightIn(min = Dimens.minTouch),
-                    ) { Text(label(option), maxLines = 1, softWrap = false) }
+                    ) { Text(labels[index], maxLines = 1, softWrap = false) }
                 }
             }
         }
@@ -689,3 +701,6 @@ private fun AccentSwatch(accent: AccentColor, selected: Boolean, onClick: () -> 
 }
 
 // endregion
+
+/** A segment's padding, checkmark and gap around its label. */
+private val SEGMENT_CHROME = 72.dp

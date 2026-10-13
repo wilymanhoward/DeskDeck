@@ -7,11 +7,16 @@ AMOLED tablets that sit on a desk all day. No maps, no navigation.
 - **Works with any player** that publishes a media session: Spotify, YouTube Music, Apple Music,
   YouTube, podcast apps… No per-app SDKs or accounts.
 - **Now playing:** album art with colors taken from the cover, smooth seek bar, play/pause,
-  skip, shuffle and repeat.
-- **Synced lyrics** from [LRCLIB](https://lrclib.net): the current line is highlighted and centered,
-  tap a line to jump there, per-song timing correction, optional romanization. Lyrics are cached
-  for offline replays.
-- **Sidebar:** clock, live notification count, your pinned apps (tap to open), an all-apps picker.
+  skip, shuffle and repeat, and a volume slider.
+- **Apple Music-style lyrics** from [LRCLIB](https://lrclib.net): the current line fills word by
+  word, nearby lines blur, instrumental breaks breathe, and the lyrics wait for the sound to
+  reach you (Bluetooth delay is measured). Tap a line to jump there; per-song timing correction,
+  optional romanization, cached for offline replays.
+- **Sidebar:** clock, the notification bell, and your pinned music apps as source switchers: tap
+  one to show and control its music here. DeskDeck never leaves the screen.
+- **Notifications** inside DeskDeck: small banners by the bell, and a panel with all of them.
+- **Volume HUD:** the volume buttons show DeskDeck's own glass indicator instead of the system panel.
+- **Spotify library** (optional): browse your playlists and start one on this tablet.
 - **Burn-in protection:** pixel shift, idle dimming, a drifting ambient mode, a dim paused clock,
   a brightness cap, and keep-screen-on rules.
 
@@ -28,7 +33,7 @@ any Android 8.0+ tablet.
   with Android Studio (JBR 25).
 - Android SDK with platform 37 (`compileSdk 37`, `targetSdk 35`, `minSdk 26`). Android Studio
   offers to install it on first sync.
-- Internet access on the tablet (lyrics).
+- Internet access on the tablet (lyrics, and the optional Spotify library).
 
 Toolchain: Gradle 9.8.1 (wrapper), Android Gradle Plugin 9.4.1 with built-in Kotlin 2.4.21, KSP 2.3.
 
@@ -69,19 +74,21 @@ $env:JAVA_HOME = "C:\Program Files\Android\Android Studio\jbr"; .\gradlew.bat in
 ./gradlew testDebugUnitTest lintDebug
 ```
 
-136 JVM unit tests cover the logic that doesn't need a device:
+180 JVM unit tests cover the logic that doesn't need a device:
 
 | Area | Tests |
 | --- | --- |
-| Lyrics | LRC parser, title cleaning and display titles, search-result matching, repository caching and offsets |
+| Lyrics | LRC parser incl. enhanced word stamps, word-timing estimator, instrumental-gap rows, title cleaning, search-result matching, repository caching and offsets |
 | Playback | position interpolation, active lyric line lookup, time formatting |
-| Media sessions | session selection, metadata mapping, ad/podcast/live detection, shuffle/repeat resolution |
+| Media sessions | session selection, metadata mapping, ad/podcast/live detection, shuffle/repeat resolution, the resume ladder |
+| Notifications & volume | banner rules (silent, ongoing, DND, muted apps), notification counting, volume levels and limits |
+| Spotify | PKCE (RFC 7636 vector), Web API error classification |
 | Burn-in | the full display-mode / keep-screen-on policy, pixel shift orbit, drift, rail opacity |
-| Other | settings persistence, rail pins, notification counting, app search, letterbox detection, script detection |
+| Other | settings persistence, rail pins, app search, letterbox detection, script detection |
 
 ### Release build
 
-`./gradlew assembleRelease` produces an R8-shrunk APK (about 2 MB). It's unsigned. Configure your
+`./gradlew assembleRelease` produces an R8-shrunk APK (about 2.5 MB, most of it the Inter font). It's unsigned. Configure your
 own signing config before distributing.
 
 ---
@@ -89,8 +96,9 @@ own signing config before distributing.
 ## Granting Notification Access on the tablet
 
 Android only lets an app see other apps' media sessions if it's an enabled **notification
-listener**. DeskDeck never reads or stores notification contents. It only uses that access for media
-sessions and to count notifications for the sidebar badge.
+listener**. DeskDeck uses that access for media sessions, the bell's count, and its own
+notification banners and panel. Notification text is read only to show it there, kept in memory
+while shown, and never stored or sent anywhere.
 
 1. Open DeskDeck. The welcome screen explains this and has an **Open settings** button.
 2. On the screen that opens, turn on **DeskDeck** and confirm the dialog.
@@ -111,10 +119,16 @@ button instead of the player.
 ## Using DeskDeck
 
 - **Sidebar:**
-  - Tap an app to open it. Apps that aren't installed are greyed out and open their Play Store page.
-  - The app that's playing has a blue marker.
-  - **+** or a long-press on an app edits the sidebar: add, remove, reorder.
-  - **⊞** opens all apps. Tap to open one, or tap its pin to add it to the sidebar.
+  - Tap a music app to show it here: its song, controls and lyrics. If it isn't playing, DeskDeck
+    tries to start it in the background; it never opens the app. The selected app has a glowing
+    ring, and the one playing has a moving equalizer.
+  - Long-press an app for **Open** (the only way DeskDeck opens another app), **Pin source**,
+    **Spotify library** (Spotify, when set up) and **Remove**. Apps that aren't installed are
+    greyed out and offer **Get app** instead.
+  - **+** adds apps to the sidebar. **⊞** shows all apps: tap one to show its music here, or tap
+    its pin to add it to the sidebar.
+  - **Settings › Sources**: follow whichever app starts playing (default) or stay on your choice.
+  - The bell opens the notification panel (see below).
 - **Lyrics:**
   - The current line fills word by word as it's sung; instrumental breaks show three dots.
   - Lyrics wait for the sound to reach you: DeskDeck measures the audio output's delay (about
@@ -144,7 +158,8 @@ button instead of the player.
     the seek bar or the volume slider.
   - **Settings › Notifications**: turn banners off, hide message content, follow Do Not Disturb
     (with its exceptions), set how long banners stay, and turn banners off per app.
-- **Settings** (gear icon): screen & burn-in, lyrics, clock, appearance, sidebar.
+- **Settings** (gear icon): screen & burn-in, sources (incl. the Spotify library), notifications,
+  lyrics (incl. audio delay), clock, appearance, sidebar.
 
 ### Burn-in protection
 
@@ -229,6 +244,8 @@ Tokens are stored encrypted with a key kept in the Android Keystore and refreshe
 - YouTube Music and Apple Music have no comparable public API for this, so their sidebar icons
   stay source switchers only.
 
+---
+
 ## Architecture
 
 Single activity, Jetpack Compose with Material 3, MVVM with `StateFlow`, Hilt for dependency
@@ -236,17 +253,22 @@ injection, coroutines.
 
 ```
 com.deskdeck
-├─ domain/     Track, PlaybackInfo (position interpolation), NowPlaying, Lyrics, RailApp
+├─ domain/     Track, PlaybackInfo (position interpolation), NowPlaying, Lyrics (lines, words,
+│              gap rows), Volume, RailApp
 ├─ media/      MediaListenerService (notification listener), NotificationAccess, NotificationCounter,
-│              MediaSessionRepository + SessionEntry (framework MediaController; compat controller
-│              only for shuffle/repeat), SessionSelector, MediaMapping, ArtworkLoader, Letterbox
-├─ data/       lyrics/ (LyricsProvider, LrclibProvider, LrcParser, TitleCleaner, LyricMatcher,
-│              DefaultLyricsRepository), db/ (Room cache and offsets), settings/ (DataStore),
-│              NetworkMonitor
+│              NotificationBanners, MediaSessionRepository + SessionEntry (framework MediaController;
+│              compat controller only for shuffle/repeat), SessionSelector, MediaMapping,
+│              VolumeController, OutputLatency, ArtworkLoader, Letterbox
+│  └─ sources/ PlaybackSource, ResumeChain, SourceSwitcher (rail taps; never launches apps)
+├─ data/       lyrics/ (LyricsProvider, LrclibProvider, LrcParser, WordTiming, TitleCleaner,
+│              LyricMatcher, DefaultLyricsRepository), spotify/ (SpotifyAuth, TokenStore, SpotifyApi,
+│              SpotifyLibrary), db/ (Room: lyrics cache, offsets, playlist cache), settings/
+│              (DataStore), NetworkMonitor
 ├─ launcher/   InstalledAppsRepository (LauncherApps), RailAppsRepository, AppLauncher, AppIconFetcher
 ├─ burnin/     BurnInPolicy (pure state machine), Motion (pixel shift, drift, rail opacity), Compose glue
 ├─ ui/         AppRoot, dashboard/, components/ (LeftRail, NowPlayingCard, SeekBar, LyricsPanel…),
-│              onboarding/, picker/, settings/, ambient/, lyrics/Romanizer, theme/
+│              notifications/, volume/, spotify/, onboarding/, picker/, settings/, ambient/,
+│              lyrics/, theme/ (Motion, Glass, Type)
 └─ di/         Hilt modules
 ```
 
@@ -262,8 +284,39 @@ com.deskdeck
     search, then a free-text search. The best result is picked by title, artist and duration.
   - **Retries:** "Not found" is retried after 3 days. A failed lookup retries automatically when
     the network comes back.
+- **Sources:** a rail tap selects the app (`SourceSwitcher`). If it has no session, the
+  `ResumeChain` tries its `PlaybackSource`s in order: a play key to its paused session, a
+  media-button broadcast to its receiver, and (if enabled) its media browser, waiting for a session
+  after each. If none works, the card offers **Open …**.
+- **Lyric timing:** lines without word stamps get estimated words (`WordTiming`), and
+  `buildLyricRows` adds instrumental gaps. Lyric time is the position plus the per-song offset,
+  minus the audio output delay (`OutputLatency`, measured with a silent `AudioTrack`) and the
+  per-speaker extra delay. Everything that moves per frame reads the clock in the draw phase.
+- **Volume:** `VolumeController` handles the volume keys and follows the shown session: an
+  adjustable remote volume (Cast) through its `MediaController`, otherwise the music stream,
+  always without the system panel. Changes from anywhere show the HUD.
+- **Notifications:** the listener counts what a person would call unread, offers each new one to
+  `NotificationBanners` (pure rules in `shouldShowBanner`), and reads the full list only while
+  the panel is open.
+- **Spotify:** PKCE sign-in in a Custom Tab, tokens encrypted with a Keystore key, playlists cached
+  in Room, playback started on this tablet's Spotify Connect device.
 - **Burn-in:** `BurnInPolicy` decides the display mode and keep-screen-on from idle time, playback
   and settings. The UI re-evaluates it exactly when the next threshold is due.
+
+### Design and motion
+
+- **Motion:** `ui/theme/Motion.kt` holds the shared springs and durations. Android's **Remove
+  animations** setting is followed live: transitions become short fades, decorative movement
+  (background drift, equalizer, lyric wave, word lift, breathing dots) stops, and press/album
+  scaling is off. Ambient burn-in protection keeps infrequent position changes instead of travel.
+- **Glass:** translucent fills, a top highlight and a hairline border over DeskDeck's own blurred
+  album-color background; it never captures or blurs other content (no extra full-screen blur
+  pass on an always-on tablet). Below Android 12 panels use solid tonal fills.
+- **Background:** colors capped to dark tones, drift at about 15 Hz in the draw phase, paused when
+  the activity is in the background or something covers the dashboard.
+- **Performance:** measured on the Tab S9 FE (90 Hz) during playback with lyrics: about 88 fps,
+  1.5 % of frames over their deadline (`adb shell dumpsys gfxinfo com.deskdeck`). Lyric blur is a
+  layer effect and only the word being sung redraws each frame.
 
 ### Dependencies and why
 
@@ -273,7 +326,8 @@ com.deskdeck
 | Hilt (+ hilt-lifecycle-viewmodel-compose) | Dependency injection, including the notification listener service |
 | androidx.media (compat) | Shuffle/repeat **state** lives in the compat "extra binder", which the framework `MediaController` can't read. Used only for that (it's deprecated in favor of Media3, which uses the same mechanism internally for other apps' sessions). |
 | Retrofit + Moshi (codegen via KSP) + OkHttp 4.12 | LRCLIB client. Codegen adapters avoid reflection and keep R8 simple. OkHttp stays on 4.x because Retrofit 3 and Coil are built against it. |
-| Room | Lyrics cache and per-song timing offsets |
+| Room | Lyrics cache, per-song timing offsets, Spotify playlist cache |
+| AndroidX Browser | Spotify sign-in in a Custom Tab over DeskDeck |
 | DataStore Preferences | Settings and pinned apps |
 | Coil 3 | Album art from URIs, plus launcher icons through a small custom fetcher (memory-cached) |
 | Palette | Card colors from album art |
@@ -285,6 +339,9 @@ screen plus two overlays), and transliteration libraries (Android's built-in ICU
 
 ## Known limitations
 
+- **Starting an idle app** without opening it is best-effort: a play key, a media-button
+  broadcast, or (optional) its media browser. Some apps ignore all three until they've been opened
+  once; then the card says "Start playing from …" with an **Open …** button.
 - **Shuffle/repeat** are best-effort. With apps built on Android's media compat libraries (Spotify,
   YouTube Music) they work with real state. Apps that only offer custom actions can be toggled, but
   their state isn't shown. Otherwise the buttons are disabled.
@@ -336,27 +393,3 @@ Copyright © The Inter Project Authors, licensed under the SIL Open Font License
 Only `InterVariable.ttf` (879,708 bytes) is bundled; the full license is in
 [`app/src/main/assets/licenses/Inter-OFL.txt`](app/src/main/assets/licenses/Inter-OFL.txt).
 The outline icons are project-owned vector paths; no Apple fonts or symbols are bundled.
-
-## R2 visual review
-
-The three-zone dashboard now uses Inter, translucent panels, an album-colored background,
-and thin outline icons. Playback controls retain their media-session behavior. The seek pill
-expands while touched, art settles back when paused, play/pause morphs, and the source ring
-moves between rail icons. Settings, onboarding, the app picker and ambient mode share the styling.
-
-`ui/theme/Motion.kt` holds the spring and transition specifications. Android's **Remove animations**
-setting is observed live: entry/track transitions use short fades, decorative background and
-equalizer movement stops, and press/album scaling is disabled. Ambient burn-in protection retains
-infrequent position changes rather than continuous travel. The root pixel shift remains a separate
-burn-in measure controlled by its own setting.
-
-Glass shows DeskDeck's own soft radial-gradient background through translucent fills, highlights
-and hairline borders. It does not capture or blur foreground text or other apps. This avoids an
-extra full-screen blur pass on an always-on tablet; Android versions below 12 use solid tonal
-panel fills. Background colors are capped to dark tones, and drift updates at approximately 15 Hz
-in the draw phase. Drift stops when the activity is paused or a settings, picker, ambient or
-paused-clock screen covers it. UI transitions use the display's frame clock; no fixed 120-fps
-claim is made without device profiling.
-
-R2 is a visual review milestone. Volume HUD, notification banners, word-timed lyrics and the
-Spotify library remain scheduled for R3–R6. Review the installed tablet build before continuing.

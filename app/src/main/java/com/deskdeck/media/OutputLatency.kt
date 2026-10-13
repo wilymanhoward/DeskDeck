@@ -1,5 +1,6 @@
 package com.deskdeck.media
 
+import android.annotation.SuppressLint
 import android.content.Context
 import android.media.AudioAttributes
 import android.media.AudioDeviceCallback
@@ -45,7 +46,7 @@ data class OutputRoute(val id: String, val name: String?, val bluetooth: Boolean
  */
 @Singleton
 class OutputLatency @Inject constructor(
-    @param:ApplicationContext context: Context,
+    @ApplicationContext context: Context,
     @param:ApplicationScope private val scope: CoroutineScope,
 ) {
     private val audio = context.getSystemService(AudioManager::class.java)
@@ -163,6 +164,9 @@ class OutputLatency @Inject constructor(
         const val MAX_PLAUSIBLE_MS = 2_000L
         const val BLUETOOTH_TYPICAL_MS = 300L
         const val SPEAKER_TYPICAL_MS = 40L
+        // The BLE types are API 31 constants, inlined at compile time; on older Android no device
+        // reports them, so listing them is harmless.
+        @SuppressLint("InlinedApi")
         val BLUETOOTH_TYPES = setOf(
             AudioDeviceInfo.TYPE_BLUETOOTH_A2DP,
             AudioDeviceInfo.TYPE_BLE_HEADSET,

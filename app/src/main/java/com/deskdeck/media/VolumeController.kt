@@ -39,7 +39,7 @@ import kotlinx.coroutines.launch
 class VolumeController @Inject constructor(
     @param:ApplicationContext private val context: Context,
     sessions: MediaSessionRepository,
-    @param:ApplicationScope scope: CoroutineScope,
+    @ApplicationScope scope: CoroutineScope,
 ) {
     private val audio = context.getSystemService(AudioManager::class.java)
     private val handler = Handler(Looper.getMainLooper())

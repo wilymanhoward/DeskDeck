@@ -1,11 +1,13 @@
 package com.deskdeck.ui.components
 
 import android.os.SystemClock
+import kotlin.math.roundToInt
+import androidx.compose.ui.graphics.TileMode
+import androidx.compose.ui.graphics.BlurEffect
 import android.os.Build
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
@@ -17,8 +19,6 @@ import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
-import androidx.compose.ui.draw.BlurredEdgeTreatment
-import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.clearAndSetSemantics
@@ -84,9 +84,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithContent
-import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -122,7 +120,6 @@ import com.deskdeck.ui.theme.LyricTextStyle
 import com.deskdeck.ui.theme.MotionSpec
 import com.deskdeck.ui.theme.MutedText
 import com.deskdeck.ui.theme.SurfaceHigh
-import com.deskdeck.ui.theme.glass
 import kotlin.math.abs
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -409,8 +406,8 @@ private fun LyricLineItem(
         label = "lineScale",
     )
     // Farther lines are softer; blur needs Android 12, below that alpha alone does the job.
-    val blur by animateDpAsState(
-        targetValue = if (active) 0.dp else (abs(distance).coerceAtMost(4) * 0.8f).dp,
+    val blurDp by animateFloatAsState(
+        targetValue = if (active) 0f else abs(distance).coerceAtMost(4) * 0.8f,
         animationSpec = motion.fade(),
         label = "lineBlur",
     )
@@ -439,8 +436,11 @@ private fun LyricLineItem(
                 scaleY = scale
                 // Left-aligned lines shrink toward their left edge, so the text column stays straight.
                 transformOrigin = TransformOrigin(0f, 0.5f)
+                // Read here, in the layer, so a changing blur never recomposes the row. Rounded to
+                // quarter pixels so a transition doesn't build a new effect on every frame.
+                val radius = (blurDp.dp.toPx() * 4).roundToInt() / 4f
+                renderEffect = if (Build.VERSION.SDK_INT >= 31 && radius > 0f) BlurEffect(radius, radius, TileMode.Decal) else null
             }
-            .then(if (Build.VERSION.SDK_INT >= 31 && blur > 0.dp) Modifier.blur(blur, BlurredEdgeTreatment.Unbounded) else Modifier)
             .semantics(mergeDescendants = true) {},
     ) {
         if (line.words.isEmpty()) {
@@ -475,10 +475,14 @@ private fun LyricLineItem(
 private fun SungWord(word: LyricWord, style: TextStyle, clock: () -> Long) {
     val reduced = LocalMotion.current.reduced
     val text = word.text.trimEnd()
+    // Derived per word: a word before or after its time keeps a constant value, so only the word
+    // being sung is redrawn each frame.
+    val progress = remember(word, clock) { derivedStateOf { word.progressAt(clock()) } }
+    val emphasis = remember(word, clock) { derivedStateOf { word.emphasisAt(clock()) } }
     Box(
         Modifier
             .graphicsLayer {
-                if (!reduced) translationY = -WORD_LIFT.toPx() * word.emphasisAt(clock())
+                if (!reduced) translationY = -WORD_LIFT.toPx() * emphasis.value
             },
     ) {
         Text(text, style = style, color = CappedWhite.copy(alpha = UNSUNG_ALPHA))
@@ -489,7 +493,7 @@ private fun SungWord(word: LyricWord, style: TextStyle, clock: () -> Long) {
             modifier = Modifier
                 .graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
                 .drawWithContent {
-                    val progress = word.progressAt(clock())
+                    val progress = progress.value
                     if (progress <= 0f) return@drawWithContent
                     drawContent()
                     if (progress >= 1f) return@drawWithContent
@@ -546,7 +550,8 @@ private fun GapItem(gap: LyricRow.Gap, distance: Int, clock: () -> Long, waveOff
             }
             .clearAndSetSemantics {},
     ) {
-        val now = clock()
+        // Inactive gaps don't read the clock, so they aren't redrawn every frame.
+        val now = if (active) clock() else gap.startMs
         val progress = if (active) gap.progressAt(now) else 0f
         // Shrink away during the last moments of the gap.
         val ending = if (active) ((gap.endMs - now) / GAP_EXIT_MS.toFloat()).coerceIn(0f, 1f) else 1f

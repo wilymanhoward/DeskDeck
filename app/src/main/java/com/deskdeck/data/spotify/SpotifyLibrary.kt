@@ -3,6 +3,7 @@ package com.deskdeck.data.spotify
 import android.content.Context
 import android.os.Build
 import android.provider.Settings
+import androidx.core.content.edit
 import com.deskdeck.data.db.PlaylistDao
 import com.deskdeck.data.db.PlaylistEntity
 import com.deskdeck.media.sources.MediaButtonSource
@@ -151,14 +152,14 @@ class SpotifyLibrary @Inject constructor(
         val match = devices.firstOrNull { it.id == remembered }
             ?: devices.firstOrNull { it.name.lowercase() in names }
             ?: devices.singleOrNull { it.type.equals("Tablet", ignoreCase = true) }
-        match?.id?.let { devicePrefs.edit().putString(KEY_DEVICE_ID, it).apply() }
+        match?.id?.let { devicePrefs.edit { putString(KEY_DEVICE_ID, it) } }
         return ApiResult.Ok(match?.id)
     }
 
     suspend fun signOut() {
         auth.signOut()
         dao.clear()
-        devicePrefs.edit().clear().apply()
+        devicePrefs.edit { clear() }
     }
 
     /** One authorized call: refreshes and retries once on 401, and maps failures to [SpotifyError]. */

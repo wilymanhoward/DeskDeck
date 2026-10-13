@@ -4,6 +4,7 @@ import android.content.ActivityNotFoundException
 import android.content.Context
 import androidx.activity.compose.BackHandler
 import androidx.browser.customtabs.CustomTabsIntent
+import androidx.core.net.toUri
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
@@ -50,6 +51,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -290,18 +292,21 @@ private fun PlaylistTile(
 /** A breathing dark veil over the cover while playback starts; says so if Spotify had to be woken. */
 @Composable
 private fun StartingOverlay(waking: Boolean) {
-    val reduced = LocalMotion.current.reduced
-    val pulse = rememberInfiniteTransition(label = "starting").animateFloat(
-        initialValue = 0.45f,
-        targetValue = 0.7f,
-        animationSpec = infiniteRepeatable(tween(700), RepeatMode.Reverse),
-        label = "startingPulse",
-    )
+    // Steady with reduced motion; otherwise read in the layer, so the pulse never recomposes.
+    val pulse = if (LocalMotion.current.reduced) {
+        rememberUpdatedState(0.6f)
+    } else {
+        rememberInfiniteTransition(label = "starting").animateFloat(
+            initialValue = 0.45f,
+            targetValue = 0.7f,
+            animationSpec = infiniteRepeatable(tween(700), RepeatMode.Reverse),
+            label = "startingPulse",
+        )
+    }
     Box(
         Modifier
             .fillMaxSize()
-            // Read in the layer, so the pulse redraws without recomposing; steady with reduced motion.
-            .graphicsLayer { alpha = if (reduced) 0.6f else pulse.value }
+            .graphicsLayer { alpha = pulse.value }
             .background(Color.Black),
     )
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -384,7 +389,7 @@ fun openSignIn(context: Context, url: String) {
         .setShowTitle(true)
         .build()
     try {
-        tab.launchUrl(context, android.net.Uri.parse(url))
+        tab.launchUrl(context, url.toUri())
     } catch (_: ActivityNotFoundException) {
         // No browser at all: nothing to sign in with.
     }

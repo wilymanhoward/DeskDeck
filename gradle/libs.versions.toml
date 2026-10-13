@@ -18,6 +18,7 @@ okhttp = "4.12.0"
 moshi = "1.15.2"
 room = "2.8.5"
 datastore = "1.2.1"
+browser = "1.10.0"
 
 junit = "4.13.2"
 
@@ -44,6 +45,7 @@ androidx-palette = { group = "androidx.palette", name = "palette-ktx", version.r
 coil = { group = "io.coil-kt.coil3", name = "coil", version.ref = "coil" }
 coil-network-okhttp = { group = "io.coil-kt.coil3", name = "coil-network-okhttp", version.ref = "coil" }
 coil-compose = { group = "io.coil-kt.coil3", name = "coil-compose", version.ref = "coil" }
+androidx-browser = { group = "androidx.browser", name = "browser", version.ref = "browser" }
 androidx-datastore-preferences = { group = "androidx.datastore", name = "datastore-preferences", version.ref = "datastore" }
 
 retrofit = { group = "com.squareup.retrofit2", name = "retrofit", version.ref = "retrofit" }

@@ -37,4 +37,11 @@ class NotificationCountTest {
     fun `own notifications are ignored`() {
         assertEquals(0, countUserNotifications(listOf(n("com.deskdeck")), "com.deskdeck"))
     }
+
+    @Test
+    fun `samsung's media mirror in system ui isn't counted`() {
+        val mirror = NotificationFacts("com.android.systemui", isOngoing = false, isClearable = true, isGroupSummary = false, channelId = "MediaOngoingActivity")
+        val screenshot = NotificationFacts("com.android.systemui", isOngoing = false, isClearable = true, isGroupSummary = false, channelId = "SCN")
+        assertEquals(1, countUserNotifications(listOf(mirror, screenshot), ownPackage = "com.deskdeck"))
+    }
 }

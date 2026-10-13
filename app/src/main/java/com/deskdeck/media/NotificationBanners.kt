@@ -68,7 +68,7 @@ fun shouldShowBanner(f: PostedFacts, ownPackage: String, settings: NotificationS
 @Singleton
 class NotificationBanners @Inject constructor(
     settingsRepository: SettingsRepository,
-    @param:ApplicationScope scope: CoroutineScope,
+    @ApplicationScope scope: CoroutineScope,
 ) {
     private val settings: StateFlow<AppSettings> =
         settingsRepository.settings.stateIn(scope, SharingStarted.Eagerly, AppSettings())

@@ -2,6 +2,8 @@ package com.deskdeck.data.spotify
 
 import android.content.Context
 import android.net.Uri
+import androidx.core.content.edit
+import androidx.core.net.toUri
 import com.deskdeck.BuildConfig
 import dagger.hilt.android.qualifiers.ApplicationContext
 import java.io.IOException
@@ -31,7 +33,7 @@ sealed interface SpotifyAccount {
  */
 @Singleton
 class SpotifyAuth @Inject constructor(
-    @param:ApplicationContext context: Context,
+    @ApplicationContext context: Context,
     private val store: TokenStore,
     private val accounts: SpotifyAccountsApi,
 ) {
@@ -58,9 +60,12 @@ class SpotifyAuth @Inject constructor(
     fun beginSignIn(): Uri {
         val verifier = Pkce.newVerifier()
         val state = Pkce.newState()
-        pending.edit().putString(KEY_VERIFIER, verifier).putString(KEY_STATE, state).apply()
+        pending.edit {
+            putString(KEY_VERIFIER, verifier)
+            putString(KEY_STATE, state)
+        }
         _account.value = SpotifyAccount.SigningIn
-        return Uri.parse("https://accounts.spotify.com/authorize").buildUpon()
+        return "https://accounts.spotify.com/authorize".toUri().buildUpon()
             .appendQueryParameter("client_id", clientId)
             .appendQueryParameter("response_type", "code")
             .appendQueryParameter("redirect_uri", REDIRECT_URI)
@@ -80,7 +85,7 @@ class SpotifyAuth @Inject constructor(
     suspend fun completeSignIn(redirect: Uri, loadProfile: suspend (String) -> SpotifyUser?) {
         val verifier = pending.getString(KEY_VERIFIER, null)
         val expectedState = pending.getString(KEY_STATE, null)
-        pending.edit().clear().apply()
+        pending.edit { clear() }
         val code = redirect.getQueryParameter("code")
         if (verifier == null || code == null || redirect.getQueryParameter("state") != expectedState) {
             // Cancelled ("error=access_denied"), or a redirect we didn't start.
