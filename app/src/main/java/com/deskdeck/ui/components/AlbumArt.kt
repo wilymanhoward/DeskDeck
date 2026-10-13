@@ -1,14 +1,18 @@
 package com.deskdeck.ui.components
 
 import android.graphics.Bitmap
-import androidx.compose.animation.Crossfade
-import androidx.compose.animation.core.tween
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
@@ -28,6 +32,8 @@ import com.deskdeck.R
 import com.deskdeck.domain.ArtworkColors
 import com.deskdeck.ui.theme.CappedWhite
 import com.deskdeck.ui.theme.Dimens
+import com.deskdeck.ui.theme.LocalMotion
+import com.deskdeck.ui.theme.MotionSpec
 import com.deskdeck.ui.theme.SurfaceHighest
 import com.deskdeck.ui.theme.SurfaceMid
 import com.deskdeck.ui.theme.withTone
@@ -46,10 +52,17 @@ fun AlbumArt(
     modifier: Modifier = Modifier,
 ) {
     val description = stringResource(R.string.np_album_art)
-    Crossfade(
+    val motion = LocalMotion.current
+    AnimatedContent(
         // Colors only matter for the placeholder; with a bitmap, late-arriving colors aren't a new image.
         targetState = ArtKey(trackId, artwork, if (artwork == null) colors else null),
-        animationSpec = tween(durationMillis = 600),
+        transitionSpec = {
+            val enter = fadeIn(motion.fade(MotionSpec.LONG_MS))
+            val exit = fadeOut(motion.fade())
+            if (motion.reduced || initialState.trackId == targetState.trackId) enter togetherWith exit
+            else (enter + slideInHorizontally(motion.gentle()) { it / 16 }) togetherWith
+                (exit + slideOutHorizontally(motion.gentle()) { -it / 16 })
+        },
         modifier = modifier.semantics { contentDescription = description },
         label = "albumArt",
     ) { key ->

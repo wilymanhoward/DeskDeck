@@ -3,7 +3,6 @@ package com.deskdeck.ui
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
@@ -35,6 +34,7 @@ import com.deskdeck.ui.settings.LocalAppSettings
 import com.deskdeck.ui.settings.SettingsScreen
 import com.deskdeck.ui.theme.DeskDeckTheme
 import com.deskdeck.ui.theme.LocalMotion
+import com.deskdeck.ui.theme.MotionSpec
 import com.deskdeck.ui.theme.rememberMotionSpec
 import kotlin.math.roundToInt
 
@@ -77,7 +77,7 @@ fun AppRoot(viewModel: AppViewModel = hiltViewModel()) {
                 ) {
                     AnimatedContent(
                         targetState = accessGranted || onboardingSkipped,
-                        transitionSpec = { fadeIn(tween(500)) togetherWith fadeOut(tween(300)) },
+                        transitionSpec = { fadeIn(motion.fade(MotionSpec.LONG_MS)) togetherWith fadeOut(motion.fade()) },
                         label = "appRoot",
                     ) { showDashboard ->
                         if (showDashboard) {
@@ -97,7 +97,7 @@ fun AppRoot(viewModel: AppViewModel = hiltViewModel()) {
                             )
                         }
                     }
-                    AnimatedVisibility(visible = settingsOpen, enter = fadeIn(tween(250)), exit = fadeOut(tween(200))) {
+                    AnimatedVisibility(visible = settingsOpen, enter = fadeIn(motion.fade()), exit = fadeOut(motion.fade())) {
                         KeepScreenOn(enabled = true)
                         SettingsScreen(onBack = { settingsOpen = false })
                     }

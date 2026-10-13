@@ -1,7 +1,6 @@
 package com.deskdeck.ui.dashboard
 
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
@@ -39,6 +38,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.deskdeck.R
 import com.deskdeck.burnin.DisplayMode
@@ -56,6 +56,7 @@ import com.deskdeck.ui.ambient.DimOverlay
 import com.deskdeck.ui.ambient.PausedClockScreen
 import com.deskdeck.ui.common.rememberPlaybackPosition
 import com.deskdeck.ui.components.CardPalette
+import com.deskdeck.ui.components.FluidBackground
 import com.deskdeck.ui.components.LeftRail
 import com.deskdeck.ui.components.LyricsPanel
 import com.deskdeck.ui.components.NowPlayingCard
@@ -67,7 +68,10 @@ import com.deskdeck.ui.picker.PickerMode
 import com.deskdeck.ui.settings.LocalAppSettings
 import com.deskdeck.ui.theme.DeskDeckTheme
 import com.deskdeck.ui.theme.Dimens
+import com.deskdeck.ui.theme.LocalMotion
+import com.deskdeck.ui.theme.MotionSpec
 import com.deskdeck.ui.theme.TrueBlack
+import com.deskdeck.ui.theme.screenEntrance
 
 @Composable
 fun DashboardRoute(
@@ -84,6 +88,12 @@ fun DashboardRoute(
     val railState by viewModel.railState.collectAsStateWithLifecycle()
     val emptySource by viewModel.emptySource.collectAsStateWithLifecycle()
     val anyPlaying by viewModel.anyPlaying.collectAsStateWithLifecycle()
+    val motion = LocalMotion.current
+    var foreground by remember { mutableStateOf(false) }
+    LifecycleResumeEffect(Unit) {
+        foreground = true
+        onPauseOrDispose { foreground = false }
+    }
     val settings = LocalAppSettings.current
     var picker by rememberSaveable { mutableStateOf<PickerMode?>(null) }
     var railSheet by remember { mutableStateOf<RailSheetRequest?>(null) }
@@ -132,6 +142,7 @@ fun DashboardRoute(
             position = position,
             railState = railState,
             emptySource = emptySource,
+            animateBackground = foreground && dashboardVisible && burnInEnabled && picker == null && railSheet == null,
         )
         AppPickerOverlay(mode = picker, onDismiss = { picker = null })
         RailActionSheet(
@@ -144,15 +155,15 @@ fun DashboardRoute(
         DimOverlay(visible = burnIn.mode == DisplayMode.DIMMED, level = settings.burnIn.dimLevel, onWake = wake)
         AnimatedVisibility(
             visible = burnIn.mode == DisplayMode.AMBIENT,
-            enter = fadeIn(tween(1_500)),
-            exit = fadeOut(tween(300)),
+            enter = fadeIn(motion.fade(MotionSpec.AMBIENT_MS)),
+            exit = fadeOut(motion.fade()),
         ) {
             AmbientScreen(nowPlaying = nowPlaying, lyrics = lyrics, position = position, onWake = wake)
         }
         AnimatedVisibility(
             visible = burnIn.mode == DisplayMode.PAUSED_CLOCK,
-            enter = fadeIn(tween(1_500)),
-            exit = fadeOut(tween(300)),
+            enter = fadeIn(motion.fade(MotionSpec.AMBIENT_MS)),
+            exit = fadeOut(motion.fade()),
         ) {
             PausedClockScreen(onWake = wake)
         }
@@ -171,6 +182,7 @@ fun DashboardScreen(
     position: State<Long> = rememberPlaybackPosition(nowPlaying?.playback, nowPlaying?.track?.durationMs),
     railState: RailState = RailState(highlightPackage = nowPlaying?.sourcePackage),
     emptySource: EmptySourceUi? = null,
+    animateBackground: Boolean = false,
 ) {
     val settings = LocalAppSettings.current
     val palette = animatedCardPalette(
@@ -182,17 +194,25 @@ fun DashboardScreen(
         modifier = Modifier
             .fillMaxSize()
             .background(TrueBlack)
-            .windowInsetsPadding(WindowInsets.displayCutout)
-            .padding(Dimens.screenPadding),
+            .screenEntrance(),
     ) {
+        FluidBackground(
+            colors = nowPlaying?.colors?.takeIf { settings.dynamicColors },
+            fallbackAccent = MaterialTheme.colorScheme.primary,
+            animate = animateBackground,
+            modifier = Modifier.fillMaxSize(),
+        )
         val compact = maxWidth < Dimens.compactWidthThreshold
         Row(
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier.fillMaxSize()
+                .windowInsetsPadding(WindowInsets.displayCutout)
+                .padding(Dimens.screenPadding),
             horizontalArrangement = Arrangement.spacedBy(Dimens.zoneGap),
         ) {
             LeftRail(
                 apps = railApps,
                 state = railState,
+                animate = animateBackground,
                 notificationCount = notificationCount,
                 onAppClick = actions::onRailAppClick,
                 onAppLongClick = actions::onRailAppLongClick,

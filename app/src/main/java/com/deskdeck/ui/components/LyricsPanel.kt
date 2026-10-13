@@ -3,11 +3,7 @@ package com.deskdeck.ui.components
 import android.os.SystemClock
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.spring
-import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
@@ -69,8 +65,8 @@ import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -85,10 +81,12 @@ import com.deskdeck.ui.settings.LocalAppSettings
 import com.deskdeck.ui.theme.ActiveLyricWhite
 import com.deskdeck.ui.theme.CappedWhite
 import com.deskdeck.ui.theme.Dimens
+import com.deskdeck.ui.theme.LocalMotion
 import com.deskdeck.ui.theme.LyricTextStyle
+import com.deskdeck.ui.theme.MotionSpec
 import com.deskdeck.ui.theme.MutedText
 import com.deskdeck.ui.theme.SurfaceHigh
-import com.deskdeck.ui.theme.SurfaceLowest
+import com.deskdeck.ui.theme.glass
 import kotlin.math.abs
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -106,13 +104,13 @@ fun LyricsPanel(
     actions: DashboardActions,
     modifier: Modifier = Modifier,
 ) {
+    val motion = LocalMotion.current
     AnimatedContent(
         targetState = state,
         contentKey = { it.contentKey() },
-        transitionSpec = { fadeIn(tween(400)) togetherWith fadeOut(tween(250)) },
+        transitionSpec = { fadeIn(motion.fade()) togetherWith fadeOut(motion.fade()) },
         modifier = modifier
-            .clip(RoundedCornerShape(Dimens.cardCorner))
-            .background(SurfaceLowest),
+            .glass(RoundedCornerShape(Dimens.cardCorner), tint = Color.Black.copy(alpha = 0.12f)),
         label = "lyricsState",
     ) { s ->
         when (s) {
@@ -162,6 +160,7 @@ private fun SyncedLyrics(
     position: State<Long>,
     actions: DashboardActions,
 ) {
+    val motion = LocalMotion.current
     val listState = rememberLazyListState()
     val settings = LocalAppSettings.current
     val style = rememberLyricStyle(settings.lyricsFontSizeSp)
@@ -196,8 +195,8 @@ private fun SyncedLyrics(
             following = true
         }
     }
-    LaunchedEffect(activeIndex, following) {
-        if (following) listState.animateCenterOn(activeIndex.coerceAtLeast(0))
+    LaunchedEffect(activeIndex, following, motion) {
+        if (following) listState.animateCenterOn(activeIndex.coerceAtLeast(0), motion)
     }
 
     BoxWithConstraints(Modifier.fillMaxSize()) {
@@ -322,16 +321,17 @@ private fun LyricLineItem(
     clickLabel: String,
     onClick: () -> Unit,
 ) {
+    val motion = LocalMotion.current
     val active = distance == 0
     val targetAlpha = when {
         active -> 1f
         distance < 0 -> 0.3f
         else -> (0.62f - 0.08f * (distance - 1)).coerceAtLeast(0.28f)
     }
-    val alpha by animateFloatAsState(targetAlpha, tween(450), label = "lineAlpha")
+    val alpha by animateFloatAsState(targetAlpha, motion.fade(), label = "lineAlpha")
     val scale by animateFloatAsState(
-        targetValue = if (active) 1f else 0.86f,
-        animationSpec = spring(dampingRatio = 0.8f, stiffness = Spring.StiffnessLow),
+        targetValue = if (active || motion.reduced) 1f else 0.86f,
+        animationSpec = motion.gentle(),
         label = "lineScale",
     )
     Column(
@@ -384,7 +384,7 @@ private fun rememberRomanized(texts: List<String>, enabled: Boolean): List<Strin
 }
 
 /** Scrolls so that item [index] is vertically centered in the viewport. */
-private suspend fun LazyListState.animateCenterOn(index: Int) {
+private suspend fun LazyListState.animateCenterOn(index: Int, motion: MotionSpec) {
     if (layoutInfo.visibleItemsInfo.none { it.index == index }) {
         scrollToItem(index)
     }
@@ -392,7 +392,7 @@ private suspend fun LazyListState.animateCenterOn(index: Int) {
     val item = info.visibleItemsInfo.firstOrNull { it.index == index } ?: return
     val viewportCenter = (info.viewportStartOffset + info.viewportEndOffset) / 2
     val delta = item.offset + item.size / 2 - viewportCenter
-    animateScrollBy(delta.toFloat(), tween(durationMillis = 650, easing = FastOutSlowInEasing))
+    animateScrollBy(delta.toFloat(), motion.fade(MotionSpec.LONG_MS))
 }
 
 /** Fades lyrics out toward the top and bottom edges of the panel. */

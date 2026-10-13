@@ -2,13 +2,9 @@ package com.deskdeck.ui.components
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
-import androidx.compose.animation.scaleOut
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -34,7 +30,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
@@ -51,8 +46,9 @@ import com.deskdeck.launcher.AppIcon
 import com.deskdeck.ui.dashboard.DashboardActions
 import com.deskdeck.ui.theme.CappedWhite
 import com.deskdeck.ui.theme.Dimens
-import com.deskdeck.ui.theme.Outline
-import com.deskdeck.ui.theme.SurfaceHigh
+import com.deskdeck.ui.theme.GlassTintStrong
+import com.deskdeck.ui.theme.LocalMotion
+import com.deskdeck.ui.theme.glass
 import kotlin.math.roundToInt
 
 /** A long-press on a rail app: which app, and where its tile is (root y, px). */
@@ -69,14 +65,15 @@ fun RailActionSheet(
     actions: DashboardActions,
     onDismiss: () -> Unit,
 ) {
+    val motion = LocalMotion.current
     var shown by remember { mutableStateOf(request) }
     if (request != null) shown = request
     BackHandler(enabled = request != null, onBack = onDismiss)
 
     AnimatedVisibility(
         visible = request != null,
-        enter = fadeIn(tween(150)) + scaleIn(tween(200), initialScale = 0.92f, transformOrigin = TransformOrigin(0f, 0.5f)),
-        exit = fadeOut(tween(120)),
+        enter = if (motion.reduced) fadeIn(motion.fade()) else fadeIn(motion.fade()) + scaleIn(motion.snappy(), initialScale = 0.96f, transformOrigin = TransformOrigin(0f, 0.5f)),
+        exit = fadeOut(motion.fade()),
     ) {
         val r = shown ?: return@AnimatedVisibility
         val app = r.app
@@ -98,9 +95,7 @@ fun RailActionSheet(
                     .offset { IntOffset(left, top.roundToInt()) }
                     .onSizeChanged { sheetHeight = it.height }
                     .width(300.dp)
-                    .clip(RoundedCornerShape(24.dp))
-                    .background(SurfaceHigh)
-                    .border(0.5.dp, Outline, RoundedCornerShape(24.dp))
+                    .glass(RoundedCornerShape(Dimens.cardCorner), tint = GlassTintStrong)
                     // Taps inside the sheet must not dismiss it.
                     .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) {}
                     .padding(vertical = 8.dp),

@@ -61,10 +61,11 @@ fun SeekBar(
     val canSeek = seekEnabled && duration != null && !isLive
     val currentOnSeek by rememberUpdatedState(onSeek)
 
+    var touched by remember { mutableStateOf(false) }
     var dragFraction by remember { mutableStateOf<Float?>(null) }
     // Apple-style pill: no thumb; the bar grows taller while touched.
     val trackHeight by animateDpAsState(
-        targetValue = if (dragFraction != null) TrackHeightTouched else TrackHeight,
+        targetValue = if (touched || dragFraction != null) TrackHeightTouched else TrackHeight,
         animationSpec = LocalMotion.current.snappy(),
         label = "trackHeight",
     )
@@ -82,15 +83,21 @@ fun SeekBar(
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(40.dp)
+                .height(56.dp)
                 .then(
                     if (canSeek) {
                         Modifier
                             .pointerInput(duration) {
-                                detectTapGestures { offset ->
-                                    val f = fractionAt(offset.x, size.width.toFloat(), ThumbRadius.toPx())
-                                    currentOnSeek((f * duration).toLong())
-                                }
+                                detectTapGestures(
+                                    onPress = {
+                                        touched = true
+                                        try { tryAwaitRelease() } finally { touched = false }
+                                    },
+                                    onTap = { offset ->
+                                        val f = fractionAt(offset.x, size.width.toFloat(), ThumbRadius.toPx())
+                                        currentOnSeek((f * duration).toLong())
+                                    },
+                                )
                             }
                             .pointerInput(duration) {
                                 val inset = ThumbRadius.toPx()

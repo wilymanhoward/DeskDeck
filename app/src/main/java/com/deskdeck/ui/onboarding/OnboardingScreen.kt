@@ -46,14 +46,15 @@ import androidx.compose.ui.text.fromHtml
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.deskdeck.R
+import com.deskdeck.ui.components.FluidBackground
 import com.deskdeck.ui.theme.CappedWhite
 import com.deskdeck.ui.theme.DeskDeckTheme
 import com.deskdeck.ui.theme.Dimens
 import com.deskdeck.ui.theme.MutedText
-import com.deskdeck.ui.theme.SurfaceHigh
 import com.deskdeck.ui.theme.SurfaceHighest
-import com.deskdeck.ui.theme.SurfaceLow
 import com.deskdeck.ui.theme.TrueBlack
+import com.deskdeck.ui.theme.glass
+import com.deskdeck.ui.theme.screenEntrance
 
 @Composable
 fun OnboardingScreen(
@@ -61,74 +62,77 @@ fun OnboardingScreen(
     onOpenAppInfo: () -> Unit,
     onSkip: () -> Unit,
 ) {
-    Row(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(TrueBlack)
-            .windowInsetsPadding(WindowInsets.displayCutout)
-            .padding(Dimens.screenPadding),
-        horizontalArrangement = Arrangement.spacedBy(Dimens.zoneGap),
-    ) {
-        Illustration(
-            Modifier
-                .weight(0.4f)
-                .fillMaxHeight(),
-        )
-        Column(
+    Box(Modifier.fillMaxSize().background(TrueBlack).screenEntrance()) {
+        FluidBackground(null, MaterialTheme.colorScheme.primary, animate = false, modifier = Modifier.fillMaxSize(), intensity = 0.5f)
+        Row(
             modifier = Modifier
-                .weight(0.6f)
-                .fillMaxHeight()
-                .verticalScroll(rememberScrollState())
-                .padding(horizontal = 40.dp, vertical = 32.dp),
-            verticalArrangement = Arrangement.Center,
+                .fillMaxSize()
+                .windowInsetsPadding(WindowInsets.displayCutout)
+                .padding(Dimens.screenPadding),
+            horizontalArrangement = Arrangement.spacedBy(Dimens.zoneGap),
         ) {
-            Text(
-                text = stringResource(R.string.onb_title),
-                style = MaterialTheme.typography.headlineMedium,
-                color = CappedWhite,
-                modifier = Modifier.semantics { heading() },
+            Illustration(
+                Modifier
+                    .weight(0.4f)
+                    .fillMaxHeight(),
             )
-            Spacer(Modifier.height(16.dp))
-            HtmlText(R.string.onb_body, MaterialTheme.typography.bodyLarge, CappedWhite.copy(alpha = 0.9f))
-            Spacer(Modifier.height(28.dp))
+            Column(
+                modifier = Modifier
+                    .weight(0.6f)
+                    .fillMaxHeight()
+                    .verticalScroll(rememberScrollState())
+                    .padding(horizontal = 40.dp, vertical = 32.dp),
+                verticalArrangement = Arrangement.Center,
+            ) {
+                Text(
+                    text = stringResource(R.string.onb_title),
+                    style = MaterialTheme.typography.headlineMedium,
+                    color = CappedWhite,
+                    modifier = Modifier.semantics { heading() },
+                )
+                Spacer(Modifier.height(16.dp))
+                HtmlText(R.string.onb_body, MaterialTheme.typography.bodyLarge, CappedWhite.copy(alpha = 0.9f))
+                Spacer(Modifier.height(28.dp))
 
-            Step(1, R.string.onb_step_1)
-            Step(2, R.string.onb_step_2)
-            Step(3, R.string.onb_step_3)
+                Step(1, R.string.onb_step_1)
+                Step(2, R.string.onb_step_2)
+                Step(3, R.string.onb_step_3)
 
-            Spacer(Modifier.height(28.dp))
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Button(
-                    onClick = onOpenSettings,
-                    modifier = Modifier.heightIn(min = Dimens.minTouch),
-                ) {
-                    Text(stringResource(R.string.onb_open_settings), style = MaterialTheme.typography.labelLarge)
+                Spacer(Modifier.height(28.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Button(
+                        onClick = onOpenSettings,
+                        modifier = Modifier.heightIn(min = Dimens.minTouch),
+                    ) {
+                        Text(stringResource(R.string.onb_open_settings), style = MaterialTheme.typography.labelLarge)
+                    }
+                    Spacer(Modifier.size(12.dp))
+                    TextButton(
+                        onClick = onSkip,
+                        modifier = Modifier.heightIn(min = Dimens.minTouch),
+                    ) {
+                        Text(stringResource(R.string.onb_not_now), style = MaterialTheme.typography.labelLarge)
+                    }
                 }
-                Spacer(Modifier.size(12.dp))
-                TextButton(
-                    onClick = onSkip,
-                    modifier = Modifier.heightIn(min = Dimens.minTouch),
-                ) {
-                    Text(stringResource(R.string.onb_not_now), style = MaterialTheme.typography.labelLarge)
-                }
-            }
 
-            Spacer(Modifier.height(28.dp))
-            HtmlText(R.string.onb_privacy, MaterialTheme.typography.bodyMedium, MutedText)
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                Spacer(Modifier.height(12.dp))
-                HtmlText(R.string.onb_restricted, MaterialTheme.typography.bodyMedium, MutedText)
-                TextButton(
-                    onClick = onOpenAppInfo,
-                    modifier = Modifier
-                        .heightIn(min = 48.dp)
-                        .offset(x = (-12).dp),
-                ) {
-                    Text(stringResource(R.string.onb_open_app_info))
+                Spacer(Modifier.height(28.dp))
+                HtmlText(R.string.onb_privacy, MaterialTheme.typography.bodyMedium, MutedText)
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                    Spacer(Modifier.height(12.dp))
+                    HtmlText(R.string.onb_restricted, MaterialTheme.typography.bodyMedium, MutedText)
+                    TextButton(
+                        onClick = onOpenAppInfo,
+                        modifier = Modifier
+                            .heightIn(min = 48.dp)
+                            .offset(x = (-12).dp),
+                    ) {
+                        Text(stringResource(R.string.onb_open_app_info))
+                    }
                 }
             }
         }
     }
+
 }
 
 @Composable
@@ -171,7 +175,7 @@ private fun Illustration(modifier: Modifier = Modifier) {
     Box(
         modifier = modifier
             .clip(RoundedCornerShape(Dimens.cardCorner))
-            .background(Brush.verticalGradient(listOf(SurfaceHigh, SurfaceLow))),
+            .glass(RoundedCornerShape(Dimens.cardCorner)),
         contentAlignment = Alignment.Center,
     ) {
         Box(

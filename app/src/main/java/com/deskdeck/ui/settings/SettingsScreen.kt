@@ -3,9 +3,10 @@ package com.deskdeck.ui.settings
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
@@ -69,6 +70,7 @@ import com.deskdeck.data.settings.ClockFormat
 import com.deskdeck.data.settings.KeepScreenOn
 import com.deskdeck.data.settings.SettingsRanges
 import com.deskdeck.data.settings.SourceMode
+import com.deskdeck.ui.components.FluidBackground
 import com.deskdeck.ui.lyrics.Romanizer
 import com.deskdeck.ui.picker.AppPickerOverlay
 import com.deskdeck.ui.picker.PickerMode
@@ -76,9 +78,9 @@ import com.deskdeck.ui.theme.ActiveLyricWhite
 import com.deskdeck.ui.theme.CappedWhite
 import com.deskdeck.ui.theme.Dimens
 import com.deskdeck.ui.theme.MutedText
-import com.deskdeck.ui.theme.SurfaceHigh
-import com.deskdeck.ui.theme.SurfaceLow
 import com.deskdeck.ui.theme.TrueBlack
+import com.deskdeck.ui.theme.glass
+import com.deskdeck.ui.theme.screenEntrance
 import kotlin.math.roundToInt
 import kotlinx.coroutines.delay
 
@@ -99,16 +101,17 @@ fun SettingsScreen(onBack: () -> Unit, viewModel: SettingsViewModel = hiltViewMo
     var picker by rememberSaveable { mutableStateOf<PickerMode?>(null) }
     BackHandler(enabled = picker == null, onBack = onBack)
 
-    Box(Modifier.fillMaxSize()) {
+    BoxWithConstraints(Modifier.fillMaxSize().background(TrueBlack).screenEntrance()) {
+        FluidBackground(null, MaterialTheme.colorScheme.primary, animate = false, modifier = Modifier.fillMaxSize(), intensity = 0.45f)
+        val sidebarWidth = if (maxWidth < 800.dp) 200.dp else 280.dp
         Row(
             modifier = Modifier
                 .fillMaxSize()
-                .background(TrueBlack)
                 .windowInsetsPadding(WindowInsets.displayCutout)
                 .padding(Dimens.screenPadding),
             horizontalArrangement = Arrangement.spacedBy(Dimens.zoneGap),
         ) {
-            Column(Modifier.width(300.dp).fillMaxHeight()) {
+            Column(Modifier.width(sidebarWidth).fillMaxHeight().verticalScroll(rememberScrollState())) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     IconButton(onClick = onBack, modifier = Modifier.size(Dimens.minTouch)) {
                         Icon(painterResource(R.drawable.ic_chevron_left), stringResource(R.string.settings_back))
@@ -406,8 +409,7 @@ private fun SettingCard(content: @Composable ColumnScope.() -> Unit) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(24.dp))
-            .background(SurfaceLow)
+            .glass(RoundedCornerShape(Dimens.cardCorner))
             .padding(vertical = 8.dp),
         content = content,
     )
@@ -492,15 +494,17 @@ private fun <T> ChoiceRow(
     Column(Modifier.padding(horizontal = 24.dp, vertical = 12.dp)) {
         RowText(title, subtitle, enabled)
         Spacer(Modifier.height(10.dp))
-        SingleChoiceSegmentedButtonRow(Modifier.widthIn(min = (options.size * 140).dp.coerceAtMost(640.dp), max = 640.dp)) {
-            options.forEachIndexed { index, option ->
-                SegmentedButton(
-                    selected = option == selected,
-                    onClick = { onSelect(option) },
-                    shape = SegmentedButtonDefaults.itemShape(index, options.size),
-                    enabled = enabled,
-                    modifier = Modifier.heightIn(min = 48.dp),
-                ) { Text(label(option), maxLines = 1, softWrap = false) }
+        Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState())) {
+            SingleChoiceSegmentedButtonRow(Modifier.widthIn(min = (options.size * 140).dp.coerceAtMost(640.dp), max = 640.dp)) {
+                options.forEachIndexed { index, option ->
+                    SegmentedButton(
+                        selected = option == selected,
+                        onClick = { onSelect(option) },
+                        shape = SegmentedButtonDefaults.itemShape(index, options.size),
+                        enabled = enabled,
+                        modifier = Modifier.heightIn(min = Dimens.minTouch),
+                    ) { Text(label(option), maxLines = 1, softWrap = false) }
+                }
             }
         }
     }

@@ -224,3 +224,33 @@ screen plus two overlays), and transliteration libraries (Android's built-in ICU
 ## Credits
 
 Lyrics by [LRCLIB](https://lrclib.net), a free, open lyrics database.
+
+Typography uses [Inter 4.1](https://github.com/rsms/inter/releases/tag/v4.1),
+Copyright © The Inter Project Authors, licensed under the SIL Open Font License 1.1.
+Only `InterVariable.ttf` (879,708 bytes) is bundled; the full license is in
+[`app/src/main/assets/licenses/Inter-OFL.txt`](app/src/main/assets/licenses/Inter-OFL.txt).
+The outline icons are project-owned vector paths; no Apple fonts or symbols are bundled.
+
+## R2 visual review
+
+The three-zone dashboard now uses Inter, translucent panels, an album-colored background,
+and thin outline icons. Playback controls retain their media-session behavior. The seek pill
+expands while touched, art settles back when paused, play/pause morphs, and the source ring
+moves between rail icons. Settings, onboarding, the app picker and ambient mode share the styling.
+
+`ui/theme/Motion.kt` holds the spring and transition specifications. Android's **Remove animations**
+setting is observed live: entry/track transitions use short fades, decorative background and
+equalizer movement stops, and press/album scaling is disabled. Ambient burn-in protection retains
+infrequent position changes rather than continuous travel. The root pixel shift remains a separate
+burn-in measure controlled by its own setting.
+
+Glass shows DeskDeck's own soft radial-gradient background through translucent fills, highlights
+and hairline borders. It does not capture or blur foreground text or other apps. This avoids an
+extra full-screen blur pass on an always-on tablet; Android versions below 12 use solid tonal
+panel fills. Background colors are capped to dark tones, and drift updates at approximately 15 Hz
+in the draw phase. Drift stops when the activity is paused or a settings, picker, ambient or
+paused-clock screen covers it. UI transitions use the display's frame clock; no fixed 120-fps
+claim is made without device profiling.
+
+R2 is a visual review milestone. Volume HUD, notification banners, word-timed lyrics and the
+Spotify library remain scheduled for R3–R6. Review the installed tablet build before continuing.
