@@ -34,6 +34,8 @@ import com.deskdeck.ui.onboarding.OnboardingScreen
 import com.deskdeck.ui.settings.LocalAppSettings
 import com.deskdeck.ui.settings.SettingsScreen
 import com.deskdeck.ui.theme.DeskDeckTheme
+import com.deskdeck.ui.theme.LocalMotion
+import com.deskdeck.ui.theme.rememberMotionSpec
 import kotlin.math.roundToInt
 
 /**
@@ -50,6 +52,7 @@ fun AppRoot(viewModel: AppViewModel = hiltViewModel()) {
     val openAccessSettings = { viewModel.openNotificationAccessSettings(context) }
 
     val tracker = remember { InteractionTracker() }
+    val motion = rememberMotionSpec()
     val shift by rememberPixelShift(settings.burnIn.pixelShift, settings.burnIn.pixelShiftDp)
 
     // DeskDeck never leaves the screen by itself: Back on the dashboard does nothing. Overlays
@@ -60,6 +63,7 @@ fun AppRoot(viewModel: AppViewModel = hiltViewModel()) {
         CompositionLocalProvider(
             LocalAppSettings provides settings,
             LocalInteractionTracker provides tracker,
+            LocalMotion provides motion,
         ) {
             Box(
                 Modifier

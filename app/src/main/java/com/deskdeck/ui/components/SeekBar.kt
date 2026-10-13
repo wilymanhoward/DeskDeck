@@ -35,11 +35,12 @@ import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.unit.dp
 import com.deskdeck.R
 import com.deskdeck.ui.common.formatPlaybackTime
+import com.deskdeck.ui.theme.LocalMotion
 import com.deskdeck.ui.theme.MutedText
 
 private val TrackHeight = 6.dp
 private val ThumbRadius = 7.dp
-private val ThumbRadiusDragging = 11.dp
+private val TrackHeightTouched = 12.dp
 
 /**
  * Slim seek bar with elapsed/total time. The per-frame [position] is read only inside the draw
@@ -61,9 +62,11 @@ fun SeekBar(
     val currentOnSeek by rememberUpdatedState(onSeek)
 
     var dragFraction by remember { mutableStateOf<Float?>(null) }
-    val thumbRadius by animateDpAsState(
-        targetValue = if (dragFraction != null) ThumbRadiusDragging else ThumbRadius,
-        label = "thumbRadius",
+    // Apple-style pill: no thumb; the bar grows taller while touched.
+    val trackHeight by animateDpAsState(
+        targetValue = if (dragFraction != null) TrackHeightTouched else TrackHeight,
+        animationSpec = LocalMotion.current.snappy(),
+        label = "trackHeight",
     )
     val elapsedSeconds by remember { derivedStateOf { position.value / 1000 } }
     val shownMs = dragFraction?.let { f -> duration?.let { (f * it).toLong() } } ?: (elapsedSeconds * 1000)
@@ -129,7 +132,7 @@ fun SeekBar(
                     val startX = inset
                     val endX = size.width - inset
                     val centerY = size.height / 2
-                    val stroke = TrackHeight.toPx()
+                    val stroke = trackHeight.toPx()
                     val fraction = when {
                         isLive -> 1f
                         dragFraction != null -> dragFraction!!
@@ -139,9 +142,6 @@ fun SeekBar(
                     val progressX = startX + (endX - startX) * fraction
                     drawLine(activeColor.copy(alpha = 0.22f), Offset(startX, centerY), Offset(endX, centerY), stroke, StrokeCap.Round)
                     drawLine(activeColor, Offset(startX, centerY), Offset(progressX, centerY), stroke, StrokeCap.Round)
-                    if (canSeek) {
-                        drawCircle(activeColor, thumbRadius.toPx(), Offset(progressX, centerY))
-                    }
                 },
         )
         Row(Modifier.fillMaxWidth()) {

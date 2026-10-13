@@ -1,19 +1,10 @@
 package com.deskdeck.ui.components
 
-import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.spring
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.scaleIn
-import androidx.compose.animation.scaleOut
-import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -23,9 +14,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -33,8 +22,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.StrokeJoin
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
@@ -42,12 +34,16 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.util.lerp
 import com.deskdeck.R
 import com.deskdeck.domain.PlaybackInfo
 import com.deskdeck.domain.RepeatMode
 import com.deskdeck.ui.dashboard.PlayerActions
+import com.deskdeck.ui.theme.ActiveLyricWhite
 import com.deskdeck.ui.theme.CappedWhite
 import com.deskdeck.ui.theme.Dimens
+import com.deskdeck.ui.theme.LocalMotion
+import com.deskdeck.ui.theme.pressScale
 
 @Composable
 fun PlaybackControls(
@@ -81,12 +77,7 @@ fun PlaybackControls(
             enabled = playback.canSkipPrevious,
             onClick = actions::onSkipPrevious,
         )
-        PlayPauseButton(
-            isPlaying = playback.isPlaying,
-            container = palette.accent,
-            content = palette.onAccent,
-            onClick = actions::onPlayPause,
-        )
+        PlayPauseButton(isPlaying = playback.isPlaying, onClick = actions::onPlayPause)
         TransportButton(
             iconRes = R.drawable.ic_skip_next,
             description = stringResource(R.string.np_next),
@@ -111,62 +102,66 @@ fun PlaybackControls(
     }
 }
 
+/** Large glyph, no container (Apple Music style), morphing between pause bars and play triangle. */
 @Composable
-private fun PlayPauseButton(
-    isPlaying: Boolean,
-    container: Color,
-    content: Color,
-    onClick: () -> Unit,
-) {
-    val interactionSource = remember { MutableInteractionSource() }
-    val pressed by interactionSource.collectIsPressedAsState()
-    val scale by animateFloatAsState(
-        targetValue = if (pressed) 0.9f else 1f,
-        animationSpec = spring(dampingRatio = 0.45f, stiffness = Spring.StiffnessMediumLow),
-        label = "playScale",
-    )
-    // Rounded square while playing, circle while paused, as in Android Auto.
-    val corner by animateDpAsState(
-        targetValue = if (isPlaying) 28.dp else Dimens.playButton / 2,
-        animationSpec = spring(dampingRatio = 0.6f, stiffness = Spring.StiffnessMediumLow),
-        label = "playCorner",
-    )
+private fun PlayPauseButton(isPlaying: Boolean, onClick: () -> Unit) {
+    val interaction = remember { MutableInteractionSource() }
+    val motion = LocalMotion.current
+    val toPlay by animateFloatAsState(if (isPlaying) 0f else 1f, motion.snappy(), label = "playMorph")
     val description = stringResource(if (isPlaying) R.string.np_pause else R.string.np_play)
     Box(
         modifier = Modifier
             .size(Dimens.playButton)
-            .graphicsLayer {
-                scaleX = scale
-                scaleY = scale
-            }
-            .clip(RoundedCornerShape(corner))
-            .background(container)
-            .clickable(
-                interactionSource = interactionSource,
-                indication = ripple(color = content),
-                role = Role.Button,
-                onClick = onClick,
-            )
+            .pressScale(interaction)
+            .clip(CircleShape)
+            .clickable(interactionSource = interaction, indication = ripple(color = CappedWhite), role = Role.Button, onClick = onClick)
             .semantics { contentDescription = description },
         contentAlignment = Alignment.Center,
     ) {
-        AnimatedContent(
-            targetState = isPlaying,
-            transitionSpec = {
-                (scaleIn(spring(dampingRatio = 0.5f, stiffness = Spring.StiffnessMedium), initialScale = 0.6f) + fadeIn()) togetherWith
-                    (scaleOut(targetScale = 0.6f) + fadeOut())
-            },
-            label = "playIcon",
-        ) { playing ->
-            Icon(
-                painter = painterResource(if (playing) R.drawable.ic_pause else R.drawable.ic_play),
-                contentDescription = null,
-                tint = content,
-                modifier = Modifier.size(44.dp),
-            )
-        }
+        PlayPauseGlyph(progressToPlay = { toPlay }, color = ActiveLyricWhite, modifier = Modifier.size(52.dp))
     }
 }
+
+/**
+ * Pause (two bars) ↔ play (triangle) as one shape: the triangle is cut into two quads at the
+ * same split as the two bars, and each corner is interpolated, so the bars visibly bend into the
+ * triangle instead of swapping icons. [progressToPlay] is read in the draw phase.
+ */
+@Composable
+fun PlayPauseGlyph(progressToPlay: () -> Float, color: Color, modifier: Modifier = Modifier) {
+    val path = remember { Path() }
+    Canvas(modifier) {
+        val p = progressToPlay().coerceIn(0f, 1f)
+        val w = size.width
+        val h = size.height
+        fun pt(pause: Offset, play: Offset) = Offset(lerp(pause.x, play.x, p) * w, lerp(pause.y, play.y, p) * h)
+        path.reset()
+        for (quad in MorphQuads) {
+            val pts = quad.pause.indices.map { pt(quad.pause[it], quad.play[it]) }
+            path.moveTo(pts[0].x, pts[0].y)
+            for (i in 1 until pts.size) path.lineTo(pts[i].x, pts[i].y)
+            path.close()
+        }
+        drawPath(path, color)
+        // Same-color stroke with round joins softens every corner, like SF Symbols' filled glyphs.
+        drawPath(path, color, style = Stroke(width = w * 0.06f, join = StrokeJoin.Round))
+    }
+}
+
+private class MorphQuad(val pause: List<Offset>, val play: List<Offset>)
+
+// Unit-square corners (top-left, top-right, bottom-right, bottom-left). The play triangle
+// (0.30,0.17)-(0.86,0.5)-(0.30,0.83) is split at x = 0.58.
+private val MorphQuads = listOf(
+    MorphQuad(
+        pause = listOf(Offset(0.24f, 0.18f), Offset(0.42f, 0.18f), Offset(0.42f, 0.82f), Offset(0.24f, 0.82f)),
+        play = listOf(Offset(0.30f, 0.17f), Offset(0.58f, 0.335f), Offset(0.58f, 0.665f), Offset(0.30f, 0.83f)),
+    ),
+    MorphQuad(
+        pause = listOf(Offset(0.58f, 0.18f), Offset(0.76f, 0.18f), Offset(0.76f, 0.82f), Offset(0.58f, 0.82f)),
+        play = listOf(Offset(0.58f, 0.335f), Offset(0.86f, 0.5f), Offset(0.86f, 0.5f), Offset(0.58f, 0.665f)),
+    ),
+)
 
 @Composable
 private fun TransportButton(
@@ -176,17 +171,26 @@ private fun TransportButton(
     onClick: () -> Unit,
     size: Dp = Dimens.skipButton,
 ) {
-    IconButton(onClick = onClick, enabled = enabled, modifier = Modifier.size(size)) {
+    val interaction = remember { MutableInteractionSource() }
+    Box(
+        modifier = Modifier
+            .size(size)
+            .pressScale(interaction)
+            .clip(CircleShape)
+            .clickable(interactionSource = interaction, indication = ripple(color = CappedWhite), enabled = enabled, role = Role.Button, onClick = onClick)
+            .semantics { contentDescription = description },
+        contentAlignment = Alignment.Center,
+    ) {
         Icon(
             painter = painterResource(iconRes),
-            contentDescription = description,
-            tint = CappedWhite.copy(alpha = if (enabled) 1f else 0.3f),
-            modifier = Modifier.size(42.dp),
+            contentDescription = null,
+            tint = ActiveLyricWhite.copy(alpha = if (enabled) 1f else 0.3f),
+            modifier = Modifier.size(40.dp),
         )
     }
 }
 
-/** Shuffle/repeat: tinted with a dot when active, dimmed when the player doesn't support it. */
+/** Shuffle/repeat: accent with a dot when active, dimmed when the player doesn't support it. */
 @Composable
 private fun ToggleControl(
     iconRes: Int,
@@ -196,19 +200,23 @@ private fun ToggleControl(
     accent: Color,
     onClick: () -> Unit,
 ) {
+    val interaction = remember { MutableInteractionSource() }
     val tint = when {
         !enabled -> CappedWhite.copy(alpha = 0.25f)
         active -> accent
         else -> CappedWhite.copy(alpha = 0.75f)
     }
-    IconButton(onClick = onClick, enabled = enabled, modifier = Modifier.size(Dimens.minTouch)) {
+    Box(
+        modifier = Modifier
+            .size(Dimens.minTouch)
+            .pressScale(interaction)
+            .clip(CircleShape)
+            .clickable(interactionSource = interaction, indication = ripple(color = CappedWhite), enabled = enabled, role = Role.Button, onClick = onClick)
+            .semantics { contentDescription = description },
+        contentAlignment = Alignment.Center,
+    ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Icon(
-                painter = painterResource(iconRes),
-                contentDescription = description,
-                tint = tint,
-                modifier = Modifier.size(28.dp),
-            )
+            Icon(painter = painterResource(iconRes), contentDescription = null, tint = tint, modifier = Modifier.size(26.dp))
             Spacer(Modifier.height(4.dp))
             Box(
                 Modifier

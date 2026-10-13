@@ -20,4 +20,6 @@ data class Track(
 data class ArtworkColors(
     val primary: Int,
     val secondary: Int,
+    /** Up to five distinct swatches, most prominent first, for the fluid background. */
+    val swatches: List<Int> = emptyList(),
 )
