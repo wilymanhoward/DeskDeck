@@ -50,6 +50,15 @@ class MediaSessionRepository @Inject constructor(
     private val _nowPlaying = MutableStateFlow<NowPlaying?>(null)
     override val nowPlaying: StateFlow<NowPlaying?> = _nowPlaying.asStateFlow()
 
+    private val _selection = MutableStateFlow<SourceSelection?>(null)
+    override val selection: StateFlow<SourceSelection?> = _selection.asStateFlow()
+
+    private val _sessionPackages = MutableStateFlow<Set<String>>(emptySet())
+    override val sessionPackages: StateFlow<Set<String>> = _sessionPackages.asStateFlow()
+
+    private val _anyPlaying = MutableStateFlow(false)
+    override val anyPlaying: StateFlow<Boolean> = _anyPlaying.asStateFlow()
+
     private val sessionsListener = MediaSessionManager.OnActiveSessionsChangedListener { controllers ->
         updateSessions(controllers.orEmpty(), alreadyRunning = false)
     }
@@ -84,8 +93,7 @@ class MediaSessionRepository @Inject constructor(
         }
         entries.forEach { it.release() }
         entries.clear()
-        selected = null
-        publish()
+        reselect()
     }
 
     private fun updateSessions(controllers: List<MediaController>, alreadyRunning: Boolean) {
@@ -106,9 +114,29 @@ class MediaSessionRepository @Inject constructor(
     }
 
     private fun reselect() {
-        val id = SessionSelector.select(entries.map { it.candidate() }, selected?.id)
-        selected = entries.firstOrNull { it.id == id }
+        val decision = SessionSelector.select(entries.map { it.candidate() }, selected?.id, _selection.value)
+        _selection.value = decision.selection
+        selected = entries.firstOrNull { it.id == decision.sessionId }
+        _sessionPackages.value = entries.filter { it.hasMetadata }.mapTo(mutableSetOf()) { it.packageName }
+        _anyPlaying.value = entries.any { it.isPlaying }
         publish()
+    }
+
+    override fun select(packageName: String, pinned: Boolean) {
+        _selection.value = SourceSelection(packageName, SystemClock.elapsedRealtime(), pinned)
+        reselect()
+    }
+
+    override fun setPinned(pinned: Boolean) {
+        val current = _selection.value ?: return
+        _selection.value = current.copy(pinned = pinned)
+        reselect()
+    }
+
+    override fun requestPlay(packageName: String): Boolean {
+        val entry = entries.firstOrNull { it.packageName == packageName } ?: return false
+        entry.sendPlayKey()
+        return true
     }
 
     private fun publish() {

@@ -3,11 +3,11 @@ package com.deskdeck.ui.picker
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.deskdeck.domain.RailApp
-import com.deskdeck.launcher.AppLauncher
 import com.deskdeck.launcher.InstalledAppsRepository
 import com.deskdeck.launcher.LaunchableApp
 import com.deskdeck.launcher.RailAppsRepository
 import com.deskdeck.launcher.matching
+import com.deskdeck.media.sources.SourceSwitcher
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -23,7 +23,7 @@ import kotlinx.coroutines.launch
 class AppPickerViewModel @Inject constructor(
     installedApps: InstalledAppsRepository,
     private val railApps: RailAppsRepository,
-    private val launcher: AppLauncher,
+    private val sourceSwitcher: SourceSwitcher,
 ) : ViewModel() {
 
     private val _query = MutableStateFlow("")
@@ -43,7 +43,8 @@ class AppPickerViewModel @Inject constructor(
         _query.value = query
     }
 
-    fun launch(packageName: String) = launcher.launchOrOpenStore(packageName)
+    /** Shows the app's media in DeskDeck. Never launches it. */
+    fun select(packageName: String) = sourceSwitcher.select(packageName)
 
     fun togglePin(packageName: String) {
         viewModelScope.launch { railApps.toggle(packageName) }

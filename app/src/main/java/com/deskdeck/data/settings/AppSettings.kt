@@ -10,6 +10,15 @@ enum class KeepScreenOn {
     WHILE_PLAYING,
 }
 
+/** What a tap on a rail app means when another app later starts playing. */
+enum class SourceMode {
+    /** Switch to whichever app starts playing (the selection only lasts until then). */
+    AUTO_FOLLOW,
+
+    /** Stay on the selected app until another one is selected. */
+    PIN,
+}
+
 /** Accent choices, light tones that read well on true black. */
 enum class AccentColor(val argb: Long) {
     BLUE(0xFF8AB4F8),
@@ -51,6 +60,9 @@ data class AppSettings(
     val dynamicColors: Boolean = true,
     val accent: AccentColor = AccentColor.BLUE,
     val keepScreenOn: KeepScreenOn = KeepScreenOn.WHILE_PLAYING,
+    val sourceMode: SourceMode = SourceMode.AUTO_FOLLOW,
+    /** Also try an app's MediaBrowserService when starting it (usually refused, so off by default). */
+    val mediaBrowserResume: Boolean = false,
     val burnIn: BurnInSettings = BurnInSettings(),
 )
 

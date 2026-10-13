@@ -1,7 +1,13 @@
 package com.deskdeck.ui.components
 
-import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -10,6 +16,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
@@ -24,12 +31,23 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.layout.boundsInRoot
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
@@ -48,20 +66,23 @@ import com.deskdeck.launcher.AppIcon
 import com.deskdeck.ui.common.clockFormatter
 import com.deskdeck.ui.common.rememberCurrentTime
 import com.deskdeck.ui.common.rememberIs24Hour
+import com.deskdeck.ui.dashboard.RailState
 import com.deskdeck.ui.settings.LocalAppSettings
 import com.deskdeck.ui.theme.CappedWhite
 import com.deskdeck.ui.theme.Dimens
 import com.deskdeck.ui.theme.MutedText
 import com.deskdeck.ui.theme.SurfaceHighest
 import java.time.format.DateTimeFormatter
+import kotlin.math.PI
+import kotlin.math.sin
 
 @Composable
 fun LeftRail(
     apps: List<RailApp>,
-    activePackage: String?,
+    state: RailState,
     notificationCount: Int,
     onAppClick: (RailApp) -> Unit,
-    onAppLongClick: (RailApp) -> Unit,
+    onAppLongClick: (RailApp, anchorY: Float) -> Unit,
     onAddApp: () -> Unit,
     onAllApps: () -> Unit,
     onSettings: () -> Unit,
@@ -93,9 +114,12 @@ fun LeftRail(
                 apps.forEach { app ->
                     RailAppTile(
                         app = app,
-                        active = app.packageName == activePackage,
+                        highlighted = app.packageName == state.highlightPackage,
+                        playing = app.packageName == state.playingPackage,
+                        hasSession = app.packageName in state.sessionPackages,
+                        pinned = app.packageName == state.pinnedPackage,
                         onClick = { onAppClick(app) },
-                        onLongClick = { onAppLongClick(app) },
+                        onLongClick = { anchorY -> onAppLongClick(app, anchorY) },
                     )
                 }
                 RailIconButton(R.drawable.ic_add, stringResource(R.string.rail_add_app), onAddApp)
@@ -185,50 +209,127 @@ private fun NotificationIndicator(count: Int) {
 }
 
 @Composable
-private fun RailAppTile(app: RailApp, active: Boolean, onClick: () -> Unit, onLongClick: () -> Unit) {
+private fun RailAppTile(
+    app: RailApp,
+    highlighted: Boolean,
+    playing: Boolean,
+    hasSession: Boolean,
+    pinned: Boolean,
+    onClick: () -> Unit,
+    onLongClick: (anchorY: Float) -> Unit,
+) {
     val description = when {
-        !app.installed -> stringResource(R.string.rail_get_app, app.label)
-        active -> stringResource(R.string.rail_now_playing_app, app.label)
-        else -> stringResource(R.string.rail_open_app, app.label)
+        !app.installed -> stringResource(R.string.rail_not_installed, app.label)
+        playing -> stringResource(R.string.rail_playing_app, app.label)
+        highlighted -> stringResource(R.string.rail_selected_app, app.label)
+        !hasSession -> stringResource(R.string.rail_no_session, app.label)
+        else -> stringResource(R.string.rail_select_app, app.label)
     }
-    val editLabel = stringResource(R.string.rail_edit_apps)
-    val indicatorHeight by animateDpAsState(if (active) 28.dp else 0.dp, label = "railIndicator")
-    Box(contentAlignment = Alignment.Center) {
-        // Android Auto-style pill marking the app that owns the current media session.
-        Box(
-            modifier = Modifier
-                .align(Alignment.CenterStart)
-                .offset(x = (-8).dp)
-                .size(width = 4.dp, height = indicatorHeight)
-                .background(MaterialTheme.colorScheme.primary, CircleShape),
-        )
-        Box(
-            modifier = Modifier
-                .size(Dimens.minTouch)
-                .clip(RoundedCornerShape(16.dp))
-                .combinedClickable(
-                    role = Role.Button,
-                    onLongClickLabel = editLabel,
-                    onLongClick = onLongClick,
-                    onClick = onClick,
+    val actionsLabel = stringResource(R.string.rail_app_actions)
+    val accent = MaterialTheme.colorScheme.primary
+    val ringAlpha by animateFloatAsState(if (highlighted) 1f else 0f, tween(450), label = "railRing")
+    var centerY by remember { mutableFloatStateOf(0f) }
+
+    Box(
+        modifier = Modifier
+            .size(Dimens.minTouch + 4.dp)
+            .onGloballyPositioned { centerY = it.boundsInRoot().center.y }
+            // Selection ring with a soft glow; alpha is read here, in the draw phase.
+            .drawBehind {
+                if (ringAlpha <= 0f) return@drawBehind
+                val glowRadius = size.minDimension * 0.8f
+                drawCircle(
+                    brush = Brush.radialGradient(
+                        listOf(accent.copy(alpha = 0.32f * ringAlpha), Color.Transparent),
+                        center = center,
+                        radius = glowRadius,
+                    ),
+                    radius = glowRadius,
                 )
-                .semantics { contentDescription = description },
-            contentAlignment = Alignment.Center,
-        ) {
-            if (app.installed) {
-                AsyncImage(
-                    model = AppIcon(app.packageName),
-                    contentDescription = null,
-                    modifier = Modifier.size(46.dp),
+                drawRoundRect(
+                    color = accent.copy(alpha = 0.9f * ringAlpha),
+                    cornerRadius = CornerRadius(18.dp.toPx()),
+                    style = Stroke(width = 2.dp.toPx()),
                 )
-            } else {
-                NotInstalledTile(app)
             }
+            .clip(RoundedCornerShape(18.dp))
+            .combinedClickable(
+                role = Role.Button,
+                onLongClickLabel = actionsLabel,
+                onLongClick = { onLongClick(centerY) },
+                onClick = onClick,
+            )
+            .semantics { contentDescription = description },
+        contentAlignment = Alignment.Center,
+    ) {
+        if (app.installed) {
+            AsyncImage(
+                model = AppIcon(app.packageName),
+                contentDescription = null,
+                modifier = Modifier
+                    .size(44.dp)
+                    // Apps without a media session read as "not ready" until selected.
+                    .alpha(if (hasSession || highlighted) 1f else 0.5f),
+            )
+        } else {
+            NotInstalledTile(app)
+        }
+        when {
+            playing -> EqualizerBadge(accent, Modifier.align(Alignment.BottomEnd).padding(3.dp))
+            app.installed && !hasSession -> Box(
+                Modifier
+                    .align(Alignment.BottomEnd)
+                    .padding(6.dp)
+                    .size(8.dp)
+                    .border(1.5.dp, MutedText, CircleShape),
+            )
+        }
+        if (pinned) {
+            Icon(
+                painter = painterResource(R.drawable.ic_push_pin),
+                contentDescription = null,
+                tint = accent,
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(2.dp)
+                    .size(14.dp),
+            )
         }
     }
 }
 
-/** Greyed-out letter tile with a download badge; tapping it opens the Play Store page. */
+/** Three bouncing bars while the source plays. The animation is read only in the draw phase. */
+@Composable
+private fun EqualizerBadge(color: Color, modifier: Modifier = Modifier) {
+    val phase by rememberInfiniteTransition(label = "equalizer").animateFloat(
+        initialValue = 0f,
+        targetValue = (2 * PI).toFloat(),
+        animationSpec = infiniteRepeatable(tween(1_100, easing = LinearEasing)),
+        label = "equalizerPhase",
+    )
+    Box(
+        modifier
+            .size(18.dp)
+            .background(SurfaceHighest, CircleShape)
+            .drawBehind {
+                val barWidth = size.width / 9
+                val maxHeight = size.height * 0.5f
+                val bottom = size.height * 0.75f
+                for (i in 0 until 3) {
+                    val level = 0.35f + 0.65f * (0.5f + 0.5f * sin(phase + i * 2.1f))
+                    val x = size.width * (0.3f + i * 0.2f) - barWidth / 2
+                    drawRoundRect(
+                        color = color,
+                        topLeft = Offset(x, bottom - maxHeight * level),
+                        size = Size(barWidth, maxHeight * level),
+                        cornerRadius = CornerRadius(barWidth / 2),
+                    )
+                }
+            },
+    )
+}
+
+/** Greyed-out letter tile with a download badge (not installed). */
 @Composable
 private fun NotInstalledTile(app: RailApp) {
     Box(Modifier.clearAndSetSemantics { }) {

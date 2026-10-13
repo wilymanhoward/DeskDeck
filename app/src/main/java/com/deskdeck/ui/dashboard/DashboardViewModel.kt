@@ -9,19 +9,23 @@ import com.deskdeck.domain.NowPlaying
 import com.deskdeck.domain.RailApp
 import com.deskdeck.domain.Track
 import com.deskdeck.launcher.AppLauncher
+import com.deskdeck.launcher.KnownApps
 import com.deskdeck.launcher.RailAppsRepository
+import com.deskdeck.media.AppLabels
 import com.deskdeck.media.MediaRepository
 import com.deskdeck.media.NotificationAccess
 import com.deskdeck.media.NotificationCounter
+import com.deskdeck.media.sources.SourceStatus
+import com.deskdeck.media.sources.SourceSwitcher
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.filter
@@ -38,14 +42,42 @@ import kotlinx.coroutines.launch
 class DashboardViewModel @Inject constructor(
     private val media: MediaRepository,
     private val lyricsRepository: LyricsRepository,
-    railAppsRepository: RailAppsRepository,
+    private val railAppsRepository: RailAppsRepository,
     notificationCounter: NotificationCounter,
     notificationAccess: NotificationAccess,
     private val appLauncher: AppLauncher,
+    private val sourceSwitcher: SourceSwitcher,
+    private val appLabels: AppLabels,
     networkMonitor: NetworkMonitor,
 ) : ViewModel(), DashboardActions {
 
     val nowPlaying: StateFlow<NowPlaying?> = media.nowPlaying
+
+    /** Any app playing, shown or not: what burn-in should treat as "music is on". */
+    val anyPlaying: StateFlow<Boolean> = media.anyPlaying
+
+    val railState: StateFlow<RailState> =
+        combine(media.selection, media.nowPlaying, media.sessionPackages) { selection, np, packages ->
+            RailState(
+                highlightPackage = selection?.packageName ?: np?.sourcePackage,
+                playingPackage = np?.takeIf { it.playback.isPlaying }?.sourcePackage,
+                sessionPackages = packages,
+                pinnedPackage = selection?.takeIf { it.pinned }?.packageName,
+            )
+        }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), RailState())
+
+    /** Set when an app is selected but has nothing to show (yet). */
+    val emptySource: StateFlow<EmptySourceUi?> =
+        combine(media.selection, media.nowPlaying, sourceSwitcher.status) { selection, np, status ->
+            if (np != null) return@combine null
+            val pkg = status.packageName ?: selection?.packageName ?: return@combine null
+            val reason = when (status) {
+                is SourceStatus.Starting -> EmptySourceUi.Reason.STARTING
+                is SourceStatus.NotInstalled -> EmptySourceUi.Reason.NOT_INSTALLED
+                else -> EmptySourceUi.Reason.NO_SESSION
+            }
+            EmptySourceUi(pkg, KnownApps.label(pkg) ?: appLabels.labelOf(pkg), reason)
+        }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
     val railApps: StateFlow<List<RailApp>> = railAppsRepository.railApps
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
@@ -101,9 +133,21 @@ class DashboardViewModel @Inject constructor(
     override fun onToggleShuffle() = media.toggleShuffle()
     override fun onCycleRepeat() = media.cycleRepeat()
 
-    override fun onRailAppClick(app: RailApp) {
-        if (app.installed) appLauncher.launchOrOpenStore(app.packageName) else appLauncher.openStorePage(app.packageName)
+    // Rail and source actions. Only onOpenApp/onGetApp leave DeskDeck, and only on an explicit tap.
+
+    override fun onRailAppClick(app: RailApp) = sourceSwitcher.select(app.packageName)
+
+    override fun onPinSource(packageName: String) = sourceSwitcher.select(packageName, pin = true)
+
+    override fun onUnpinSource() = sourceSwitcher.setPinned(false)
+
+    override fun onRemoveFromRail(packageName: String) {
+        viewModelScope.launch { railAppsRepository.unpin(packageName) }
     }
+
+    override fun onOpenApp(packageName: String) = appLauncher.launchOrOpenStore(packageName)
+
+    override fun onGetApp(packageName: String) = appLauncher.openStorePage(packageName)
 
     override fun onRetryLyrics() {
         retryRequests.tryEmit(Unit)

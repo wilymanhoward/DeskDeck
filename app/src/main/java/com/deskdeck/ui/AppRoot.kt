@@ -1,5 +1,6 @@
 package com.deskdeck.ui
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
@@ -50,6 +51,10 @@ fun AppRoot(viewModel: AppViewModel = hiltViewModel()) {
 
     val tracker = remember { InteractionTracker() }
     val shift by rememberPixelShift(settings.burnIn.pixelShift, settings.burnIn.pixelShiftDp)
+
+    // DeskDeck never leaves the screen by itself: Back on the dashboard does nothing. Overlays
+    // (sheet, picker, settings) register their own handlers later, so those still close with Back.
+    BackHandler(enabled = accessGranted || onboardingSkipped) { }
 
     DeskDeckTheme(accent = Color(settings.accent.argb)) {
         CompositionLocalProvider(

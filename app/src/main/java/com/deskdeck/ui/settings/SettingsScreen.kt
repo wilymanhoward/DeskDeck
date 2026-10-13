@@ -68,6 +68,7 @@ import com.deskdeck.data.settings.AppSettings
 import com.deskdeck.data.settings.ClockFormat
 import com.deskdeck.data.settings.KeepScreenOn
 import com.deskdeck.data.settings.SettingsRanges
+import com.deskdeck.data.settings.SourceMode
 import com.deskdeck.ui.lyrics.Romanizer
 import com.deskdeck.ui.picker.AppPickerOverlay
 import com.deskdeck.ui.picker.PickerMode
@@ -83,6 +84,7 @@ import kotlinx.coroutines.delay
 
 private enum class Category(val titleRes: Int) {
     SCREEN(R.string.settings_cat_screen),
+    SOURCES(R.string.settings_cat_sources),
     LYRICS(R.string.settings_cat_lyrics),
     CLOCK(R.string.settings_cat_clock),
     APPEARANCE(R.string.settings_cat_appearance),
@@ -149,6 +151,7 @@ fun SettingsScreen(onBack: () -> Unit, viewModel: SettingsViewModel = hiltViewMo
                 )
                 when (category) {
                     Category.SCREEN -> ScreenSettings(settings, viewModel)
+                    Category.SOURCES -> SourceSettings(settings, viewModel)
                     Category.LYRICS -> LyricsSettings(settings, viewModel)
                     Category.CLOCK -> ClockSettings(settings, viewModel)
                     Category.APPEARANCE -> AppearanceSettings(settings, viewModel)
@@ -267,6 +270,27 @@ private fun ScreenSettings(s: AppSettings, vm: SettingsViewModel) {
         SwitchRow(stringResource(R.string.settings_rail_drift), stringResource(R.string.settings_rail_drift_detail), b.railOpacityDrift) { v ->
             vm.updateBurnIn { it.copy(railOpacityDrift = v) }
         }
+    }
+}
+
+@Composable
+private fun SourceSettings(s: AppSettings, vm: SettingsViewModel) {
+    SettingCard {
+        ChoiceRow(
+            title = stringResource(R.string.settings_source_mode),
+            subtitle = stringResource(R.string.settings_source_mode_detail),
+            options = SourceMode.entries,
+            selected = s.sourceMode,
+            label = {
+                stringResource(if (it == SourceMode.AUTO_FOLLOW) R.string.settings_source_follow else R.string.settings_source_pin)
+            },
+            onSelect = { v -> vm.update { it.copy(sourceMode = v) } },
+        )
+        SwitchRow(
+            title = stringResource(R.string.settings_media_browser),
+            subtitle = stringResource(R.string.settings_media_browser_detail),
+            checked = s.mediaBrowserResume,
+        ) { v -> vm.update { it.copy(mediaBrowserResume = v) } }
     }
 }
 

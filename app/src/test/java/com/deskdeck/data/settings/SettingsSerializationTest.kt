@@ -24,6 +24,8 @@ class SettingsSerializationTest {
             dynamicColors = false,
             accent = AccentColor.AMBER,
             keepScreenOn = KeepScreenOn.ALWAYS,
+            sourceMode = SourceMode.PIN,
+            mediaBrowserResume = true,
             burnIn = BurnInSettings(
                 pixelShift = false,
                 pixelShiftDp = 9,

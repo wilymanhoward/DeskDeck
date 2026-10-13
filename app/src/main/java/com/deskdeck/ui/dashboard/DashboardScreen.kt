@@ -26,12 +26,12 @@ import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.State
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
@@ -59,6 +59,8 @@ import com.deskdeck.ui.components.CardPalette
 import com.deskdeck.ui.components.LeftRail
 import com.deskdeck.ui.components.LyricsPanel
 import com.deskdeck.ui.components.NowPlayingCard
+import com.deskdeck.ui.components.RailActionSheet
+import com.deskdeck.ui.components.RailSheetRequest
 import com.deskdeck.ui.components.animatedCardPalette
 import com.deskdeck.ui.picker.AppPickerOverlay
 import com.deskdeck.ui.picker.PickerMode
@@ -79,8 +81,12 @@ fun DashboardRoute(
     val lyrics by viewModel.lyrics.collectAsStateWithLifecycle()
     val railApps by viewModel.railApps.collectAsStateWithLifecycle()
     val notificationCount by viewModel.notificationCount.collectAsStateWithLifecycle()
+    val railState by viewModel.railState.collectAsStateWithLifecycle()
+    val emptySource by viewModel.emptySource.collectAsStateWithLifecycle()
+    val anyPlaying by viewModel.anyPlaying.collectAsStateWithLifecycle()
     val settings = LocalAppSettings.current
     var picker by rememberSaveable { mutableStateOf<PickerMode?>(null) }
+    var railSheet by remember { mutableStateOf<RailSheetRequest?>(null) }
     val currentOnOpenSettings by rememberUpdatedState(onOpenSettings)
     // Picker and navigation are UI state, so these actions are handled here; the rest go to the ViewModel.
     val actions = remember(viewModel) {
@@ -93,8 +99,8 @@ fun DashboardRoute(
                 picker = PickerMode.EDIT
             }
 
-            override fun onRailAppLongClick(app: RailApp) {
-                picker = PickerMode.EDIT
+            override fun onRailAppLongClick(app: RailApp, anchorY: Float) {
+                railSheet = RailSheetRequest(app, anchorY)
             }
 
             override fun onSettings() = currentOnOpenSettings()
@@ -105,8 +111,9 @@ fun DashboardRoute(
     val burnIn = rememberBurnInDecision(
         settings = settings.burnIn,
         keepScreenOn = settings.keepScreenOn,
-        isPlaying = nowPlaying?.playback?.isPlaying == true,
-        enabled = burnInEnabled && picker == null,
+        // Any app playing counts, even one that isn't the selected source.
+        isPlaying = anyPlaying,
+        enabled = burnInEnabled && picker == null && railSheet == null,
     )
     KeepScreenOn(enabled = burnIn.keepScreenOn)
     val dashboardVisible = burnIn.mode == DisplayMode.ACTIVE || burnIn.mode == DisplayMode.DIMMED
@@ -123,8 +130,16 @@ fun DashboardRoute(
             onGrantAccess = onGrantAccess,
             actions = actions,
             position = position,
+            railState = railState,
+            emptySource = emptySource,
         )
         AppPickerOverlay(mode = picker, onDismiss = { picker = null })
+        RailActionSheet(
+            request = railSheet,
+            pinnedPackage = railState.pinnedPackage,
+            actions = actions,
+            onDismiss = { railSheet = null },
+        )
 
         DimOverlay(visible = burnIn.mode == DisplayMode.DIMMED, level = settings.burnIn.dimLevel, onWake = wake)
         AnimatedVisibility(
@@ -154,6 +169,8 @@ fun DashboardScreen(
     notificationAccessGranted: Boolean = true,
     onGrantAccess: () -> Unit = {},
     position: State<Long> = rememberPlaybackPosition(nowPlaying?.playback, nowPlaying?.track?.durationMs),
+    railState: RailState = RailState(highlightPackage = nowPlaying?.sourcePackage),
+    emptySource: EmptySourceUi? = null,
 ) {
     val settings = LocalAppSettings.current
     val palette = animatedCardPalette(
@@ -175,7 +192,7 @@ fun DashboardScreen(
         ) {
             LeftRail(
                 apps = railApps,
-                activePackage = nowPlaying?.sourcePackage,
+                state = railState,
                 notificationCount = notificationCount,
                 onAppClick = actions::onRailAppClick,
                 onAppLongClick = actions::onRailAppLongClick,
@@ -192,6 +209,7 @@ fun DashboardScreen(
                     actions = actions,
                     accessMissing = !notificationAccessGranted,
                     onGrantAccess = onGrantAccess,
+                    emptySource = emptySource,
                     modifier = Modifier
                         .weight(1f)
                         .fillMaxHeight(),
@@ -205,6 +223,9 @@ fun DashboardScreen(
                     actions = actions,
                     accessMissing = !notificationAccessGranted,
                     onGrantAccess = onGrantAccess,
+                    emptySource = emptySource,
+                    onOpenApp = actions::onOpenApp,
+                    onGetApp = actions::onGetApp,
                     modifier = Modifier
                         .weight(0.47f)
                         .fillMaxHeight(),
@@ -232,6 +253,7 @@ private fun CompactPanels(
     actions: DashboardActions,
     accessMissing: Boolean,
     onGrantAccess: () -> Unit,
+    emptySource: EmptySourceUi?,
     modifier: Modifier = Modifier,
 ) {
     var showLyrics by rememberSaveable { mutableStateOf(false) }
@@ -257,7 +279,18 @@ private fun CompactPanels(
         if (showLyrics) {
             LyricsPanel(lyrics, position, actions, panelModifier)
         } else {
-            NowPlayingCard(nowPlaying, position, palette, actions, accessMissing, onGrantAccess, panelModifier)
+            NowPlayingCard(
+                nowPlaying = nowPlaying,
+                position = position,
+                palette = palette,
+                actions = actions,
+                accessMissing = accessMissing,
+                onGrantAccess = onGrantAccess,
+                emptySource = emptySource,
+                onOpenApp = actions::onOpenApp,
+                onGetApp = actions::onGetApp,
+                modifier = panelModifier,
+            )
         }
     }
 }
