@@ -120,6 +120,13 @@ button instead of the player.
   - Tap a line to jump to it.
   - If the timing is off, use the sliders button (top right of the lyrics) for **Earlier / Later**
     in 0.1 s steps. It's saved per song.
+- **Volume:**
+  - The volume buttons show DeskDeck's own HUD on the right edge instead of the system panel.
+    Drag the HUD to set the level; tap its speaker to mute.
+  - The slider under the playback controls does the same. Volume changed from elsewhere
+    (Bluetooth speaker buttons, another device) shows the HUD too.
+  - When the shown app plays on a remote device with adjustable volume (Cast, some Spotify Connect
+    speakers), the volume follows that device; otherwise it's the tablet's media volume.
 - **Settings** (gear icon): screen & burn-in, lyrics, clock, appearance, sidebar.
 
 ### Burn-in protection
@@ -210,6 +217,12 @@ screen plus two overlays), and transliteration libraries (Android's built-in ICU
 - **Samsung taskbar handle:** with gesture navigation and the taskbar enabled, One UI draws a small
   handle at the bottom that apps can't hide. Turn it off under **Settings › Display › Taskbar** (or
   the navigation bar's gesture hint).
+- **Volume keys** are only DeskDeck's while it's on screen; elsewhere the system panel appears as
+  usual. Spotify reports its session as a remote route with fixed volume even when it plays on the
+  tablet, so DeskDeck (like Android itself) adjusts the tablet's media volume for it. Raising volume
+  past Android's hearing-safety level on headphones still needs the system's confirmation dialog,
+  which DeskDeck then shows. Outside changes are detected through `VOLUME_CHANGED_ACTION`, a stable
+  but undocumented system broadcast.
 - **targetSdk 35** is deliberate. With 36+, Android 16 ignores orientation locks on large screens.
 
 ## Troubleshooting

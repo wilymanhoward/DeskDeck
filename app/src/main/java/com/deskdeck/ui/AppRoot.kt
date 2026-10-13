@@ -36,6 +36,7 @@ import com.deskdeck.ui.theme.DeskDeckTheme
 import com.deskdeck.ui.theme.LocalMotion
 import com.deskdeck.ui.theme.MotionSpec
 import com.deskdeck.ui.theme.rememberMotionSpec
+import com.deskdeck.ui.volume.VolumeHud
 import kotlin.math.roundToInt
 
 /**
@@ -101,6 +102,8 @@ fun AppRoot(viewModel: AppViewModel = hiltViewModel()) {
                         KeepScreenOn(enabled = true)
                         SettingsScreen(onBack = { settingsOpen = false })
                     }
+                    // Above every screen (settings, ambient too) and inside the pixel shift.
+                    VolumeHud()
                 }
                 BrightnessCapOverlay(cap = settings.burnIn.brightnessCap)
             }

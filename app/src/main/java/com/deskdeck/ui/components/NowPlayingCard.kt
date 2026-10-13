@@ -83,11 +83,12 @@ fun NowPlayingCard(
     emptySource: EmptySourceUi? = null,
     onOpenApp: (String) -> Unit = {},
     onGetApp: (String) -> Unit = {},
+    volumeControl: (@Composable () -> Unit)? = null,
 ) {
     val motion = LocalMotion.current
     BoxWithConstraints(modifier = modifier.glass(RoundedCornerShape(Dimens.cardCorner))) {
         val fontScale = LocalDensity.current.fontScale.coerceAtLeast(1f)
-        val minHeight = 440.dp * fontScale
+        val minHeight = (if (volumeControl != null) 496.dp else 440.dp) * fontScale
         val contentModifier = if (maxHeight < minHeight) {
             Modifier.fillMaxSize().verticalScroll(rememberScrollState()).height(minHeight)
         } else Modifier.fillMaxSize()
@@ -101,7 +102,7 @@ fun NowPlayingCard(
             if (np == null) {
                 EmptyNowPlaying(accessMissing, onGrantAccess, emptySource, onOpenApp, onGetApp)
             } else {
-                NowPlayingContent(np, position, palette, actions)
+                NowPlayingContent(np, position, palette, actions, volumeControl)
             }
         }
     }
@@ -113,6 +114,7 @@ private fun NowPlayingContent(
     position: State<Long>,
     palette: CardPalette,
     actions: PlayerActions,
+    volumeControl: (@Composable () -> Unit)?,
 ) {
     val track = nowPlaying.track
     val motion = LocalMotion.current
@@ -182,6 +184,10 @@ private fun NowPlayingContent(
             palette = palette,
             actions = actions,
         )
+        if (volumeControl != null) {
+            Spacer(Modifier.height(4.dp))
+            volumeControl()
+        }
     }
 }
 
