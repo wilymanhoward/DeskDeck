@@ -14,6 +14,9 @@ interface PlaybackSource {
     /** Whether this source can try for [packageName] right now (installed, enabled in settings …). */
     suspend fun canHandle(packageName: String): Boolean = true
 
+    /** How long to wait for the app's session after [requestPlay]; null = the chain's default. */
+    val sessionTimeoutMs: Long? get() = null
+
     /**
      * Asks [packageName] to start playing. Fire-and-forget: success is judged by a session
      * appearing afterwards, not by this call.
@@ -40,7 +43,7 @@ class ResumeChain(
             } catch (_: Exception) {
                 false
             }
-            if (tried && sessionAppeared(stepTimeoutMs)) return source
+            if (tried && sessionAppeared(source.sessionTimeoutMs ?: stepTimeoutMs)) return source
         }
         return null
     }

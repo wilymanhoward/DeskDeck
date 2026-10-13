@@ -39,8 +39,9 @@ sealed interface SourceStatus {
 
 /**
  * Rail taps land here. Selecting an app shows its session right away if it has one; otherwise the
- * [ResumeChain] tries to get it playing without opening it. This class never launches an app:
- * that only happens from an explicit "Open …" button.
+ * [ResumeChain] wakes it: first in the background, and as a last resort (setting, on by default)
+ * by opening it for a moment and coming straight back ([BriefOpenSource]). Opening an app to use
+ * it only happens from an explicit "Open …" button.
  */
 @Singleton
 class SourceSwitcher @Inject constructor(

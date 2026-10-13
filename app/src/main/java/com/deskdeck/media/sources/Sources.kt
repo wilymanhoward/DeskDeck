@@ -1,11 +1,14 @@
 package com.deskdeck.media.sources
 
+import android.app.ActivityOptions
+import android.content.ActivityNotFoundException
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.support.v4.media.MediaBrowserCompat
 import android.support.v4.media.session.MediaControllerCompat
 import android.view.KeyEvent
+import com.deskdeck.MainActivity
 import com.deskdeck.data.settings.SettingsRepository
 import com.deskdeck.media.MediaRepository
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -23,6 +26,7 @@ class SessionKeySource @Inject constructor(
     private val media: MediaRepository,
 ) : PlaybackSource {
     override val name = "session-key"
+    override val sessionTimeoutMs = BACKGROUND_WAIT_MS
 
     override suspend fun requestPlay(packageName: String): Boolean = media.requestPlay(packageName)
 }
@@ -36,6 +40,7 @@ class MediaButtonSource @Inject constructor(
     @param:ApplicationContext private val context: Context,
 ) : PlaybackSource {
     override val name = "media-button"
+    override val sessionTimeoutMs = BACKGROUND_WAIT_MS
 
     override suspend fun canHandle(packageName: String) = receiver(packageName) != null
 
@@ -70,6 +75,7 @@ class MediaBrowserSource @Inject constructor(
     private val settings: SettingsRepository,
 ) : PlaybackSource {
     override val name = "media-browser"
+    override val sessionTimeoutMs = BACKGROUND_WAIT_MS
 
     override suspend fun canHandle(packageName: String): Boolean =
         settings.settings.first().mediaBrowserResume && service(packageName) != null
@@ -115,6 +121,62 @@ class MediaBrowserSource @Inject constructor(
 
     private companion object {
         const val SERVICE_ACTION = "android.media.browse.MediaBrowserService"
-        const val CONNECT_TIMEOUT_MS = 4_000L
+        const val CONNECT_TIMEOUT_MS = 2_000L
     }
 }
+
+/**
+ * Step 4 (on by default, Settings › Sources): open the app for a moment, then come straight back.
+ *
+ * Since Android 12 an app that isn't running may not start its playback service when another app
+ * wakes it (steps 1–3), so YouTube Music, Apple Music and others ignore them. Opening the app is
+ * what reliably works: on launch it restores its player session with the last song, as when the
+ * user opens it by hand. DeskDeck launches it without animation, waits until that session appears
+ * (at most [OPEN_MAX_MS]), and brings itself back to the front. Nothing starts playing.
+ */
+class BriefOpenSource @Inject constructor(
+    @param:ApplicationContext private val context: Context,
+    private val media: MediaRepository,
+    private val settings: SettingsRepository,
+) : PlaybackSource {
+    override val name = "brief-open"
+    // DeskDeck is back after at most OPEN_MAX_MS, but slow starters (YouTube Music) finish loading
+    // their session in the background a few seconds later.
+    override val sessionTimeoutMs = 8_000L
+
+    override suspend fun canHandle(packageName: String): Boolean =
+        settings.settings.first().wakeByOpening && context.packageManager.getLaunchIntentForPackage(packageName) != null
+
+    override suspend fun requestPlay(packageName: String): Boolean = withContext(Dispatchers.Main) {
+        val launch = context.packageManager.getLaunchIntentForPackage(packageName)
+            ?.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_NO_ANIMATION)
+            ?: return@withContext false
+        val noAnimation = ActivityOptions.makeCustomAnimation(context, 0, 0).toBundle()
+        try {
+            context.startActivity(launch, noAnimation)
+        } catch (_: ActivityNotFoundException) {
+            return@withContext false
+        }
+        try {
+            // Long enough for the app to get going, and back as soon as its session shows up.
+            withTimeoutOrNull(OPEN_MAX_MS) {
+                delay(OPEN_MIN_MS)
+                media.sessionPackages.first { packageName in it }
+            }
+        } finally {
+            // Back to DeskDeck even if this was cancelled (another rail tap meanwhile).
+            val back = Intent(context, MainActivity::class.java)
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_REORDER_TO_FRONT or Intent.FLAG_ACTIVITY_NO_ANIMATION)
+            runCatching { context.startActivity(back, noAnimation) }
+        }
+        true
+    }
+
+    private companion object {
+        const val OPEN_MIN_MS = 400L
+        const val OPEN_MAX_MS = 3_000L
+    }
+}
+
+/** Steps 1–3 work in the background or not at all; no point waiting long before the next. */
+private const val BACKGROUND_WAIT_MS = 1_500L
