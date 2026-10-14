@@ -7,9 +7,7 @@ import com.deskdeck.data.settings.AppSettings
 import com.deskdeck.data.settings.BurnInSettings
 import com.deskdeck.data.settings.NightSettings
 import com.deskdeck.data.settings.NotificationSettings
-import com.deskdeck.domain.night.NightScheduleCalculator
-import java.time.Instant
-import java.time.ZoneId
+import com.deskdeck.media.NightModeController
 import com.deskdeck.data.settings.SettingsRepository
 import com.deskdeck.data.spotify.SpotifyAccount
 import com.deskdeck.data.spotify.SpotifyAuth
@@ -36,6 +34,7 @@ class SettingsViewModel @Inject constructor(
     outputLatency: OutputLatency,
     private val spotifyAuth: SpotifyAuth,
     private val spotifyLibrary: SpotifyLibrary,
+    private val nightMode: NightModeController,
 ) : ViewModel() {
 
     val spotifyAccount: StateFlow<SpotifyAccount> = spotifyAuth.account
@@ -77,17 +76,13 @@ class SettingsViewModel @Inject constructor(
         viewModelScope.launch { settingsRepository.update(transform) }
     }
 
-    private val nightCalculator = NightScheduleCalculator(ZoneId.systemDefault())
-
     fun updateNight(transform: (NightSettings) -> NightSettings) {
         viewModelScope.launch { settingsRepository.updateNight(transform) }
     }
 
     /** "Start Night Mode now": on until the next wake-up time. */
     fun startNightNow() {
-        viewModelScope.launch {
-            settingsRepository.setNightOverride(nightCalculator.startNow(Instant.now(), settings.value.night))
-        }
+        nightMode.startNow()
     }
 
     fun updateBurnIn(transform: (BurnInSettings) -> BurnInSettings) = update { it.copy(burnIn = transform(it.burnIn)) }

@@ -36,6 +36,9 @@ interface DashboardActions : PlayerActions {
     /** Opens the notification panel (the bell). */
     fun onOpenNotifications() {}
 
+    /** Long-press on the rail clock: start or end Night Mode now. */
+    fun onToggleNight() {}
+
     /** The Now Playing card was dragged to the other side (lyrics take the old side). */
     fun onMoveNowPlaying(toRight: Boolean) {}
 

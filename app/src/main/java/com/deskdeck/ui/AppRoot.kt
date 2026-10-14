@@ -36,6 +36,9 @@ import com.deskdeck.ui.theme.DeskDeckTheme
 import com.deskdeck.ui.theme.LocalMotion
 import com.deskdeck.ui.theme.MotionSpec
 import com.deskdeck.ui.theme.rememberMotionSpec
+import com.deskdeck.ui.night.LocalNightMode
+import com.deskdeck.ui.night.NightScreen
+import com.deskdeck.ui.night.NightViewModel
 import com.deskdeck.ui.notifications.BannerHold
 import com.deskdeck.ui.notifications.BannerHost
 import com.deskdeck.ui.notifications.LocalBannerHold
@@ -60,6 +63,10 @@ fun AppRoot(viewModel: AppViewModel = hiltViewModel()) {
     val motion = rememberMotionSpec()
     val bannerHold = remember { BannerHold() }
     val shift by rememberPixelShift(settings.burnIn.pixelShift, settings.burnIn.pixelShiftDp)
+    val nightViewModel: NightViewModel = hiltViewModel()
+    val nightState by nightViewModel.state.collectAsStateWithLifecycle()
+    // Night Mode takes over only the dashboard (not onboarding), and only while DeskDeck is in front.
+    val nightShown = nightState.active && (accessGranted || onboardingSkipped)
 
     // DeskDeck never leaves the screen by itself: Back on the dashboard does nothing. Overlays
     // (sheet, picker, settings) register their own handlers later, so those still close with Back.
@@ -71,6 +78,7 @@ fun AppRoot(viewModel: AppViewModel = hiltViewModel()) {
             LocalInteractionTracker provides tracker,
             LocalMotion provides motion,
             LocalBannerHold provides bannerHold,
+            LocalNightMode provides nightShown,
         ) {
             Box(
                 Modifier
@@ -92,7 +100,8 @@ fun AppRoot(viewModel: AppViewModel = hiltViewModel()) {
                                 notificationAccessGranted = accessGranted,
                                 onGrantAccess = openAccessSettings,
                                 onOpenSettings = { settingsOpen = true },
-                                burnInEnabled = !settingsOpen,
+                                // The night screen has its own burn-in care; dimming/ambient would fight it.
+                                burnInEnabled = !settingsOpen && !nightShown,
                             )
                         } else {
                             // Setting things up: keep the screen on so it doesn't time out mid-read.
@@ -103,6 +112,14 @@ fun AppRoot(viewModel: AppViewModel = hiltViewModel()) {
                                 onSkip = { onboardingSkipped = true },
                             )
                         }
+                    }
+                    // A slow, calm fade between the dashboard and the night screen.
+                    AnimatedVisibility(
+                        visible = nightShown,
+                        enter = fadeIn(motion.fade(NIGHT_FADE_MS)),
+                        exit = fadeOut(motion.fade(NIGHT_FADE_MS)),
+                    ) {
+                        NightScreen(onOpenSettings = { settingsOpen = true }, viewModel = nightViewModel)
                     }
                     AnimatedVisibility(visible = settingsOpen, enter = fadeIn(motion.fade()), exit = fadeOut(motion.fade())) {
                         KeepScreenOn(enabled = true)
@@ -118,3 +135,5 @@ fun AppRoot(viewModel: AppViewModel = hiltViewModel()) {
         }
     }
 }
+
+private const val NIGHT_FADE_MS = 2_000

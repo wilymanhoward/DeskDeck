@@ -23,7 +23,7 @@ private fun inter(weight: Int) = Font(
     variationSettings = FontVariation.Settings(FontVariation.weight(weight)),
 )
 
-val Inter = FontFamily(inter(300), inter(400), inter(500), inter(600), inter(700))
+val Inter = FontFamily(inter(200), inter(300), inter(400), inter(500), inter(600), inter(700), inter(800))
 
 /** Tighter tracking for large text, as Apple does; body text keeps Inter's default. */
 private val TightLarge = (-0.025).em
