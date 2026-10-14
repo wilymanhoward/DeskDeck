@@ -53,6 +53,7 @@ import com.deskdeck.ui.notifications.NotificationCenter
 import com.deskdeck.ui.volume.VolumeHud
 import com.deskdeck.ui.adaptive.LocalDeskSize
 import com.deskdeck.ui.adaptive.currentDeskSize
+import com.deskdeck.ui.call.IncomingCallHost
 import kotlin.math.roundToInt
 
 /**
@@ -178,6 +179,7 @@ fun AppRoot(viewModel: AppViewModel = hiltViewModel()) {
                     // Above every screen (settings, ambient too) and inside the pixel shift.
                     BannerHost()
                     NotificationCenter()
+                    IncomingCallHost()
                     VolumeHud()
                 }
                 BrightnessCapOverlay(cap = settings.burnIn.brightnessCap)
