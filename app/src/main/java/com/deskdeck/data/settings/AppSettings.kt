@@ -76,6 +76,7 @@ data class AppSettings(
      * speakers that buffer more than they report. Positive = lyrics later.
      */
     val lyricsRouteAdjustMs: Map<String, Int> = emptyMap(),
+    val night: NightSettings = NightSettings(),
     val dynamicColors: Boolean = true,
     val accent: AccentColor = AccentColor.BLUE,
     val keepScreenOn: KeepScreenOn = KeepScreenOn.WHILE_PLAYING,
@@ -100,4 +101,5 @@ object SettingsRanges {
     val brightnessCap = 0.5f..1f
     val bannerDurationSec = 3..10
     val lyricsSyncAdjustMs = -1_000..2_000
+    val nightBrightness = 0.01f..0.5f
 }

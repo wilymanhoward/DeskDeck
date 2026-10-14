@@ -96,6 +96,7 @@ private enum class Category(val titleRes: Int) {
     NOTIFICATIONS(R.string.settings_cat_notifications),
     LYRICS(R.string.settings_cat_lyrics),
     CLOCK(R.string.settings_cat_clock),
+    NIGHT(R.string.settings_cat_night),
     APPEARANCE(R.string.settings_cat_appearance),
     SIDEBAR(R.string.settings_cat_sidebar),
 }
@@ -165,6 +166,7 @@ fun SettingsScreen(onBack: () -> Unit, viewModel: SettingsViewModel = hiltViewMo
                     Category.NOTIFICATIONS -> BannerSettings(settings, viewModel)
                     Category.LYRICS -> LyricsSettings(settings, viewModel)
                     Category.CLOCK -> ClockSettings(settings, viewModel)
+                    Category.NIGHT -> NightSettingsSection(settings.night, viewModel)
                     Category.APPEARANCE -> AppearanceSettings(settings, viewModel)
                     Category.SIDEBAR -> SettingCard {
                         ActionRow(
@@ -524,7 +526,7 @@ private fun CategoryItem(title: String, selected: Boolean, onClick: () -> Unit) 
 }
 
 @Composable
-private fun SettingCard(content: @Composable ColumnScope.() -> Unit) {
+internal fun SettingCard(content: @Composable ColumnScope.() -> Unit) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -535,7 +537,7 @@ private fun SettingCard(content: @Composable ColumnScope.() -> Unit) {
 }
 
 @Composable
-private fun RowText(title: String, subtitle: String?, enabled: Boolean, modifier: Modifier = Modifier) {
+internal fun RowText(title: String, subtitle: String?, enabled: Boolean, modifier: Modifier = Modifier) {
     val alpha = if (enabled) 1f else 0.4f
     Column(modifier) {
         Text(title, style = MaterialTheme.typography.titleMedium, color = CappedWhite.copy(alpha = alpha))
@@ -546,7 +548,7 @@ private fun RowText(title: String, subtitle: String?, enabled: Boolean, modifier
 }
 
 @Composable
-private fun SwitchRow(
+internal fun SwitchRow(
     title: String,
     subtitle: String?,
     checked: Boolean,
@@ -569,7 +571,7 @@ private fun SwitchRow(
 
 /** Slider that only persists when the drag ends (no DataStore write per pixel). */
 @Composable
-private fun SliderRow(
+internal fun SliderRow(
     title: String,
     value: Float,
     range: ClosedFloatingPointRange<Float>,
@@ -601,7 +603,7 @@ private fun SliderRow(
 }
 
 @Composable
-private fun <T> ChoiceRow(
+internal fun <T> ChoiceRow(
     title: String,
     options: List<T>,
     selected: T,
@@ -640,7 +642,7 @@ private fun <T> ChoiceRow(
 }
 
 @Composable
-private fun ActionRow(title: String, subtitle: String?, actionLabel: String, enabled: Boolean = true, onClick: () -> Unit) {
+internal fun ActionRow(title: String, subtitle: String?, actionLabel: String, enabled: Boolean = true, onClick: () -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -657,7 +659,7 @@ private fun ActionRow(title: String, subtitle: String?, actionLabel: String, ena
 
 /** An action whose button briefly reads "Done" once the work has finished. */
 @Composable
-private fun ConfirmingActionRow(title: String, subtitle: String, actionLabel: String, action: (onDone: () -> Unit) -> Unit) {
+internal fun ConfirmingActionRow(title: String, subtitle: String, actionLabel: String, action: (onDone: () -> Unit) -> Unit) {
     var done by remember { mutableStateOf(false) }
     LaunchedEffect(done) {
         if (done) {

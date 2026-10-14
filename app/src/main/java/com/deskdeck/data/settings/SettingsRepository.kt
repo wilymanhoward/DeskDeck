@@ -7,8 +7,10 @@ import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.floatPreferencesKey
 import androidx.datastore.preferences.core.intPreferencesKey
+import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.core.stringSetPreferencesKey
+import java.time.DayOfWeek
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlinx.coroutines.flow.Flow
@@ -25,9 +27,52 @@ class SettingsRepository @Inject constructor(
     suspend fun update(transform: (AppSettings) -> AppSettings) {
         dataStore.edit { prefs -> writeSettings(prefs, transform(readSettings(prefs))) }
     }
+
+    suspend fun updateNight(transform: (NightSettings) -> NightSettings) = update { it.copy(night = transform(it.night)) }
+
+    /** "Start/End Night Mode now", kept across restarts until it expires. */
+    val nightOverride: Flow<NightOverride?> = dataStore.data.map { prefs ->
+        val until = prefs[Keys.nightOverrideUntil] ?: return@map null
+        NightOverride(on = prefs[Keys.nightOverrideOn] ?: false, untilEpochMs = until)
+    }.distinctUntilChanged()
+
+    suspend fun setNightOverride(override: NightOverride?) {
+        dataStore.edit { prefs ->
+            if (override == null) {
+                prefs.remove(Keys.nightOverrideOn)
+                prefs.remove(Keys.nightOverrideUntil)
+            } else {
+                prefs[Keys.nightOverrideOn] = override.on
+                prefs[Keys.nightOverrideUntil] = override.untilEpochMs
+            }
+        }
+    }
 }
 
 private object Keys {
+    val nightEnabled = booleanPreferencesKey("night_enabled")
+    val nightWeekdayBed = intPreferencesKey("night_weekday_bedtime_min")
+    val nightWeekdayWake = intPreferencesKey("night_weekday_wake_min")
+    val nightWeekendDifferent = booleanPreferencesKey("night_weekend_different")
+    val nightWeekendBed = intPreferencesKey("night_weekend_bedtime_min")
+    val nightWeekendWake = intPreferencesKey("night_weekend_wake_min")
+    val nightWakeDays = stringSetPreferencesKey("night_wake_days")
+    val nightClockFormat = stringPreferencesKey("night_clock_format")
+    val nightClockStyle = stringPreferencesKey("night_clock_style")
+    val nightRedTint = stringPreferencesKey("night_red_tint")
+    val nightBrightness = floatPreferencesKey("night_brightness")
+    val brief = booleanPreferencesKey("brief_enabled")
+    val briefDuration = stringPreferencesKey("brief_duration")
+    val briefWeather = booleanPreferencesKey("brief_weather")
+    val briefMarket = booleanPreferencesKey("brief_market")
+    val briefHeadlines = booleanPreferencesKey("brief_headlines")
+    val weatherDeviceLocation = booleanPreferencesKey("weather_device_location")
+    val weatherCity = stringPreferencesKey("weather_city")
+    val temperatureUnit = stringPreferencesKey("temperature_unit")
+    /** Newline-separated, so the order is kept (a string set would lose it). */
+    val watchlist = stringPreferencesKey("market_watchlist")
+    val nightOverrideOn = booleanPreferencesKey("night_override_on")
+    val nightOverrideUntil = longPreferencesKey("night_override_until")
     val clockFormat = stringPreferencesKey("clock_format")
     val clockSeconds = booleanPreferencesKey("clock_seconds")
     val lyricsFontSize = intPreferencesKey("lyrics_font_size")
@@ -75,6 +120,7 @@ internal fun readSettings(prefs: Preferences): AppSettings {
         showRomanization = prefs[Keys.romanization] ?: d.showRomanization,
         lyricsLatencyCompensation = prefs[Keys.latencyCompensation] ?: d.lyricsLatencyCompensation,
         lyricsRouteAdjustMs = prefs[Keys.routeAdjust]?.let(::decodeRouteAdjust) ?: d.lyricsRouteAdjustMs,
+        night = readNight(prefs),
         dynamicColors = prefs[Keys.dynamicColors] ?: d.dynamicColors,
         accent = enumOr(prefs[Keys.accent], d.accent),
         keepScreenOn = enumOr(prefs[Keys.keepScreenOn], d.keepScreenOn),
@@ -113,6 +159,7 @@ internal fun writeSettings(prefs: MutablePreferences, s: AppSettings) {
     prefs[Keys.romanization] = s.showRomanization
     prefs[Keys.latencyCompensation] = s.lyricsLatencyCompensation
     prefs[Keys.routeAdjust] = s.lyricsRouteAdjustMs.map { (route, ms) -> "$ms|$route" }.toSet()
+    writeNight(prefs, s.night)
     prefs[Keys.dynamicColors] = s.dynamicColors
     prefs[Keys.accent] = s.accent.name
     prefs[Keys.keepScreenOn] = s.keepScreenOn.name
@@ -147,3 +194,53 @@ private fun decodeRouteAdjust(entries: Set<String>): Map<String, Int> = entries.
     val route = entry.substringAfter('|', missingDelimiterValue = "").ifEmpty { return@mapNotNull null }
     route to ms.coerceIn(SettingsRanges.lyricsSyncAdjustMs)
 }.toMap()
+
+private const val MINUTES_PER_DAY = 24 * 60
+
+private fun readNight(prefs: Preferences): NightSettings {
+    val d = NightSettings()
+    fun minutes(key: Preferences.Key<Int>, default: Int) = (prefs[key] ?: default).let { if (it in 0 until MINUTES_PER_DAY) it else default }
+    return NightSettings(
+        enabled = prefs[Keys.nightEnabled] ?: d.enabled,
+        weekdays = SleepWindow(minutes(Keys.nightWeekdayBed, d.weekdays.bedtimeMin), minutes(Keys.nightWeekdayWake, d.weekdays.wakeMin)),
+        weekendDifferent = prefs[Keys.nightWeekendDifferent] ?: d.weekendDifferent,
+        weekend = SleepWindow(minutes(Keys.nightWeekendBed, d.weekend.bedtimeMin), minutes(Keys.nightWeekendWake, d.weekend.wakeMin)),
+        wakeDays = prefs[Keys.nightWakeDays]?.mapNotNull { n -> DayOfWeek.entries.firstOrNull { it.name == n } }?.toSet() ?: d.wakeDays,
+        clockFormat = enumOr(prefs[Keys.nightClockFormat], d.clockFormat),
+        clockStyle = enumOr(prefs[Keys.nightClockStyle], d.clockStyle),
+        redTint = enumOr(prefs[Keys.nightRedTint], d.redTint),
+        brightness = (prefs[Keys.nightBrightness] ?: d.brightness).coerceIn(SettingsRanges.nightBrightness),
+        brief = prefs[Keys.brief] ?: d.brief,
+        briefDuration = enumOr(prefs[Keys.briefDuration], d.briefDuration),
+        briefWeather = prefs[Keys.briefWeather] ?: d.briefWeather,
+        briefMarket = prefs[Keys.briefMarket] ?: d.briefMarket,
+        briefHeadlines = prefs[Keys.briefHeadlines] ?: d.briefHeadlines,
+        useDeviceLocation = prefs[Keys.weatherDeviceLocation] ?: d.useDeviceLocation,
+        city = prefs[Keys.weatherCity] ?: d.city,
+        temperatureUnit = enumOr(prefs[Keys.temperatureUnit], d.temperatureUnit),
+        watchlist = prefs[Keys.watchlist]?.split('\n')?.map { it.trim() }?.filter { it.isNotEmpty() } ?: d.watchlist,
+    )
+}
+
+private fun writeNight(prefs: MutablePreferences, n: NightSettings) {
+    prefs[Keys.nightEnabled] = n.enabled
+    prefs[Keys.nightWeekdayBed] = n.weekdays.bedtimeMin
+    prefs[Keys.nightWeekdayWake] = n.weekdays.wakeMin
+    prefs[Keys.nightWeekendDifferent] = n.weekendDifferent
+    prefs[Keys.nightWeekendBed] = n.weekend.bedtimeMin
+    prefs[Keys.nightWeekendWake] = n.weekend.wakeMin
+    prefs[Keys.nightWakeDays] = n.wakeDays.map { it.name }.toSet()
+    prefs[Keys.nightClockFormat] = n.clockFormat.name
+    prefs[Keys.nightClockStyle] = n.clockStyle.name
+    prefs[Keys.nightRedTint] = n.redTint.name
+    prefs[Keys.nightBrightness] = n.brightness
+    prefs[Keys.brief] = n.brief
+    prefs[Keys.briefDuration] = n.briefDuration.name
+    prefs[Keys.briefWeather] = n.briefWeather
+    prefs[Keys.briefMarket] = n.briefMarket
+    prefs[Keys.briefHeadlines] = n.briefHeadlines
+    prefs[Keys.weatherDeviceLocation] = n.useDeviceLocation
+    prefs[Keys.weatherCity] = n.city
+    prefs[Keys.temperatureUnit] = n.temperatureUnit.name
+    prefs[Keys.watchlist] = n.watchlist.joinToString("\n")
+}
