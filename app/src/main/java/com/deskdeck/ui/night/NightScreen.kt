@@ -69,6 +69,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
@@ -92,6 +93,8 @@ import com.deskdeck.ui.settings.LocalAppSettings
 import com.deskdeck.ui.theme.Inter
 import com.deskdeck.ui.theme.NunitoRounded
 import com.deskdeck.ui.theme.LocalMotion
+import com.deskdeck.ui.common.cappedSp
+import com.deskdeck.ui.common.rememberTouchExploration
 import com.deskdeck.ui.theme.MotionSpec
 import java.time.Instant
 import java.time.LocalDateTime
@@ -142,6 +145,8 @@ fun NightScreen(onOpenSettings: () -> Unit, viewModel: NightViewModel = hiltView
         awake = false
     }
     WindowBrightness(if (awake) maxOf(night.brightness * 6, 0.35f) else night.brightness)
+    // With TalkBack the way out stays available; it can't be found by a sighted first tap.
+    val touchExploration by rememberTouchExploration()
 
     val lux by rememberAmbientLux()
     val red = when (night.redTint) {
@@ -167,7 +172,11 @@ fun NightScreen(onOpenSettings: () -> Unit, viewModel: NightViewModel = hiltView
         Modifier
             .fillMaxSize()
             .background(Color.Black)
-            .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) {
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null,
+                onClickLabel = stringResource(R.string.night_show_controls),
+            ) {
                 awakeUntil = System.currentTimeMillis()
             },
     ) {
@@ -201,7 +210,7 @@ fun NightScreen(onOpenSettings: () -> Unit, viewModel: NightViewModel = hiltView
         }
 
         AnimatedVisibility(
-            visible = awake,
+            visible = awake || touchExploration,
             enter = fadeIn(motion.fade(MotionSpec.LONG_MS)),
             exit = fadeOut(motion.fade(MotionSpec.LONG_MS)),
             modifier = Modifier.align(Alignment.TopEnd).padding(20.dp),
@@ -227,21 +236,27 @@ private fun NightClock(settings: NightSettings, ink: Ink, hasNewNotifications: B
     }
     val alarm = remember(now.hour, now.minute) { nextAlarm(context, is24) }
     val date = now.format(DateTimeFormatter.ofPattern("EEE d", Locale.getDefault())).uppercase(Locale.getDefault())
-    val spoken = stringResource(R.string.night_clock_description, now.format(DateTimeFormatter.ofPattern(if (is24) "HH:mm" else "h:mm a")), date)
+    val time = now.format(DateTimeFormatter.ofPattern(if (is24) "HH:mm" else "h:mm a"))
+    val fullDate = now.format(DateTimeFormatter.ofPattern("EEEE d MMMM", Locale.getDefault()))
+    val spoken = listOfNotNull(
+        stringResource(R.string.night_clock_description, time, fullDate),
+        alarm?.let { stringResource(R.string.night_alarm_description, it) },
+        if (hasNewNotifications) stringResource(R.string.night_new_notifications) else null,
+    ).joinToString(". ")
 
-    Column(modifier.semantics { contentDescription = spoken }, horizontalAlignment = Alignment.CenterHorizontally) {
+    Column(modifier.clearAndSetSemantics { contentDescription = spoken }, horizontalAlignment = Alignment.CenterHorizontally) {
         when (settings.clockStyle) {
             NightClockStyle.ANALOG -> AnalogClock(now, ink, Modifier.size(340.dp))
             else -> DigitalClock(now, is24, settings.clockStyle == NightClockStyle.THIN, ink)
         }
         Spacer(Modifier.height(12.dp))
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(date, style = TextStyle(fontFamily = NunitoRounded, fontSize = 32.sp, fontWeight = FontWeight.W800, letterSpacing = 1.sp), color = ink.soft)
+            Text(date, style = TextStyle(fontFamily = NunitoRounded, fontSize = cappedSp(32f, 1.3f), fontWeight = FontWeight.W800, letterSpacing = 1.sp), color = ink.soft)
             if (alarm != null) {
                 Spacer(Modifier.width(28.dp))
                 Icon(painterResource(R.drawable.ic_alarm), null, tint = ink.soft, modifier = Modifier.size(26.dp))
                 Spacer(Modifier.width(8.dp))
-                Text(alarm, style = TextStyle(fontFamily = NunitoRounded, fontSize = 32.sp, fontWeight = FontWeight.W800, fontFeatureSettings = "tnum"), color = ink.soft)
+                Text(alarm, style = TextStyle(fontFamily = NunitoRounded, fontSize = cappedSp(32f, 1.3f), fontWeight = FontWeight.W800, fontFeatureSettings = "tnum"), color = ink.soft)
             }
             if (hasNewNotifications) {
                 Spacer(Modifier.width(24.dp))
@@ -260,8 +275,9 @@ private fun DigitalClock(now: LocalDateTime, is24: Boolean, thin: Boolean, ink: 
             // StandBy's look: rounded digits, heavy by default, light for the thin style.
             style = TextStyle(
                 fontFamily = NunitoRounded,
-                fontSize = 220.sp,
-                lineHeight = 220.sp,
+                // Already as big as the screen allows, so it doesn't grow with the font size.
+                fontSize = cappedSp(220f),
+                lineHeight = cappedSp(220f),
                 fontWeight = if (thin) FontWeight.W300 else FontWeight.W900,
                 letterSpacing = (-4).sp,
                 fontFeatureSettings = "tnum",
@@ -273,7 +289,7 @@ private fun DigitalClock(now: LocalDateTime, is24: Boolean, thin: Boolean, ink: 
             Spacer(Modifier.width(12.dp))
             Text(
                 text = now.format(DateTimeFormatter.ofPattern("a", Locale.getDefault())),
-                style = TextStyle(fontFamily = NunitoRounded, fontSize = 36.sp, fontWeight = FontWeight.W700),
+                style = TextStyle(fontFamily = NunitoRounded, fontSize = cappedSp(36f), fontWeight = FontWeight.W700),
                 color = ink.soft,
                 modifier = Modifier.padding(bottom = 36.dp),
             )

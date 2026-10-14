@@ -49,6 +49,7 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
@@ -56,6 +57,10 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.foundation.layout.FlowRow
+import com.deskdeck.ui.common.cappedSp
+import com.deskdeck.ui.common.rememberTouchExploration
 import androidx.compose.ui.unit.sp
 import androidx.core.net.toUri
 import com.deskdeck.R
@@ -126,7 +131,7 @@ fun MorningBriefScreen(
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
-                    Text(greeting, style = TextStyle(fontFamily = NunitoRounded, fontSize = 44.sp, fontWeight = FontWeight.W800), color = Primary, modifier = Modifier.semantics { heading() })
+                    Text(greeting, style = TextStyle(fontFamily = NunitoRounded, fontSize = cappedSp(44f, 1.3f), fontWeight = FontWeight.W800), color = Primary, modifier = Modifier.semantics { heading() })
                     Text(date, style = TextStyle(fontFamily = Inter, fontSize = 20.sp, fontWeight = FontWeight.W500), color = Secondary)
                 }
                 TextButton(onClick = onDone, modifier = Modifier.height(56.dp)) {
@@ -196,7 +201,7 @@ private fun WeatherCard(weather: WeatherBrief?, modifier: Modifier) {
             Text(weather.place, style = TextStyle(fontFamily = Inter, fontSize = 22.sp, fontWeight = FontWeight.W600), color = Primary, maxLines = 1, overflow = TextOverflow.Ellipsis)
             Spacer(Modifier.weight(1f))
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("${weather.temperature.toInt()}°", style = TextStyle(fontFamily = NunitoRounded, fontSize = 112.sp, lineHeight = 112.sp, fontWeight = FontWeight.W800), color = Primary)
+                Text("${weather.temperature.toInt()}°", style = TextStyle(fontFamily = NunitoRounded, fontSize = cappedSp(112f), lineHeight = cappedSp(112f), fontWeight = FontWeight.W800), color = Primary)
                 Spacer(Modifier.width(16.dp))
                 WeatherGlyph(condition, Modifier.size(72.dp))
             }
@@ -231,7 +236,9 @@ private fun MarketCard(markets: List<MarketBrief>, headlines: List<Headline>, sh
             }
             if (headlines.isNotEmpty()) {
                 Spacer(Modifier.height(16.dp))
-                headlines.take(3).forEach { h ->
+                // Fewer headlines with large text, so they still fit under the chart.
+                val count = if (LocalDensity.current.fontScale > 1.3f) 1 else 3
+                headlines.take(count).forEach { h ->
                     Column(
                         Modifier
                             .fillMaxWidth()
@@ -254,8 +261,10 @@ private fun MarketCard(markets: List<MarketBrief>, headlines: List<Headline>, sh
 private fun MarketPager(markets: List<MarketBrief>) {
     val pager = rememberPagerState { markets.size }
     val motion = LocalMotion.current
-    LaunchedEffect(pager.currentPage, markets.size, pager.isScrollInProgress) {
-        if (markets.size < 2 || pager.isScrollInProgress) return@LaunchedEffect
+    // No automatic page turns under TalkBack: content mustn't move while it's being read.
+    val touchExploration by rememberTouchExploration()
+    LaunchedEffect(pager.currentPage, markets.size, pager.isScrollInProgress, touchExploration) {
+        if (markets.size < 2 || pager.isScrollInProgress || touchExploration) return@LaunchedEffect
         delay(CYCLE_MS)
         val next = (pager.currentPage + 1) % markets.size
         if (motion.reduced) pager.scrollToPage(next) else pager.animateScrollToPage(next)
@@ -263,7 +272,14 @@ private fun MarketPager(markets: List<MarketBrief>) {
     Column(Modifier.fillMaxSize()) {
         HorizontalPager(pager, Modifier.weight(1f)) { page -> MarketPage(markets[page]) }
         if (markets.size > 1) {
-            Row(Modifier.align(Alignment.CenterHorizontally).padding(top = 8.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            val position = stringResource(R.string.brief_market_position, pager.currentPage + 1, markets.size)
+            Row(
+                Modifier
+                    .align(Alignment.CenterHorizontally)
+                    .padding(top = 8.dp)
+                    .clearAndSetSemantics { contentDescription = position },
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
                 repeat(markets.size) { i ->
                     Box(Modifier.size(7.dp).clip(CircleShape).background(if (i == pager.currentPage) Primary else Secondary.copy(alpha = 0.4f)))
                 }
@@ -300,8 +316,8 @@ private fun MarketPage(m: MarketBrief) {
         }
         if (viaEtf) Text(stringResource(R.string.brief_market_via, m.symbol), style = TextStyle(fontFamily = Inter, fontSize = 13.sp), color = Secondary)
         Spacer(Modifier.height(10.dp))
-        Row(verticalAlignment = Alignment.Bottom) {
-            Text(String.format(Locale.getDefault(), "%,.2f", m.price), style = TextStyle(fontFamily = NunitoRounded, fontSize = 52.sp, lineHeight = 56.sp, fontWeight = FontWeight.W800, fontFeatureSettings = "tnum"), color = Primary)
+        FlowRow(itemVerticalAlignment = Alignment.Bottom) {
+            Text(String.format(Locale.getDefault(), "%,.2f", m.price), style = TextStyle(fontFamily = NunitoRounded, fontSize = cappedSp(52f, 1.2f), lineHeight = cappedSp(56f, 1.2f), fontWeight = FontWeight.W800, fontFeatureSettings = "tnum"), color = Primary)
             Spacer(Modifier.width(14.dp))
             Text(
                 "$arrow $sign${String.format(Locale.getDefault(), "%.2f", abs(m.change))} ($sign${String.format(Locale.getDefault(), "%.2f", abs(m.changePercent))}%)",
