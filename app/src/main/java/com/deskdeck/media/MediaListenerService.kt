@@ -4,6 +4,9 @@ import android.app.Notification
 import android.app.NotificationManager
 import android.service.notification.NotificationListenerService
 import android.service.notification.StatusBarNotification
+import com.deskdeck.media.call.CallMonitor
+import com.deskdeck.media.call.toCall
+import com.deskdeck.media.call.toCallNotification
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
 
@@ -24,12 +27,17 @@ class MediaListenerService : NotificationListenerService() {
 
     @Inject lateinit var appLabels: AppLabels
 
+    @Inject lateinit var calls: CallMonitor
+
     override fun onListenerConnected() {
         super.onListenerConnected()
         banners.canceller = { key -> runCatching { cancelNotification(key) } }
         banners.activeReader = ::readActive
         notificationAccess.refresh()
         recount()
+        // A call that was already ringing or on when the listener (re)connected.
+        val ranking = runCatching { currentRanking }.getOrNull()
+        runCatching { activeNotifications.orEmpty() }.getOrDefault(emptyArray()).forEach { offerCall(it, ranking) }
     }
 
     override fun onListenerDisconnected() {
@@ -37,18 +45,39 @@ class MediaListenerService : NotificationListenerService() {
         banners.canceller = null
         banners.activeReader = null
         notificationCounter.reset()
+        calls.reset()
         notificationAccess.refresh()
     }
 
     // Only the ranking variants are overridden: the framework's defaults just forward to the plain ones.
     override fun onNotificationPosted(sbn: StatusBarNotification?, rankingMap: RankingMap?) {
         recount()
-        if (sbn != null) offerBanner(sbn, rankingMap)
+        if (sbn == null) return
+        // Calls have their own path (incoming call banner, call layout), never the banner queue.
+        if (offerCall(sbn, rankingMap)) return
+        offerBanner(sbn, rankingMap)
     }
 
     override fun onNotificationRemoved(sbn: StatusBarNotification?, rankingMap: RankingMap?) {
         recount()
-        if (sbn != null) banners.onRemoved(sbn.key)
+        if (sbn != null) {
+            banners.onRemoved(sbn.key)
+            calls.onRemoved(sbn.key)
+        }
+    }
+
+    /** True if [sbn] is a live call (WhatsApp so far), now handed to [CallMonitor]. */
+    private fun offerCall(sbn: StatusBarNotification, rankingMap: RankingMap?): Boolean {
+        if (!calls.handles(sbn.packageName)) return false
+        val passesDnd = passesDnd(sbn, rankingMap)
+        val detection = calls.detect(sbn.toCallNotification(passesDnd)) ?: return false
+        calls.onCall(sbn.toCall(this, detection, appLabels.labelOf(sbn.packageName), passesDnd), detection)
+        return true
+    }
+
+    private fun passesDnd(sbn: StatusBarNotification, rankingMap: RankingMap?): Boolean {
+        val ranking = Ranking().takeIf { rankingMap?.getRanking(sbn.key, it) == true }
+        return ranking?.matchesInterruptionFilter() ?: (currentInterruptionFilter <= INTERRUPTION_FILTER_ALL)
     }
 
     private fun offerBanner(sbn: StatusBarNotification, rankingMap: RankingMap?) {
