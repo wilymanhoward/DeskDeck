@@ -14,6 +14,7 @@ import com.deskdeck.launcher.RailAppsRepository
 import com.deskdeck.media.AppLabels
 import com.deskdeck.media.MediaRepository
 import com.deskdeck.media.NotificationAccess
+import com.deskdeck.data.settings.SettingsRepository
 import com.deskdeck.media.AudioDelay
 import com.deskdeck.media.NotificationBanners
 import com.deskdeck.media.OutputLatency
@@ -55,7 +56,12 @@ class DashboardViewModel @Inject constructor(
     networkMonitor: NetworkMonitor,
     private val banners: NotificationBanners,
     private val outputLatency: OutputLatency,
+    private val settingsRepository: SettingsRepository,
 ) : ViewModel(), DashboardActions {
+
+    override fun onMoveNowPlaying(toRight: Boolean) {
+        viewModelScope.launch { settingsRepository.update { it.copy(nowPlayingOnRight = toRight) } }
+    }
 
     /** Audio output latency, so lyrics follow what's heard rather than what's decoded. */
     val audioDelay: StateFlow<AudioDelay> = outputLatency.delay

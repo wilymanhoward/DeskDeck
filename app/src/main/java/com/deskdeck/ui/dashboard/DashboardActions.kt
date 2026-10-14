@@ -36,6 +36,9 @@ interface DashboardActions : PlayerActions {
     /** Opens the notification panel (the bell). */
     fun onOpenNotifications() {}
 
+    /** The Now Playing card was dragged to the other side (lyrics take the old side). */
+    fun onMoveNowPlaying(toRight: Boolean) {}
+
     /** Opens the Spotify library (rail long-press on Spotify, or the card's Library button). */
     fun onOpenLibrary() {}
 }

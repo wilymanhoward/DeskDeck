@@ -29,6 +29,7 @@ class SettingsSerializationTest {
             sourceMode = SourceMode.PIN,
             mediaBrowserResume = true,
             spotifyLibrary = true,
+            nowPlayingOnRight = true,
             burnIn = BurnInSettings(
                 pixelShift = false,
                 pixelShiftDp = 9,

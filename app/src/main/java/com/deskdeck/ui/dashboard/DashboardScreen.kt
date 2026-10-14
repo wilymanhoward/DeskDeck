@@ -283,30 +283,32 @@ fun DashboardScreen(
                         .fillMaxHeight(),
                 )
             } else {
-                // ~40% / ~45% of the screen, per the layout spec.
-                NowPlayingCard(
-                    nowPlaying = nowPlaying,
-                    position = position,
-                    palette = palette,
-                    actions = actions,
-                    accessMissing = !notificationAccessGranted,
-                    onGrantAccess = onGrantAccess,
-                    emptySource = emptySource,
-                    onOpenApp = actions::onOpenApp,
-                    onGetApp = actions::onGetApp,
-                    volumeControl = volumeControl,
-                    onOpenLibrary = actions::onOpenLibrary.takeIf { settings.spotifyLibrary },
+                // Long-press the card and drag it across to swap sides with the lyrics.
+                SwappablePanels(
+                    cardOnRight = settings.nowPlayingOnRight,
+                    onCardSideChange = actions::onMoveNowPlaying,
                     modifier = Modifier
-                        .weight(0.47f)
+                        .weight(1f)
                         .fillMaxHeight(),
-                )
-                LyricsPanel(
-                    state = lyrics,
-                    position = position,
-                    actions = actions,
-                    modifier = Modifier
-                        .weight(0.53f)
-                        .fillMaxHeight(),
+                    card = { cardModifier ->
+                        NowPlayingCard(
+                            nowPlaying = nowPlaying,
+                            position = position,
+                            palette = palette,
+                            actions = actions,
+                            accessMissing = !notificationAccessGranted,
+                            onGrantAccess = onGrantAccess,
+                            emptySource = emptySource,
+                            onOpenApp = actions::onOpenApp,
+                            onGetApp = actions::onGetApp,
+                            volumeControl = volumeControl,
+                            onOpenLibrary = actions::onOpenLibrary.takeIf { settings.spotifyLibrary },
+                            modifier = cardModifier,
+                        )
+                    },
+                    lyrics = { lyricsModifier ->
+                        LyricsPanel(state = lyrics, position = position, actions = actions, modifier = lyricsModifier)
+                    },
                 )
             }
         }
