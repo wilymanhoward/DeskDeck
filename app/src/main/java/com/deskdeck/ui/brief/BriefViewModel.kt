@@ -43,10 +43,10 @@ class BriefViewModel @Inject constructor(
     fun refreshIfStale(settings: NightSettings) {
         val cached = brief.value
         val age = System.currentTimeMillis() - (cached?.fetchedAtMs ?: 0)
-        // Also refresh when a part that should be there is missing (e.g. a key was just added).
+        // Also refresh when a part that should be there is missing (e.g. a key was just added, or a watchlist item).
         val missing = cached == null ||
             (settings.briefWeather && cached.weather == null) ||
-            (settings.briefMarket && hasMarketKey && cached.markets.isEmpty()) ||
+            (settings.briefMarket && hasMarketKey && !cached.markets.map { it.name }.containsAll(settings.watchlist)) ||
             (settings.briefHeadlines && cached.headlines.isEmpty())
         if ((age < STALE_MS && !missing) || _refreshing.value) return
         viewModelScope.launch {
