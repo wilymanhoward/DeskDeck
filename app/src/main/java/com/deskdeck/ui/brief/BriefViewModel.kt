@@ -41,8 +41,14 @@ class BriefViewModel @Inject constructor(
      * the cached copy is older than [STALE_MS].
      */
     fun refreshIfStale(settings: NightSettings) {
-        val age = System.currentTimeMillis() - (brief.value?.fetchedAtMs ?: 0)
-        if (age < STALE_MS || _refreshing.value) return
+        val cached = brief.value
+        val age = System.currentTimeMillis() - (cached?.fetchedAtMs ?: 0)
+        // Also refresh when a part that should be there is missing (e.g. a key was just added).
+        val missing = cached == null ||
+            (settings.briefWeather && cached.weather == null) ||
+            (settings.briefMarket && hasMarketKey && cached.markets.isEmpty()) ||
+            (settings.briefHeadlines && cached.headlines.isEmpty())
+        if ((age < STALE_MS && !missing) || _refreshing.value) return
         viewModelScope.launch {
             _refreshing.value = true
             repository.refresh(settings)
