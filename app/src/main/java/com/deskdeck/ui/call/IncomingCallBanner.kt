@@ -122,7 +122,9 @@ fun IncomingCallHost(viewModel: CallViewModel = hiltViewModel()) {
     val tracker = LocalInteractionTracker.current
     val activity = LocalContext.current.findActivity()
 
-    val incoming = (state as? CallState.Incoming)?.call?.takeIf { it.key != closedKey }
+    val callSettings = LocalAppSettings.current.calls
+    val incoming = (state as? CallState.Incoming)?.call
+        ?.takeIf { it.key != closedKey && callSettings.enabled && callSettings.incomingBanner }
     // Kept while the banner animates out after the call stops ringing.
     var lastCall by remember { mutableStateOf<Call?>(null) }
     if (incoming != null) lastCall = incoming

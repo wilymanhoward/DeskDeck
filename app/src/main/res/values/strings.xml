@@ -354,6 +354,12 @@
     <string name="call_banner_close">Hide call banner</string>
     <string name="call_quiet_dnd">Do Not Disturb</string>
     <string name="call_quiet_open">show call</string>
+    <string name="call_open_beside">Open call beside DeskDeck</string>
+    <string name="call_open_beside_description">Open the call with %1$s beside DeskDeck</string>
+    <string name="call_hang_up">Hang up</string>
+    <string name="call_hang_up_description">Hang up the call with %1$s</string>
+    <string name="call_connecting">Calling…</string>
+    <string name="call_ended">Call ended</string>
     <string name="call_split_hint">Drag %1$s from the taskbar to split the screen</string>
     <string name="night_toggle">Start or end Night Mode</string>
     <string name="night_exit">End Night Mode</string>

@@ -196,6 +196,16 @@ class MediaSessionRepository @Inject constructor(
 
     // region Commands
 
+    override fun pausePlaying(except: Set<String>): Set<String> {
+        val playing = entries.filter { it.isPlaying && it.packageName !in except }
+        playing.forEach { it.pause() }
+        return playing.mapTo(mutableSetOf()) { it.packageName }
+    }
+
+    override fun resume(packages: Set<String>) {
+        entries.filter { it.packageName in packages && !it.isPlaying }.forEach { it.play() }
+    }
+
     override fun playPause() {
         val entry = selected ?: return
         val current = _nowPlaying.value?.playback ?: return

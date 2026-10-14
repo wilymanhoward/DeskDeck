@@ -208,3 +208,24 @@ class CallStateTest {
         assertEquals(s, reduceCall(s, CallEvent.Settled, 20))
     }
 }
+
+class CallMusicRulesTest {
+    private val call = Call(key = "k", packageName = WhatsAppCallSource.WHATSAPP, appLabel = "WhatsApp", caller = null, isVideo = false)
+
+    @Test
+    fun `music pauses when a call connects, not while it rings`() {
+        assertFalse(callStarted(CallState.Idle, CallState.Incoming(call)))
+        assertTrue(callStarted(CallState.Incoming(call), CallState.Ongoing(call, 1)))
+        assertTrue(callStarted(CallState.Idle, CallState.Ongoing(call, null)))
+        // An update of the same ongoing call isn't a new start.
+        assertFalse(callStarted(CallState.Ongoing(call, 1), CallState.Ongoing(call, 1)))
+    }
+
+    @Test
+    fun `music resumes when the call is over`() {
+        assertTrue(callFinished(CallState.Ongoing(call, 1), CallState.Ended(call, answered = true, endedAtMs = 2)))
+        assertTrue(callFinished(CallState.Ongoing(call, 1), CallState.Idle))
+        // A missed call never started the music logic.
+        assertFalse(callFinished(CallState.Incoming(call), CallState.Ended(call, answered = false, endedAtMs = 2)))
+    }
+}
