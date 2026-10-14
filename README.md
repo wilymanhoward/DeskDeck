@@ -396,4 +396,9 @@ Typography uses [Inter 4.1](https://github.com/rsms/inter/releases/tag/v4.1),
 Copyright © The Inter Project Authors, licensed under the SIL Open Font License 1.1.
 Only `InterVariable.ttf` (879,708 bytes) is bundled; the full license is in
 [`app/src/main/assets/licenses/Inter-OFL.txt`](app/src/main/assets/licenses/Inter-OFL.txt).
+The night clock uses [Nunito](https://github.com/googlefonts/nunito), Copyright 2014 The Nunito
+Project Authors, SIL Open Font License 1.1 (variable font; license in
+[`app/src/main/assets/licenses/Nunito-OFL.txt`](app/src/main/assets/licenses/Nunito-OFL.txt)), as a
+stand-in for Apple's SF Pro Rounded.
+
 The outline icons are project-owned vector paths; no Apple fonts or symbols are bundled.

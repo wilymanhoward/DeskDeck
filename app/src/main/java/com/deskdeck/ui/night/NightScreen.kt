@@ -90,6 +90,7 @@ import com.deskdeck.ui.common.rememberCurrentTime
 import com.deskdeck.ui.common.rememberPlaybackPosition
 import com.deskdeck.ui.settings.LocalAppSettings
 import com.deskdeck.ui.theme.Inter
+import com.deskdeck.ui.theme.NunitoRounded
 import com.deskdeck.ui.theme.LocalMotion
 import com.deskdeck.ui.theme.MotionSpec
 import java.time.Instant
@@ -235,12 +236,12 @@ private fun NightClock(settings: NightSettings, ink: Ink, hasNewNotifications: B
         }
         Spacer(Modifier.height(12.dp))
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(date, style = TextStyle(fontFamily = Inter, fontSize = 30.sp, fontWeight = FontWeight.W500, letterSpacing = 2.sp), color = ink.soft)
+            Text(date, style = TextStyle(fontFamily = NunitoRounded, fontSize = 32.sp, fontWeight = FontWeight.W800, letterSpacing = 1.sp), color = ink.soft)
             if (alarm != null) {
                 Spacer(Modifier.width(28.dp))
                 Icon(painterResource(R.drawable.ic_alarm), null, tint = ink.soft, modifier = Modifier.size(26.dp))
                 Spacer(Modifier.width(8.dp))
-                Text(alarm, style = TextStyle(fontFamily = Inter, fontSize = 30.sp, fontWeight = FontWeight.W500, fontFeatureSettings = "tnum"), color = ink.soft)
+                Text(alarm, style = TextStyle(fontFamily = NunitoRounded, fontSize = 32.sp, fontWeight = FontWeight.W800, fontFeatureSettings = "tnum"), color = ink.soft)
             }
             if (hasNewNotifications) {
                 Spacer(Modifier.width(24.dp))
@@ -256,12 +257,13 @@ private fun DigitalClock(now: LocalDateTime, is24: Boolean, thin: Boolean, ink: 
     Row(verticalAlignment = Alignment.Bottom) {
         Text(
             text = digits,
+            // StandBy's look: rounded digits, heavy by default, light for the thin style.
             style = TextStyle(
-                fontFamily = Inter,
-                fontSize = 200.sp,
-                lineHeight = 200.sp,
-                fontWeight = if (thin) FontWeight.W200 else FontWeight.W700,
-                letterSpacing = (-6).sp,
+                fontFamily = NunitoRounded,
+                fontSize = 220.sp,
+                lineHeight = 220.sp,
+                fontWeight = if (thin) FontWeight.W300 else FontWeight.W900,
+                letterSpacing = (-4).sp,
                 fontFeatureSettings = "tnum",
             ),
             color = ink.main,
@@ -271,7 +273,7 @@ private fun DigitalClock(now: LocalDateTime, is24: Boolean, thin: Boolean, ink: 
             Spacer(Modifier.width(12.dp))
             Text(
                 text = now.format(DateTimeFormatter.ofPattern("a", Locale.getDefault())),
-                style = TextStyle(fontFamily = Inter, fontSize = 34.sp, fontWeight = FontWeight.W500),
+                style = TextStyle(fontFamily = NunitoRounded, fontSize = 36.sp, fontWeight = FontWeight.W700),
                 color = ink.soft,
                 modifier = Modifier.padding(bottom = 36.dp),
             )
