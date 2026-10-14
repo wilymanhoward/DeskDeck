@@ -82,6 +82,13 @@ class NotificationBanners @Inject constructor(
     val knownPackages: StateFlow<Set<String>> = _knownPackages.asStateFlow()
 
     private val alerted = mutableSetOf<String>()
+
+    /** Night Mode: no banners (the night screen shows a dim dot for new notifications instead). */
+    var quiet = false
+        set(value) {
+            field = value
+            if (value) _queue.value = emptyList()
+        }
     private var visible = false
 
     /** Set by the listener while it's connected; cancels a notification by key. */
@@ -142,7 +149,7 @@ class NotificationBanners @Inject constructor(
     fun onPosted(key: String, facts: PostedFacts, ownPackage: String, build: () -> Banner) {
         val notifications = settings.value.notifications
         // With the panel open, the new notification shows up in its list instead.
-        if (!visible || _centerOpen.value || !shouldShowBanner(facts, ownPackage, notifications)) return
+        if (!visible || quiet || _centerOpen.value || !shouldShowBanner(facts, ownPackage, notifications)) return
         alerted += key
         val banner = build()
         _queue.value = (listOf(banner) + _queue.value.filter { it.key != key }).take(MAX_QUEUED)

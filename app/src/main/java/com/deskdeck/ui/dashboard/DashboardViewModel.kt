@@ -16,6 +16,7 @@ import com.deskdeck.media.MediaRepository
 import com.deskdeck.media.NotificationAccess
 import com.deskdeck.data.settings.SettingsRepository
 import com.deskdeck.media.AudioDelay
+import com.deskdeck.media.NightModeController
 import com.deskdeck.media.NotificationBanners
 import com.deskdeck.media.OutputLatency
 import com.deskdeck.media.OutputRoute
@@ -57,7 +58,12 @@ class DashboardViewModel @Inject constructor(
     private val banners: NotificationBanners,
     private val outputLatency: OutputLatency,
     private val settingsRepository: SettingsRepository,
+    private val nightMode: NightModeController,
 ) : ViewModel(), DashboardActions {
+
+    override fun onToggleNight() {
+        nightMode.toggle()
+    }
 
     override fun onMoveNowPlaying(toRight: Boolean) {
         viewModelScope.launch { settingsRepository.update { it.copy(nowPlayingOnRight = toRight) } }

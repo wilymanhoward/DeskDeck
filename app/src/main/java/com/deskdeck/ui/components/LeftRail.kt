@@ -69,6 +69,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import com.deskdeck.R
+import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import com.deskdeck.burnin.rememberRailOpacity
 import com.deskdeck.domain.RailApp
 import com.deskdeck.launcher.AppIcon
@@ -101,6 +103,7 @@ fun LeftRail(
     modifier: Modifier = Modifier,
     animate: Boolean = true,
     onNotifications: () -> Unit = {},
+    onToggleNight: () -> Unit = {},
 ) {
     val railOpacity = rememberRailOpacity(LocalAppSettings.current.burnIn.railOpacityDrift)
     val motion = LocalMotion.current
@@ -139,7 +142,7 @@ fun LeftRail(
             .graphicsLayer { alpha = railOpacity.value },
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        RailClock()
+        RailClock(onLongClick = onToggleNight)
         Spacer(Modifier.height(4.dp))
         NotificationIndicator(notificationCount, onNotifications)
 
@@ -177,7 +180,8 @@ fun LeftRail(
 }
 
 @Composable
-private fun RailClock() {
+private fun RailClock(onLongClick: () -> Unit) {
+    val haptics = LocalHapticFeedback.current
     val is24Hour = rememberIs24Hour()
     val showSeconds = LocalAppSettings.current.clockShowSeconds
     val now by rememberCurrentTime(withSeconds = showSeconds)
@@ -194,6 +198,18 @@ private fun RailClock() {
     Column(
         modifier = Modifier
             .height(Dimens.minTouch)
+            // Long-press: start or end Night Mode right away.
+            .combinedClickable(
+                interactionSource = null,
+                indication = null,
+                onClickLabel = null,
+                onLongClickLabel = stringResource(R.string.night_toggle),
+                onLongClick = {
+                    haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                    onLongClick()
+                },
+                onClick = {},
+            )
             .semantics(mergeDescendants = true) { heading() },
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,

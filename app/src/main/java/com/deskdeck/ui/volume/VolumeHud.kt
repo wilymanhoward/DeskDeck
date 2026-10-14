@@ -50,7 +50,9 @@ import com.deskdeck.domain.SpeakerLevel
 import com.deskdeck.domain.VolumeState
 import com.deskdeck.ui.components.SpeakerIcon
 import com.deskdeck.ui.theme.ActiveLyricWhite
+import com.deskdeck.ui.theme.GlassBorder
 import com.deskdeck.ui.theme.GlassTintStrong
+import com.deskdeck.ui.night.LocalNightMode
 import com.deskdeck.ui.theme.LocalMotion
 import com.deskdeck.ui.theme.glass
 import kotlin.math.roundToInt
@@ -134,15 +136,18 @@ private fun VolumePill(
     val percent = (target * 100).roundToInt()
     val stateText = if (state.muted) stringResource(R.string.volume_muted) else stringResource(R.string.volume_percent, percent)
     val iconBand = (IconBottom + IconSize) / HudHeight
+    // At night: a dim fill and a darker pill, so a volume change doesn't flash the room.
+    val nightMode = LocalNightMode.current
+    val fillColor = if (nightMode) ActiveLyricWhite.copy(alpha = 0.28f) else ActiveLyricWhite.copy(alpha = 0.92f)
 
     Box(
         Modifier
             .size(HudWidth, HudHeight)
-            .glass(RoundedCornerShape(HudWidth / 2), tint = GlassTintStrong)
+            .glass(RoundedCornerShape(HudWidth / 2), tint = if (nightMode) Color.Black.copy(alpha = 0.9f) else GlassTintStrong, border = if (nightMode) Color.White.copy(alpha = 0.06f) else GlassBorder)
             // Level fill from the bottom, read in the draw phase.
             .drawBehind {
                 val h = size.height * fill
-                drawRect(ActiveLyricWhite.copy(alpha = 0.92f), Offset(0f, size.height - h), Size(size.width, h))
+                drawRect(fillColor, Offset(0f, size.height - h), Size(size.width, h))
             }
             .pointerInput(state.fixed) {
                 if (state.fixed) return@pointerInput
@@ -168,8 +173,8 @@ private fun VolumePill(
     ) {
         SpeakerIcon(
             level = level,
-            color = ActiveLyricWhite,
-            fillColor = Color.Black.copy(alpha = 0.7f),
+            color = if (nightMode) ActiveLyricWhite.copy(alpha = 0.35f) else ActiveLyricWhite,
+            fillColor = if (nightMode) ActiveLyricWhite.copy(alpha = 0.35f) else Color.Black.copy(alpha = 0.7f),
             // How much of the icon the fill covers, so the glyph stays visible on white.
             fill = ((fill - IconBottom / HudHeight) / (iconBand - IconBottom / HudHeight)).coerceIn(0f, 1f),
             modifier = Modifier

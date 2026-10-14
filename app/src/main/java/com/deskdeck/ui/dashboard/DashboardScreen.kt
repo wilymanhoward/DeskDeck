@@ -266,6 +266,7 @@ fun DashboardScreen(
                 onAllApps = actions::onAllApps,
                 onSettings = actions::onSettings,
                 onNotifications = actions::onOpenNotifications,
+                onToggleNight = actions::onToggleNight,
             )
             if (compact) {
                 CompactPanels(
