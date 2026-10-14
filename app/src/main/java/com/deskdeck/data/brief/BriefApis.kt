@@ -73,6 +73,8 @@ data class QuoteJson(
     val change: String?,
     @Json(name = "percent_change") val percentChange: String?,
     @Json(name = "is_market_open") val marketOpen: Boolean?,
+    /** Percent change over the last 24 hours; only meaningful for crypto. */
+    @Json(name = "rolling_1d_change") val rolling1dChange: String? = null,
     val status: String?,
     val code: Int?,
     val message: String?,
