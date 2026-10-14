@@ -94,6 +94,7 @@ private enum class Category(val titleRes: Int) {
     SCREEN(R.string.settings_cat_screen),
     SOURCES(R.string.settings_cat_sources),
     NOTIFICATIONS(R.string.settings_cat_notifications),
+    CALLS(R.string.settings_cat_calls),
     LYRICS(R.string.settings_cat_lyrics),
     CLOCK(R.string.settings_cat_clock),
     NIGHT(R.string.settings_cat_night),
@@ -164,6 +165,7 @@ fun SettingsScreen(onBack: () -> Unit, viewModel: SettingsViewModel = hiltViewMo
                     Category.SCREEN -> ScreenSettings(settings, viewModel)
                     Category.SOURCES -> SourceSettings(settings, viewModel)
                     Category.NOTIFICATIONS -> BannerSettings(settings, viewModel)
+                    Category.CALLS -> CallSettingsSection(settings, viewModel)
                     Category.LYRICS -> LyricsSettings(settings, viewModel)
                     Category.CLOCK -> ClockSettings(settings, viewModel)
                     Category.NIGHT -> NightSettingsSection(settings.night, viewModel)

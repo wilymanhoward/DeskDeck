@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.deskdeck.data.lyrics.LyricsRepository
 import com.deskdeck.data.settings.AppSettings
 import com.deskdeck.data.settings.BurnInSettings
+import com.deskdeck.data.settings.CallSettings
 import com.deskdeck.data.settings.NightSettings
 import com.deskdeck.data.settings.NotificationSettings
 import com.deskdeck.ui.brief.BriefPreview
@@ -75,6 +76,9 @@ class SettingsViewModel @Inject constructor(
 
     fun updateNotifications(transform: (NotificationSettings) -> NotificationSettings) =
         update { it.copy(notifications = transform(it.notifications)) }
+
+    fun updateCalls(transform: (CallSettings) -> CallSettings) =
+        update { it.copy(calls = transform(it.calls)) }
 
     fun update(transform: (AppSettings) -> AppSettings) {
         viewModelScope.launch { settingsRepository.update(transform) }
