@@ -51,6 +51,8 @@ import com.deskdeck.ui.notifications.BannerHost
 import com.deskdeck.ui.notifications.LocalBannerHold
 import com.deskdeck.ui.notifications.NotificationCenter
 import com.deskdeck.ui.volume.VolumeHud
+import com.deskdeck.ui.adaptive.LocalDeskSize
+import com.deskdeck.ui.adaptive.currentDeskSize
 import kotlin.math.roundToInt
 
 /**
@@ -67,6 +69,8 @@ fun AppRoot(viewModel: AppViewModel = hiltViewModel()) {
     val openAccessSettings = { viewModel.openNotificationAccessSettings(context) }
 
     val tracker = remember { InteractionTracker() }
+    // Full tablet, half split screen, or a narrow split / pop-up window; follows resizes live.
+    val deskSize = currentDeskSize()
     val motion = rememberMotionSpec()
     val bannerHold = remember { BannerHold() }
     val shift by rememberPixelShift(settings.burnIn.pixelShift, settings.burnIn.pixelShiftDp)
@@ -107,6 +111,7 @@ fun AppRoot(viewModel: AppViewModel = hiltViewModel()) {
             LocalMotion provides motion,
             LocalBannerHold provides bannerHold,
             LocalNightMode provides nightShown,
+            LocalDeskSize provides deskSize,
         ) {
             Box(
                 Modifier

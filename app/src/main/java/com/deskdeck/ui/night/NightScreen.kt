@@ -95,6 +95,15 @@ import com.deskdeck.ui.theme.NunitoRounded
 import com.deskdeck.ui.theme.LocalMotion
 import com.deskdeck.ui.common.cappedSp
 import com.deskdeck.ui.common.rememberTouchExploration
+import com.deskdeck.ui.adaptive.DeskSize
+import com.deskdeck.ui.adaptive.LocalDeskSize
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.tooling.preview.Preview
+import com.deskdeck.data.fake.FakeData
+import com.deskdeck.domain.PlaybackInfo
+import com.deskdeck.domain.PlaybackStatus
+import com.deskdeck.ui.theme.DeskDeckTheme
 import com.deskdeck.ui.theme.MotionSpec
 import java.time.Instant
 import java.time.LocalDateTime
@@ -180,34 +189,17 @@ fun NightScreen(onOpenSettings: () -> Unit, viewModel: NightViewModel = hiltView
                 awakeUntil = System.currentTimeMillis()
             },
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxSize()
-                .offset { drift.value }
-                .padding(horizontal = 56.dp, vertical = 40.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.Center,
-        ) {
-            val np = nowPlaying
-            if (np != null) {
-                NightMusic(
-                    np = np,
-                    ink = ink,
-                    red = red,
-                    onPlayPause = viewModel::playPause,
-                    onNext = viewModel::skipNext,
-                    onPrevious = viewModel::skipPrevious,
-                    modifier = Modifier.weight(0.36f),
-                )
-                Spacer(Modifier.width(56.dp))
-            }
-            NightClock(
-                settings = night,
-                ink = ink,
-                hasNewNotifications = hasNew,
-                modifier = Modifier.weight(if (np != null) 0.64f else 1f),
-            )
-        }
+        NightLayout(
+            nowPlaying = nowPlaying,
+            settings = night,
+            ink = ink,
+            red = red,
+            hasNewNotifications = hasNew,
+            onPlayPause = viewModel::playPause,
+            onNext = viewModel::skipNext,
+            onPrevious = viewModel::skipPrevious,
+            modifier = Modifier.fillMaxSize().offset { drift.value },
+        )
 
         AnimatedVisibility(
             visible = awake || touchExploration,
@@ -220,6 +212,49 @@ fun NightScreen(onOpenSettings: () -> Unit, viewModel: NightViewModel = hiltView
                 IconButton(onClick = onOpenSettings, modifier = Modifier.size(56.dp)) {
                     Icon(painterResource(R.drawable.ic_settings), stringResource(R.string.rail_settings), tint = ink.soft)
                 }
+            }
+        }
+    }
+}
+
+/**
+ * Full tablet: music on the left, the big clock on the right. Split screen and pop-up view: the
+ * clock on top (sized to the room there is) with a one-row player under it.
+ */
+@Composable
+private fun NightLayout(
+    nowPlaying: NowPlaying?,
+    settings: NightSettings,
+    ink: Ink,
+    red: Boolean,
+    hasNewNotifications: Boolean,
+    onPlayPause: () -> Unit,
+    onNext: () -> Unit,
+    onPrevious: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val np = nowPlaying
+    if (LocalDeskSize.current == DeskSize.EXPANDED) {
+        Row(
+            modifier = modifier.padding(horizontal = 56.dp, vertical = 40.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.Center,
+        ) {
+            if (np != null) {
+                NightMusic(np, ink, red, onPlayPause, onNext, onPrevious, Modifier.weight(0.36f))
+                Spacer(Modifier.width(56.dp))
+            }
+            NightClock(settings, ink, hasNewNotifications, Modifier.weight(if (np != null) 0.64f else 1f).fillMaxHeight())
+        }
+    } else {
+        Column(
+            modifier = modifier.padding(horizontal = 24.dp, vertical = 24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            NightClock(settings, ink, hasNewNotifications, Modifier.weight(1f).fillMaxWidth())
+            if (np != null) {
+                Spacer(Modifier.height(16.dp))
+                NightMiniMusic(np, ink, red, onPlayPause, onNext, onPrevious, Modifier.widthIn(max = 520.dp).fillMaxWidth())
             }
         }
     }
@@ -244,10 +279,15 @@ private fun NightClock(settings: NightSettings, ink: Ink, hasNewNotifications: B
         if (hasNewNotifications) stringResource(R.string.night_new_notifications) else null,
     ).joinToString(". ")
 
-    Column(modifier.clearAndSetSemantics { contentDescription = spoken }, horizontalAlignment = Alignment.CenterHorizontally) {
+    BoxWithConstraints(modifier.clearAndSetSemantics { contentDescription = spoken }, contentAlignment = Alignment.Center) {
+    // As large as the room allows, up to the full-tablet size: digits by width, everything by height.
+    val roomForClock = maxHeight - 64.dp
+    val digitalDp = minOf(220f, maxWidth.value / if (is24) 2.9f else 3.6f, roomForClock.value / 1.05f).coerceAtLeast(48f)
+    val analogSize = minOf(340.dp, maxWidth * 0.8f, roomForClock).coerceAtLeast(96.dp)
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
         when (settings.clockStyle) {
-            NightClockStyle.ANALOG -> AnalogClock(now, ink, Modifier.size(340.dp))
-            else -> DigitalClock(now, is24, settings.clockStyle == NightClockStyle.THIN, ink)
+            NightClockStyle.ANALOG -> AnalogClock(now, ink, Modifier.size(analogSize))
+            else -> DigitalClock(now, is24, settings.clockStyle == NightClockStyle.THIN, ink, digitalDp)
         }
         Spacer(Modifier.height(12.dp))
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -264,10 +304,11 @@ private fun NightClock(settings: NightSettings, ink: Ink, hasNewNotifications: B
             }
         }
     }
+    }
 }
 
 @Composable
-private fun DigitalClock(now: LocalDateTime, is24: Boolean, thin: Boolean, ink: Ink) {
+private fun DigitalClock(now: LocalDateTime, is24: Boolean, thin: Boolean, ink: Ink, sizeDp: Float) {
     val digits = now.format(DateTimeFormatter.ofPattern(if (is24) "HH:mm" else "h:mm"))
     Row(verticalAlignment = Alignment.Bottom) {
         Text(
@@ -275,9 +316,9 @@ private fun DigitalClock(now: LocalDateTime, is24: Boolean, thin: Boolean, ink: 
             // StandBy's look: rounded digits, heavy by default, light for the thin style.
             style = TextStyle(
                 fontFamily = NunitoRounded,
-                // Already as big as the screen allows, so it doesn't grow with the font size.
-                fontSize = cappedSp(220f),
-                lineHeight = cappedSp(220f),
+                // Sized to the window, so it doesn't grow with the font size.
+                fontSize = cappedSp(sizeDp),
+                lineHeight = cappedSp(sizeDp),
                 fontWeight = if (thin) FontWeight.W300 else FontWeight.W900,
                 letterSpacing = (-4).sp,
                 fontFeatureSettings = "tnum",
@@ -289,9 +330,9 @@ private fun DigitalClock(now: LocalDateTime, is24: Boolean, thin: Boolean, ink: 
             Spacer(Modifier.width(12.dp))
             Text(
                 text = now.format(DateTimeFormatter.ofPattern("a", Locale.getDefault())),
-                style = TextStyle(fontFamily = NunitoRounded, fontSize = cappedSp(36f), fontWeight = FontWeight.W700),
+                style = TextStyle(fontFamily = NunitoRounded, fontSize = cappedSp(sizeDp * 0.16f), fontWeight = FontWeight.W700),
                 color = ink.soft,
-                modifier = Modifier.padding(bottom = 36.dp),
+                modifier = Modifier.padding(bottom = (sizeDp * 0.16f).dp),
             )
         }
     }
@@ -365,6 +406,54 @@ private fun NightMusic(
             IconButton(onClick = onNext, modifier = Modifier.size(56.dp)) {
                 Icon(painterResource(R.drawable.ic_skip_next), stringResource(R.string.np_next), tint = ink.soft, modifier = Modifier.size(28.dp))
             }
+        }
+    }
+}
+
+/** Split screen: one row of art, title and controls, with the thin progress line under it. */
+@Composable
+private fun NightMiniMusic(
+    np: NowPlaying,
+    ink: Ink,
+    red: Boolean,
+    onPlayPause: () -> Unit,
+    onNext: () -> Unit,
+    onPrevious: () -> Unit,
+    modifier: Modifier,
+) {
+    val position by rememberPlaybackPosition(np.playback, np.track.durationMs, everyFrame = false)
+    val duration = np.track.durationMs?.takeIf { it > 0 }
+    Column(modifier) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            val art = np.artwork
+            if (art != null) {
+                val image = remember(art) { art.asImageBitmap() }
+                androidx.compose.foundation.Image(
+                    bitmap = image,
+                    contentDescription = null,
+                    contentScale = ContentScale.Crop,
+                    colorFilter = if (red) RedOnly else null,
+                    modifier = Modifier.size(56.dp).clip(RoundedCornerShape(10.dp)).graphicsLayer { alpha = 0.55f },
+                )
+                Spacer(Modifier.width(14.dp))
+            }
+            Column(Modifier.weight(1f)) {
+                Text(np.track.title, style = TextStyle(fontFamily = Inter, fontSize = 20.sp, fontWeight = FontWeight.W600), color = ink.main, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(np.track.artist.orEmpty(), style = TextStyle(fontFamily = Inter, fontSize = 16.sp), color = ink.soft, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            }
+            IconButton(onClick = onPrevious, modifier = Modifier.size(56.dp)) {
+                Icon(painterResource(R.drawable.ic_skip_previous), stringResource(R.string.np_previous), tint = ink.soft, modifier = Modifier.size(24.dp))
+            }
+            PlayPauseGlyph(np.playback.isPlaying, ink, onPlayPause)
+            IconButton(onClick = onNext, modifier = Modifier.size(56.dp)) {
+                Icon(painterResource(R.drawable.ic_skip_next), stringResource(R.string.np_next), tint = ink.soft, modifier = Modifier.size(24.dp))
+            }
+        }
+        Spacer(Modifier.height(10.dp))
+        Canvas(Modifier.fillMaxWidth().height(3.dp)) {
+            val f = duration?.let { (position.toFloat() / it).coerceIn(0f, 1f) } ?: 0f
+            drawLine(ink.faint, Offset(0f, size.height / 2), Offset(size.width, size.height / 2), size.height, StrokeCap.Round)
+            drawLine(ink.soft, Offset(0f, size.height / 2), Offset(size.width * f, size.height / 2), size.height, StrokeCap.Round)
         }
     }
 }
@@ -481,3 +570,53 @@ internal fun rememberNightDrift(enabled: Boolean): State<IntOffset> {
         label = "nightDrift",
     )
 }
+
+
+// region Previews
+
+@Composable
+private fun NightPreview(size: DeskSize, playing: Boolean = true) {
+    val fake = FakeData.tracks[0]
+    val np = NowPlaying(
+        track = fake.track,
+        playback = PlaybackInfo(status = PlaybackStatus.PLAYING, positionMs = 60_000, updatedAtElapsedMs = 0),
+        sourcePackage = fake.sourcePackage,
+        sourceLabel = fake.sourceLabel,
+        colors = fake.colors,
+    )
+    DeskDeckTheme {
+        CompositionLocalProvider(LocalDeskSize provides size) {
+            Box(Modifier.fillMaxSize().background(Color.Black)) {
+                NightLayout(
+                    nowPlaying = np.takeIf { playing },
+                    settings = NightSettings(),
+                    ink = WhiteInk,
+                    red = false,
+                    hasNewNotifications = true,
+                    onPlayPause = {},
+                    onNext = {},
+                    onPrevious = {},
+                    modifier = Modifier.fillMaxSize(),
+                )
+            }
+        }
+    }
+}
+
+@Preview(name = "Night – expanded", widthDp = 1317, heightDp = 823)
+@Composable
+private fun NightExpandedPreview() = NightPreview(DeskSize.EXPANDED)
+
+@Preview(name = "Night – medium (half split)", widthDp = 650, heightDp = 823)
+@Composable
+private fun NightMediumPreview() = NightPreview(DeskSize.MEDIUM)
+
+@Preview(name = "Night – compact (pop-up)", widthDp = 560, heightDp = 340)
+@Composable
+private fun NightCompactPreview() = NightPreview(DeskSize.COMPACT)
+
+@Preview(name = "Night – compact, nothing playing", widthDp = 430, heightDp = 823)
+@Composable
+private fun NightCompactIdlePreview() = NightPreview(DeskSize.COMPACT, playing = false)
+
+// endregion

@@ -56,6 +56,8 @@ import com.deskdeck.ui.common.clockFormatter
 import com.deskdeck.ui.common.rememberCurrentTime
 import com.deskdeck.ui.common.rememberIs24Hour
 import com.deskdeck.ui.dashboard.LyricsUiState
+import com.deskdeck.ui.adaptive.DeskSize
+import com.deskdeck.ui.adaptive.LocalDeskSize
 import com.deskdeck.ui.lyrics.LocalLyricsDelay
 import com.deskdeck.ui.settings.LocalAppSettings
 import com.deskdeck.ui.theme.Dimens
@@ -101,6 +103,8 @@ fun AmbientScreen(
     position: State<Long>,
     onWake: () -> Unit,
 ) {
+    // Smaller in a narrow split or pop-up window, so it still fits and has room to drift.
+    val compact = LocalDeskSize.current == DeskSize.COMPACT
     DriftingContainer(onWake = onWake) {
         Row(modifier = Modifier.glass(RoundedCornerShape(Dimens.cardCorner), tint = Color.White.copy(alpha = 0.025f), border = Color.White.copy(alpha = 0.05f)).padding(24.dp), verticalAlignment = Alignment.CenterVertically) {
             val art = nowPlaying?.artwork
@@ -111,13 +115,13 @@ fun AmbientScreen(
                     contentDescription = null,
                     contentScale = ContentScale.Crop,
                     modifier = Modifier
-                        .size(112.dp)
+                        .size(if (compact) 64.dp else 112.dp)
                         .clip(RoundedCornerShape(16.dp))
                         .alpha(0.55f),
                 )
-                Spacer(Modifier.width(24.dp))
+                Spacer(Modifier.width(if (compact) 16.dp else 24.dp))
             }
-            Column(Modifier.widthIn(max = 520.dp)) {
+            Column(Modifier.widthIn(max = if (compact) 240.dp else 520.dp)) {
                 AmbientClock(alpha = 0.55f, fontSize = 40)
                 if (nowPlaying != null) {
                     val display = remember(nowPlaying.track) { TitleCleaner.forDisplay(nowPlaying.track) }

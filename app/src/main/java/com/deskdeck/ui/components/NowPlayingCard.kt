@@ -79,6 +79,9 @@ import com.deskdeck.ui.theme.LocalMotion
 import com.deskdeck.ui.theme.MotionSpec
 import com.deskdeck.ui.theme.MutedText
 import com.deskdeck.ui.theme.SurfaceHighest
+import com.deskdeck.ui.adaptive.SharedKeys
+import com.deskdeck.ui.adaptive.sharedNowPlayingBounds
+import com.deskdeck.ui.adaptive.sharedNowPlayingElement
 import com.deskdeck.ui.theme.glass
 import java.time.format.DateTimeFormatter
 import java.util.Locale
@@ -173,6 +176,7 @@ private fun NowPlayingContent(
                     artwork = nowPlaying.artwork,
                     colors = nowPlaying.colors,
                     modifier = Modifier
+                        .sharedNowPlayingElement(SharedKeys.ART)
                         .aspectRatio(1f, matchHeightConstraintsFirst = true)
                         // Where a playlist's cover lands when it's started from the library.
                         .onGloballyPositioned { artTarget.bounds = it.boundsInRoot() }
@@ -229,7 +233,7 @@ private fun TrackHeadline(track: Track) {
                 color = CappedWhite,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.semantics { heading() },
+                modifier = Modifier.sharedNowPlayingBounds(SharedKeys.TITLE).semantics { heading() },
             )
         }
         StaggeredText(artistLine, delayMs = motion.staggerMs) { text ->

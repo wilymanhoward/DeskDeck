@@ -41,6 +41,10 @@ import androidx.compose.ui.semantics.progressBarRangeInfo
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.setProgress
 import androidx.compose.ui.semantics.stateDescription
+import androidx.compose.ui.unit.Dp
+import androidx.compose.foundation.layout.BoxWithConstraints
+import com.deskdeck.ui.adaptive.DeskSize
+import com.deskdeck.ui.adaptive.LocalDeskSize
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -95,7 +99,9 @@ fun VolumeHud(modifier: Modifier = Modifier, viewModel: VolumeViewModel = hiltVi
         }
     }
 
-    Box(modifier.fillMaxSize(), contentAlignment = Alignment.CenterEnd) {
+    BoxWithConstraints(modifier.fillMaxSize(), contentAlignment = Alignment.CenterEnd) {
+        // Shorter in short windows (pop-up view), so it never runs off the top and bottom.
+        val height = minOf(HudHeight, maxHeight - 48.dp).coerceAtLeast(120.dp)
         AnimatedVisibility(
             visible = visible,
             enter = if (motion.reduced) {
@@ -106,9 +112,10 @@ fun VolumeHud(modifier: Modifier = Modifier, viewModel: VolumeViewModel = hiltVi
                     scaleIn(motion.bouncy(), initialScale = 0.85f, transformOrigin = TransformOrigin(1f, 0.5f))
             },
             exit = if (motion.reduced) fadeOut(motion.fade()) else fadeOut(motion.fade()) + slideOutHorizontally(motion.gentle()) { it / 3 },
-            modifier = Modifier.padding(end = 28.dp),
+            modifier = Modifier.padding(end = if (LocalDeskSize.current == DeskSize.COMPACT) 12.dp else 28.dp),
         ) {
             VolumePill(
+                height = height,
                 state = state,
                 onFraction = viewModel::setFraction,
                 onToggleMute = viewModel::toggleMute,
@@ -120,6 +127,7 @@ fun VolumeHud(modifier: Modifier = Modifier, viewModel: VolumeViewModel = hiltVi
 
 @Composable
 private fun VolumePill(
+    height: Dp,
     state: VolumeState,
     onFraction: (Float) -> Unit,
     onToggleMute: () -> Unit,
@@ -135,14 +143,14 @@ private fun VolumePill(
     val description = stringResource(R.string.volume_hud)
     val percent = (target * 100).roundToInt()
     val stateText = if (state.muted) stringResource(R.string.volume_muted) else stringResource(R.string.volume_percent, percent)
-    val iconBand = (IconBottom + IconSize) / HudHeight
+    val iconBand = (IconBottom + IconSize) / height
     // At night: a dim fill and a darker pill, so a volume change doesn't flash the room.
     val nightMode = LocalNightMode.current
     val fillColor = if (nightMode) ActiveLyricWhite.copy(alpha = 0.28f) else ActiveLyricWhite.copy(alpha = 0.92f)
 
     Box(
         Modifier
-            .size(HudWidth, HudHeight)
+            .size(HudWidth, height)
             .glass(RoundedCornerShape(HudWidth / 2), tint = if (nightMode) Color.Black.copy(alpha = 0.9f) else GlassTintStrong, border = if (nightMode) Color.White.copy(alpha = 0.06f) else GlassBorder)
             // Level fill from the bottom, read in the draw phase.
             .drawBehind {
@@ -176,7 +184,7 @@ private fun VolumePill(
             color = if (nightMode) ActiveLyricWhite.copy(alpha = 0.35f) else ActiveLyricWhite,
             fillColor = if (nightMode) ActiveLyricWhite.copy(alpha = 0.35f) else Color.Black.copy(alpha = 0.7f),
             // How much of the icon the fill covers, so the glyph stays visible on white.
-            fill = ((fill - IconBottom / HudHeight) / (iconBand - IconBottom / HudHeight)).coerceIn(0f, 1f),
+            fill = ((fill - IconBottom / height) / (iconBand - IconBottom / height)).coerceIn(0f, 1f),
             modifier = Modifier
                 .padding(bottom = IconBottom)
                 .size(IconSize)
