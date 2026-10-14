@@ -7,6 +7,7 @@ import com.deskdeck.data.settings.AppSettings
 import com.deskdeck.data.settings.BurnInSettings
 import com.deskdeck.data.settings.NightSettings
 import com.deskdeck.data.settings.NotificationSettings
+import com.deskdeck.ui.brief.BriefPreview
 import com.deskdeck.media.NightModeController
 import com.deskdeck.data.settings.SettingsRepository
 import com.deskdeck.data.spotify.SpotifyAccount
@@ -35,7 +36,10 @@ class SettingsViewModel @Inject constructor(
     private val spotifyAuth: SpotifyAuth,
     private val spotifyLibrary: SpotifyLibrary,
     private val nightMode: NightModeController,
+    private val briefPreview: BriefPreview,
 ) : ViewModel() {
+
+    fun showBriefNow() = briefPreview.show()
 
     val spotifyAccount: StateFlow<SpotifyAccount> = spotifyAuth.account
 

@@ -36,6 +36,13 @@ import com.deskdeck.ui.theme.DeskDeckTheme
 import com.deskdeck.ui.theme.LocalMotion
 import com.deskdeck.ui.theme.MotionSpec
 import com.deskdeck.ui.theme.rememberMotionSpec
+import com.deskdeck.ui.brief.BriefViewModel
+import com.deskdeck.ui.brief.MorningBriefScreen
+import com.deskdeck.domain.brief.briefVisible
+import com.deskdeck.ui.common.rememberCurrentTime
+import java.time.Instant
+import androidx.compose.runtime.mutableLongStateOf
+import androidx.compose.runtime.LaunchedEffect
 import com.deskdeck.ui.night.LocalNightMode
 import com.deskdeck.ui.night.NightScreen
 import com.deskdeck.ui.night.NightViewModel
@@ -67,6 +74,27 @@ fun AppRoot(viewModel: AppViewModel = hiltViewModel()) {
     val nightState by nightViewModel.state.collectAsStateWithLifecycle()
     // Night Mode takes over only the dashboard (not onboarding), and only while DeskDeck is in front.
     val nightShown = nightState.active && (accessGranted || onboardingSkipped)
+
+    // Morning Brief: from the scheduled wake-up for the chosen time, until Done, or previewed.
+    val briefViewModel: BriefViewModel = hiltViewModel()
+    val brief by briefViewModel.brief.collectAsStateWithLifecycle()
+    val briefRefreshing by briefViewModel.refreshing.collectAsStateWithLifecycle()
+    val briefPreview by briefViewModel.previewRequested.collectAsStateWithLifecycle()
+    var dismissedWakeMs by rememberSaveable { mutableLongStateOf(0L) }
+    val minute by rememberCurrentTime(withSeconds = false)
+    val briefScheduled = remember(minute, nightState, settings.night, dismissedWakeMs) {
+        briefVisible(
+            now = Instant.now(),
+            enabled = settings.night.enabled && settings.night.brief,
+            nightActive = nightState.active,
+            lastWake = nightState.lastWakeAt,
+            duration = settings.night.briefDuration,
+            dismissedWake = dismissedWakeMs.takeIf { it > 0 }?.let(Instant::ofEpochMilli),
+        )
+    }
+    val briefShown = (briefPreview || briefScheduled) && !nightShown && (accessGranted || onboardingSkipped)
+    LaunchedEffect(briefShown) { if (briefShown) briefViewModel.refreshIfStale(settings.night) }
+    LaunchedEffect(briefPreview) { if (briefPreview) settingsOpen = false }
 
     // DeskDeck never leaves the screen by itself: Back on the dashboard does nothing. Overlays
     // (sheet, picker, settings) register their own handlers later, so those still close with Back.
@@ -101,7 +129,7 @@ fun AppRoot(viewModel: AppViewModel = hiltViewModel()) {
                                 onGrantAccess = openAccessSettings,
                                 onOpenSettings = { settingsOpen = true },
                                 // The night screen has its own burn-in care; dimming/ambient would fight it.
-                                burnInEnabled = !settingsOpen && !nightShown,
+                                burnInEnabled = !settingsOpen && !nightShown && !briefShown,
                             )
                         } else {
                             // Setting things up: keep the screen on so it doesn't time out mid-read.
@@ -120,6 +148,23 @@ fun AppRoot(viewModel: AppViewModel = hiltViewModel()) {
                         exit = fadeOut(motion.fade(NIGHT_FADE_MS)),
                     ) {
                         NightScreen(onOpenSettings = { settingsOpen = true }, viewModel = nightViewModel)
+                    }
+                    AnimatedVisibility(
+                        visible = briefShown,
+                        enter = fadeIn(motion.fade(NIGHT_FADE_MS)),
+                        exit = fadeOut(motion.fade(MotionSpec.LONG_MS)),
+                    ) {
+                        val done = {
+                            if (briefPreview) briefViewModel.endPreview() else dismissedWakeMs = nightState.lastWakeAt?.toEpochMilli() ?: 0L
+                        }
+                        BackHandler(onBack = done)
+                        MorningBriefScreen(
+                            brief = brief,
+                            settings = settings.night,
+                            hasMarketKey = briefViewModel.hasMarketKey,
+                            refreshing = briefRefreshing,
+                            onDone = done,
+                        )
                     }
                     AnimatedVisibility(visible = settingsOpen, enter = fadeIn(motion.fade()), exit = fadeOut(motion.fade())) {
                         KeepScreenOn(enabled = true)

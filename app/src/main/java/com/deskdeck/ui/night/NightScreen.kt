@@ -447,7 +447,7 @@ private fun rememberAmbientLux(): State<Float?> {
  * app-wide pixel shift turned off.
  */
 @Composable
-private fun rememberNightDrift(enabled: Boolean): State<IntOffset> {
+internal fun rememberNightDrift(enabled: Boolean): State<IntOffset> {
     val density = LocalDensity.current
     val range = with(density) { DRIFT_RANGE.toPx() }
     var target by remember { mutableStateOf(IntOffset.Zero) }

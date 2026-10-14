@@ -346,5 +346,45 @@
     <string name="night_exit">End Night Mode</string>
     <string name="night_clock_description">%1$s, %2$s</string>
     <string name="brief_your_area">Your area</string>
+    <!-- Morning Brief -->
+    <string name="brief_good_morning">Good morning</string>
+    <string name="brief_good_afternoon">Good afternoon</string>
+    <string name="brief_good_evening">Good evening</string>
+    <string name="brief_done">Done</string>
+    <string name="brief_show_now">Show Morning Brief now</string>
+    <string name="brief_show_now_detail">See it any time, with the latest data</string>
+    <string name="brief_show">Show</string>
+    <string name="brief_weather_missing">Set a city or allow location in Settings › Night Mode</string>
+    <string name="brief_market_no_key">Add a Twelve Data key to local.properties (twelvedata.apiKey) for market data. See the README.</string>
+    <string name="brief_market_missing">Market data isn\'t available yet</string>
+    <string name="brief_chart_missing">No intraday data</string>
+    <string name="brief_weather_credit">Weather data by Open-Meteo.com</string>
+    <string name="brief_weather_description">%1$s, %2$d %3$s, %4$s, high %5$d, low %6$d</string>
+    <string name="brief_high_low">H %1$d°  L %2$d°</string>
+    <string name="brief_rain_chance">Rain %1$d%%</string>
+    <string name="brief_sunrise">Sunrise %1$s</string>
+    <string name="brief_market_open">Market open</string>
+    <string name="brief_market_closed">Market closed</string>
+    <string name="brief_market_via">Shown via %1$s</string>
+    <string name="brief_market_up">%1$s %2$s, up %3$s percent</string>
+    <string name="brief_market_down">%1$s %2$s, down %3$s percent</string>
+    <string name="brief_open_headline">Open article</string>
+    <string name="brief_open_title">Open in browser?</string>
+    <string name="brief_open_text">“%1$s” (%2$s) opens in your browser, outside DeskDeck.</string>
+    <string name="brief_open_confirm">Open</string>
+    <string name="brief_updating">Updating…</string>
+    <string name="brief_never_updated">Not updated yet</string>
+    <string name="brief_updated">Updated %1$s</string>
+    <string name="brief_updated_day">Updated %1$s %2$s</string>
+    <string name="weather_clear">Clear</string>
+    <string name="weather_partly_cloudy">Partly cloudy</string>
+    <string name="weather_cloudy">Cloudy</string>
+    <string name="weather_fog">Fog</string>
+    <string name="weather_drizzle">Drizzle</string>
+    <string name="weather_rain">Rain</string>
+    <string name="weather_snow">Snow</string>
+    <string name="weather_showers">Showers</string>
+    <string name="weather_thunderstorm">Thunderstorms</string>
 </resources>
+
 
