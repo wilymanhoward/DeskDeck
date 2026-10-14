@@ -15,6 +15,9 @@ import dagger.hilt.EntryPoint
 import dagger.hilt.InstallIn
 import dagger.hilt.android.EntryPointAccessors
 import dagger.hilt.components.SingletonComponent
+import androidx.compose.runtime.Composable
+import com.deskdeck.debug.DebugCallSource
+import com.deskdeck.media.call.CallSource
 import android.util.Log
 
 /**
@@ -41,6 +44,13 @@ object DebugTools {
     interface DebugEntryPoint {
         fun callMonitor(): CallMonitor
     }
+
+    /** The simulator's notifications, read with WhatsApp's rules. */
+    fun extraCallSources(): List<CallSource> = listOf(DebugCallSource())
+
+    /** Settings › Calls: the "Simulate call" buttons. */
+    @Composable
+    fun CallSimulatorCard() = com.deskdeck.debug.CallSimulatorCard()
 
     fun handle(activity: Activity, intent: Intent?) {
         if (intent?.action == ACTION_FAKE_CALL) {

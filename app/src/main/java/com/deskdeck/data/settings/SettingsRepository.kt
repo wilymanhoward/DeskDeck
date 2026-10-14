@@ -103,6 +103,11 @@ private object Keys {
     val bannerHideContent = booleanPreferencesKey("notif_hide_content")
     val bannerRespectDnd = booleanPreferencesKey("notif_respect_dnd")
     val bannerDuration = intPreferencesKey("notif_duration_sec")
+    val callsEnabled = booleanPreferencesKey("calls_enabled")
+    val callBanner = booleanPreferencesKey("calls_banner")
+    val callLayout = booleanPreferencesKey("calls_layout")
+    val callPauseMusic = booleanPreferencesKey("calls_pause_music")
+    val callResumeMusic = booleanPreferencesKey("calls_resume_music")
 }
 
 private inline fun <reified T : Enum<T>> enumOr(name: String?, default: T): T =
@@ -149,6 +154,15 @@ internal fun readSettings(prefs: Preferences): AppSettings {
             respectDnd = prefs[Keys.bannerRespectDnd] ?: n.respectDnd,
             durationSec = (prefs[Keys.bannerDuration] ?: n.durationSec).coerceIn(SettingsRanges.bannerDurationSec),
         ),
+        calls = CallSettings().let { c ->
+            CallSettings(
+                enabled = prefs[Keys.callsEnabled] ?: c.enabled,
+                incomingBanner = prefs[Keys.callBanner] ?: c.incomingBanner,
+                callLayout = prefs[Keys.callLayout] ?: c.callLayout,
+                pauseMusic = prefs[Keys.callPauseMusic] ?: c.pauseMusic,
+                resumeMusic = prefs[Keys.callResumeMusic] ?: c.resumeMusic,
+            )
+        },
     )
 }
 
@@ -186,6 +200,12 @@ internal fun writeSettings(prefs: MutablePreferences, s: AppSettings) {
     prefs[Keys.bannerHideContent] = n.hideContent
     prefs[Keys.bannerRespectDnd] = n.respectDnd
     prefs[Keys.bannerDuration] = n.durationSec
+    val c = s.calls
+    prefs[Keys.callsEnabled] = c.enabled
+    prefs[Keys.callBanner] = c.incomingBanner
+    prefs[Keys.callLayout] = c.callLayout
+    prefs[Keys.callPauseMusic] = c.pauseMusic
+    prefs[Keys.callResumeMusic] = c.resumeMusic
 }
 
 /** "ms|route" entries; the route id may itself contain '|', so split at the first one only. */

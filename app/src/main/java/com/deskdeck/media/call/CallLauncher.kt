@@ -28,7 +28,8 @@ class CallLauncher @Inject constructor() {
 
     /** Whether "beside DeskDeck" can work from this window (not from a pop-up window). */
     fun canOpenBeside(activity: Activity, packageName: String): Boolean =
-        !isPopUpWindow(activity) && activity.packageManager.getLaunchIntentForPackage(packageName) != null
+        packageName != activity.packageName && !isPopUpWindow(activity) &&
+            activity.packageManager.getLaunchIntentForPackage(packageName) != null
 
     /** Opens the call app beside DeskDeck, or says to show the drag-from-taskbar hint. */
     fun openBeside(activity: Activity, packageName: String): BesideResult {

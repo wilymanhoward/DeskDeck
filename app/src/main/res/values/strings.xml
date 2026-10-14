@@ -291,6 +291,19 @@
     <string name="settings_spotify_disconnect">Disconnect</string>
     <!-- Night Mode -->
     <string name="settings_cat_night">Night Mode</string>
+    <string name="settings_cat_calls">Calls</string>
+    <string name="settings_calls">Call awareness</string>
+    <string name="settings_calls_detail">Show WhatsApp calls in DeskDeck. Uses the notification access DeskDeck already has; nothing else is needed.</string>
+    <string name="settings_call_banner">Incoming call banner</string>
+    <string name="settings_call_banner_detail">Caller, Decline and Answer at the top of the screen while it rings</string>
+    <string name="settings_call_layout">Call layout</string>
+    <string name="settings_call_layout_detail">During a call: the caller, a timer and the call\'s buttons, with a mini player</string>
+    <string name="settings_call_pause_music">Pause music during calls</string>
+    <string name="settings_call_pause_music_detail">If music is still playing once a call connects</string>
+    <string name="settings_call_resume_music">Resume music after calls</string>
+    <string name="settings_call_resume_music_detail">Plays again only what DeskDeck paused</string>
+    <string name="settings_calls_about">Privacy and Do Not Disturb</string>
+    <string name="settings_calls_about_detail">Follow Settings › Notifications: with Hide content the banner says \"WhatsApp video call\" instead of the name, and when Do Not Disturb would keep the call quiet, only a small indicator shows. DeskDeck only sends WhatsApp\'s own buttons and never opens it unless you tap a button that says so.</string>
     <string name="night_enabled">Night Mode</string>
     <string name="night_enabled_detail">A dim StandBy-style clock with your music at bedtime, and a Morning Brief when you wake up. Only while DeskDeck is on screen.</string>
     <string name="night_start_now">Start Night Mode now</string>

@@ -19,6 +19,10 @@ AMOLED tablets that sit on a desk all day. No maps, no navigation.
 - **Spotify library** (optional): browse your playlists and start one on this tablet.
 - **Night Mode:** a StandBy-style bedside screen on a schedule: a big dim clock, the next alarm,
   and small music controls, in red when the room is dark.
+- **Split screen and pop-up view:** a full, a half-screen and a mini-player layout, picked by
+  the window's size.
+- **WhatsApp calls:** an incoming call banner with Decline / Answer, a call card with a timer
+  during the call, and music paused and resumed around it.
 - **Morning Brief:** after your wake-up time, the weather, your market watchlist (stocks, index
   ETFs, Bitcoin) and a few headlines, until you tap Done.
 - **Burn-in protection:** pixel shift, idle dimming, a drifting ambient mode, a dim paused clock,
@@ -78,7 +82,7 @@ $env:JAVA_HOME = "C:\Program Files\Android\Android Studio\jbr"; .\gradlew.bat in
 ./gradlew testDebugUnitTest lintDebug
 ```
 
-180 JVM unit tests cover the logic that doesn't need a device:
+223 JVM unit tests cover the logic that doesn't need a device:
 
 | Area | Tests |
 | --- | --- |
@@ -86,9 +90,26 @@ $env:JAVA_HOME = "C:\Program Files\Android\Android Studio\jbr"; .\gradlew.bat in
 | Playback | position interpolation, active lyric line lookup, time formatting |
 | Media sessions | session selection, metadata mapping, ad/podcast/live detection, shuffle/repeat resolution, the resume ladder |
 | Notifications & volume | banner rules (silent, ongoing, DND, muted apps), notification counting, volume levels and limits |
+| Calls | WhatsApp call detection from fake notification data (structured signals, English/Malay wording, missed calls and messages ignored), the call state machine, when music pauses and resumes |
+| Layout | window size classes (full tablet, half split, narrow split, pop-up) |
 | Spotify | PKCE (RFC 7636 vector), Web API error classification |
 | Burn-in | the full display-mode / keep-screen-on policy, pixel shift orbit, drift, rail opacity |
 | Other | settings persistence, rail pins, app search, letterbox detection, script detection |
+
+### Debug tools (debug builds only)
+
+- **Settings › Calls › Simulate call** posts made-up call notifications shaped like WhatsApp's
+  (structured, Malay wording only, or without call buttons). They go through the real detection
+  path, and their Answer, Decline and Hang up buttons work, so the banner, the call layout and the
+  music pause/resume can be tried without a call.
+- adb hooks (`DebugTools`): `-a com.deskdeck.debug.FAKE_CALL --es state incoming|ongoing|end`
+  feeds a call straight into the call monitor; `-a com.deskdeck.debug.SPLIT_TEST --es mode
+  adjacent|plain|pi_immutable|pi_mutable` tries the ways of opening an app beside DeskDeck. Both via
+  `adb shell am start -n com.deskdeck/.MainActivity …`.
+- In debug builds, tapping a call button logs what kind of intent WhatsApp gave it (tag
+  `DeskDeckCall`).
+
+None of this (nor the notification permission it needs) is in release builds.
 
 ### Release build
 
@@ -163,7 +184,44 @@ button instead of the player.
   - **Settings › Notifications**: turn banners off, hide message content, follow Do Not Disturb
     (with its exceptions), set how long banners stay, and turn banners off per app.
 - **Settings** (gear icon): screen & burn-in, sources (incl. the Spotify library), notifications,
-  lyrics (incl. audio delay), night mode (incl. the Morning Brief), clock, appearance, sidebar.
+  calls, lyrics (incl. audio delay), night mode (incl. the Morning Brief), clock, appearance, sidebar.
+
+### Split screen and pop-up view
+
+DeskDeck picks its layout from the window's size class, not the device, and follows resizes live
+without restarting:
+
+| Window | Layout |
+| --- | --- |
+| **Full tablet**, or a wide split (2/3 of the screen) | Sidebar, Now Playing and lyrics, as usual |
+| **Half** of the screen in split screen | Sidebar, Now Playing, and the line being sung with one before and after (the card alone if there's no room) |
+| **Narrow** split (1/3) or a **pop-up** window | Mini player: art, title and artist, a thin progress line, previous / play-pause / next |
+
+The album art and title move between the layouts (just a fade with Remove animations). Night Mode
+puts the clock on top with a one-row player under it, and the Morning Brief stacks its cards.
+Banners, the notification panel, the volume HUD and the ambient screen fit every size.
+
+### Calls (WhatsApp)
+
+On by default under **Settings › Calls**; it uses the notification access DeskDeck already has.
+WhatsApp and WhatsApp Business are supported.
+
+- **Incoming call:** a large banner at the top, above every screen (dimmed in Night Mode), with
+  the caller, voice or video, **Decline** and **Answer**, and **Answer beside DeskDeck** where split
+  screen works. It stays until the call is answered, declined or missed; the × or a deliberate
+  swipe up hides it. With **Hide content** (Settings › Notifications) it says "WhatsApp video call"
+  instead of the name and shows no picture. When Do Not Disturb would keep the call quiet, only a
+  small pill shows; tap it for the banner.
+- **During the call:** a call card with the caller, a running timer, **Open call beside DeskDeck**,
+  and **Hang up** when WhatsApp offers its own button. The player shrinks to the mini player; the
+  lyrics stay beside it only on the full tablet.
+- **Music:** if music is still playing once the call connects, DeskDeck pauses it and plays it
+  again afterwards (**Resume music after calls**). It only resumes what it paused itself.
+- DeskDeck only ever sends WhatsApp's own buttons. It never fakes taps, and it opens WhatsApp only
+  when you tap a button that says so.
+- **Beside DeskDeck:** opens WhatsApp in the other half of the screen (splitting it if DeskDeck was
+  full screen). From a pop-up window that isn't possible, so DeskDeck says to drag WhatsApp from
+  the taskbar instead of opening it full screen.
 
 ### Night Mode
 
@@ -323,6 +381,8 @@ com.deskdeck
 │              gap rows), Volume, RailApp, night/ (NightScheduleCalculator), brief/ (MorningBrief,
 │              briefVisible)
 ├─ media/      MediaListenerService (notification listener), NotificationAccess, NotificationCounter,
+│              call/ (CallSource, WhatsAppCallSource, CallText, CallMonitor + reduceCall, CallLauncher,
+│              CallMusic),
 │              NotificationBanners, MediaSessionRepository + SessionEntry (framework MediaController;
 │              compat controller only for shuffle/repeat), SessionSelector, MediaMapping,
 │              VolumeController, OutputLatency, ArtworkLoader, Letterbox, NightModeController
@@ -336,7 +396,8 @@ com.deskdeck
 ├─ burnin/     BurnInPolicy (pure state machine), Motion (pixel shift, drift, rail opacity), Compose glue
 ├─ ui/         AppRoot, dashboard/, components/ (LeftRail, NowPlayingCard, SeekBar, LyricsPanel…),
 │              notifications/, volume/, spotify/, onboarding/, picker/, settings/, ambient/,
-│              lyrics/, night/, brief/, common/, theme/ (Motion, Glass, Type)
+│              lyrics/, night/, brief/, call/, adaptive/ (DeskSize, shared elements), common/,
+│              theme/ (Motion, Glass, Type)
 └─ di/         Hilt modules
 ```
 
@@ -375,6 +436,14 @@ com.deskdeck
 - **Morning Brief data:** `BriefRepository` fetches weather, market and headlines independently
   and merges them into one cached copy in Room, so one failing part keeps its last value.
   `BriefScheduler` enqueues a unique WorkManager job 15 minutes before the next wake-up.
+- **Layouts:** `currentDeskSize()` maps Material's window size class (600 / 840 dp, plus short
+  windows under 480 dp) to full, half or mini layouts; one `SharedTransitionLayout` lets the art and
+  title travel between them.
+- **Calls:** the listener hands notifications from call apps to `CallMonitor` before, and instead
+  of, the banner queue. A `CallSource` per app (only WhatsApp so far) reads them, preferring
+  Android's structured call signals (category, CallStyle extras: call type, caller, video flag,
+  answer / decline / hang-up intents, WhatsApp's call channel) over wording, which is a fallback
+  kept in `CallText`. `reduceCall` is the pure state machine (idle, incoming, ongoing, ended).
 - **Burn-in:** `BurnInPolicy` decides the display mode and keep-screen-on from idle time, playback
   and settings. The UI re-evaluates it exactly when the next threshold is due.
 
@@ -398,6 +467,7 @@ com.deskdeck
 | Library | Why |
 | --- | --- |
 | Compose BOM, Material 3, Activity, Lifecycle | UI |
+| Material 3 adaptive (BOM-managed, brings androidx.window) | Window size classes for split screen and pop-up view |
 | Hilt (+ hilt-lifecycle-viewmodel-compose) | Dependency injection, including the notification listener service |
 | androidx.media (compat) | Shuffle/repeat **state** lives in the compat "extra binder", which the framework `MediaController` can't read. Used only for that (it's deprecated in favor of Media3, which uses the same mechanism internally for other apps' sessions). |
 | Retrofit + Moshi (codegen via KSP) + OkHttp 4.12 | LRCLIB, Open-Meteo and Twelve Data clients. Codegen adapters avoid reflection and keep R8 simple. OkHttp stays on 4.x because Retrofit 3 and Coil are built against it. |
@@ -461,6 +531,19 @@ screen plus two overlays), and transliteration libraries (Android's built-in ICU
   saving, so the brief can show "Updating…" for a moment when it opens.
 - **Market data** is from Twelve Data's free plan: US-listed symbols and crypto only, indices
   through ETFs (so the value is the ETF's price, not index points), and quotes may be delayed.
+- **Call detection** reads WhatsApp's notifications. Its structured signals are reliable; if
+  WhatsApp stops sending them, detection falls back to English and Malay wording, which any
+  WhatsApp update can change and which doesn't cover other languages. Other call apps (Telegram,
+  Meet) aren't supported yet.
+- **Opening a call beside DeskDeck** uses WhatsApp's launch intent, because all of WhatsApp's
+  notification intents are immutable: Android ignores the "launch adjacent" flag on those (they'd
+  open full screen, or in DeskDeck's own half in split screen). So "beside" opens WhatsApp, which
+  may show its chat list with its "return to call" bar rather than the call screen itself. From a
+  pop-up window DeskDeck can only show a hint.
+- **Answer** sends WhatsApp's own answer action; what WhatsApp then shows (its call screen full
+  screen, or nothing) is up to WhatsApp.
+- **Music after calls:** DeskDeck resumes only what it paused itself. Players that paused on
+  their own when the call took the audio decide themselves whether to continue.
 - **targetSdk 35** is deliberate. With 36+, Android 16 ignores orientation locks on large screens.
 
 ## Troubleshooting
