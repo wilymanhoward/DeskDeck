@@ -61,6 +61,13 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.foundation.layout.FlowRow
 import com.deskdeck.ui.common.cappedSp
 import com.deskdeck.ui.common.rememberTouchExploration
+import com.deskdeck.ui.adaptive.DeskSize
+import com.deskdeck.ui.adaptive.LocalDeskSize
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.tooling.preview.Preview
+import com.deskdeck.ui.theme.DeskDeckTheme
 import androidx.compose.ui.unit.sp
 import androidx.core.net.toUri
 import com.deskdeck.R
@@ -122,39 +129,55 @@ fun MorningBriefScreen(
     val showWeather = settings.briefWeather
     val showMarket = settings.briefMarket || settings.briefHeadlines
 
+    val deskSize = LocalDeskSize.current
+    // Split screen and pop-up view: the cards stack and scroll instead of sitting side by side.
+    val stacked = deskSize != DeskSize.EXPANDED
+    val compact = deskSize == DeskSize.COMPACT
     Box(Modifier.fillMaxSize().background(Color.Black)) {
         Column(
             Modifier
                 .fillMaxSize()
                 .offset { drift }
-                .padding(horizontal = 48.dp, vertical = 32.dp),
+                .padding(horizontal = if (stacked) 20.dp else 48.dp, vertical = if (stacked) 20.dp else 32.dp),
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
-                    Text(greeting, style = TextStyle(fontFamily = NunitoRounded, fontSize = cappedSp(44f, 1.3f), fontWeight = FontWeight.W800), color = Primary, modifier = Modifier.semantics { heading() })
+                    Text(greeting, style = TextStyle(fontFamily = NunitoRounded, fontSize = cappedSp(if (compact) 32f else 44f, 1.3f), fontWeight = FontWeight.W800), color = Primary, modifier = Modifier.semantics { heading() })
                     Text(date, style = TextStyle(fontFamily = Inter, fontSize = 20.sp, fontWeight = FontWeight.W500), color = Secondary)
                 }
                 TextButton(onClick = onDone, modifier = Modifier.height(56.dp)) {
                     Text(stringResource(R.string.brief_done), fontSize = 20.sp, color = Primary)
                 }
             }
-            Spacer(Modifier.height(28.dp))
-            Row(Modifier.weight(1f).fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(24.dp)) {
-                if (showWeather) {
-                    Appear(0, Modifier.weight(1f).fillMaxHeight()) {
-                        WeatherCard(brief?.weather, Modifier.fillMaxHeight())
-                    }
+            Spacer(Modifier.height(if (stacked) 16.dp else 28.dp))
+            val weather: @Composable (Modifier) -> Unit = { m ->
+                Appear(0, m) { WeatherCard(brief?.weather, Modifier.fillMaxHeight()) }
+            }
+            val market: @Composable (Modifier) -> Unit = { m ->
+                Appear(1, m) {
+                    MarketCard(
+                        markets = if (settings.briefMarket) brief?.markets.orEmpty() else emptyList(),
+                        headlines = if (settings.briefHeadlines) brief?.headlines.orEmpty() else emptyList(),
+                        showMarket = settings.briefMarket,
+                        hasKey = hasMarketKey,
+                        modifier = Modifier.fillMaxSize(),
+                    )
                 }
-                if (showMarket) {
-                    Appear(1, Modifier.weight(1.25f).fillMaxHeight()) {
-                        MarketCard(
-                            markets = if (settings.briefMarket) brief?.markets.orEmpty() else emptyList(),
-                            headlines = if (settings.briefHeadlines) brief?.headlines.orEmpty() else emptyList(),
-                            showMarket = settings.briefMarket,
-                            hasKey = hasMarketKey,
-                            modifier = Modifier.fillMaxSize(),
-                        )
-                    }
+            }
+            if (stacked) {
+                // Fixed card heights (growing with the font size) so their layout works in a scroll.
+                val scale = LocalDensity.current.fontScale.coerceIn(1f, 1.6f)
+                Column(
+                    Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(16.dp),
+                ) {
+                    if (showWeather) weather(Modifier.fillMaxWidth().height(StackedWeatherHeight * scale))
+                    if (showMarket) market(Modifier.fillMaxWidth().height(StackedMarketHeight * scale))
+                }
+            } else {
+                Row(Modifier.weight(1f).fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(24.dp)) {
+                    if (showWeather) weather(Modifier.weight(1f).fillMaxHeight())
+                    if (showMarket) market(Modifier.weight(1.25f).fillMaxHeight())
                 }
             }
             Spacer(Modifier.height(16.dp))
@@ -162,6 +185,9 @@ fun MorningBriefScreen(
         }
     }
 }
+
+private val StackedWeatherHeight = 360.dp
+private val StackedMarketHeight = 480.dp
 
 /** Cards rise in one after another; just fade with reduced motion. */
 @Composable
@@ -473,3 +499,43 @@ private fun DrawScope.drawCloud(color: Color, dy: Float) {
     drawCircle(color, w * 0.15f, Offset(w * 0.73f, y + h * 0.02f))
     drawRect(color, Offset(w * 0.24f, y), androidx.compose.ui.geometry.Size(w * 0.6f, w * 0.15f))
 }
+
+
+// region Previews
+
+private val previewBrief = MorningBrief(
+    weather = WeatherBrief("Dengkil", 30.0, 32.0, 24.0, code = 0, rainChancePercent = 100, sunrise = "06:57", fahrenheit = false),
+    markets = listOf(
+        MarketBrief("S&P 500", "SPY", 778.01, -0.09, -0.01, List(78) { 778 + kotlin.math.sin(it / 9.0) * 1.5 }, "USD", marketOpen = false),
+        MarketBrief("Bitcoin", "BTC/USD", 83_730.24, 561.24, 0.67, List(96) { 83_200 + it * 5.5 }, "USD", marketOpen = true, crypto = true),
+    ),
+    headlines = listOf(
+        Headline("Stocks drift as investors await earnings season", "CNBC", "https://www.cnbc.com/", null),
+        Headline("Oil slips after a three-day rally", "CNBC", "https://www.cnbc.com/", null),
+        Headline("Treasury yields hold steady ahead of Fed minutes", "CNBC", "https://www.cnbc.com/", null),
+    ),
+    fetchedAtMs = 1_791_936_000_000,
+)
+
+@Composable
+private fun BriefPreview(size: DeskSize) {
+    DeskDeckTheme {
+        CompositionLocalProvider(LocalDeskSize provides size) {
+            MorningBriefScreen(brief = previewBrief, settings = NightSettings(), hasMarketKey = true, refreshing = false, onDone = {})
+        }
+    }
+}
+
+@Preview(name = "Brief – expanded", widthDp = 1317, heightDp = 823)
+@Composable
+private fun BriefExpandedPreview() = BriefPreview(DeskSize.EXPANDED)
+
+@Preview(name = "Brief – medium (half split)", widthDp = 650, heightDp = 823)
+@Composable
+private fun BriefMediumPreview() = BriefPreview(DeskSize.MEDIUM)
+
+@Preview(name = "Brief – compact", widthDp = 430, heightDp = 823)
+@Composable
+private fun BriefCompactPreview() = BriefPreview(DeskSize.COMPACT)
+
+// endregion

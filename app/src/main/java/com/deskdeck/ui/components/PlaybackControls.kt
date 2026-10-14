@@ -117,21 +117,21 @@ fun PlaybackControls(
 
 /** Large glyph, no container (Apple Music style), morphing between pause bars and play triangle. */
 @Composable
-private fun PlayPauseButton(isPlaying: Boolean, onClick: () -> Unit) {
+internal fun PlayPauseButton(isPlaying: Boolean, onClick: () -> Unit, size: Dp = Dimens.playButton) {
     val interaction = remember { MutableInteractionSource() }
     val motion = LocalMotion.current
     val toPlay by animateFloatAsState(if (isPlaying) 0f else 1f, motion.snappy(), label = "playMorph")
     val description = stringResource(if (isPlaying) R.string.np_pause else R.string.np_play)
     Box(
         modifier = Modifier
-            .size(Dimens.playButton)
+            .size(size)
             .pressScale(interaction)
             .clip(CircleShape)
             .clickable(interactionSource = interaction, indication = ripple(color = CappedWhite), role = Role.Button, onClick = onClick)
             .semantics { contentDescription = description },
         contentAlignment = Alignment.Center,
     ) {
-        PlayPauseGlyph(progressToPlay = { toPlay }, color = ActiveLyricWhite, modifier = Modifier.size(52.dp))
+        PlayPauseGlyph(progressToPlay = { toPlay }, color = ActiveLyricWhite, modifier = Modifier.size(size * 0.6f))
     }
 }
 
@@ -177,7 +177,7 @@ private val MorphQuads = listOf(
 )
 
 @Composable
-private fun TransportButton(
+internal fun TransportButton(
     iconRes: Int,
     description: String,
     enabled: Boolean,
@@ -198,7 +198,29 @@ private fun TransportButton(
             painter = painterResource(iconRes),
             contentDescription = null,
             tint = ActiveLyricWhite.copy(alpha = if (enabled) 1f else 0.3f),
-            modifier = Modifier.size(40.dp),
+            modifier = Modifier.size(size * 0.56f),
+        )
+    }
+}
+
+/** Previous, play/pause and next at a smaller size, for the mini player. */
+@Composable
+fun MiniTransport(playback: PlaybackInfo, actions: PlayerActions, modifier: Modifier = Modifier) {
+    Row(modifier, horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically) {
+        TransportButton(
+            iconRes = R.drawable.ic_skip_previous,
+            description = stringResource(R.string.np_previous),
+            enabled = playback.canSkipPrevious,
+            onClick = actions::onSkipPrevious,
+            size = Dimens.minTouch,
+        )
+        PlayPauseButton(isPlaying = playback.isPlaying, onClick = actions::onPlayPause, size = 64.dp)
+        TransportButton(
+            iconRes = R.drawable.ic_skip_next,
+            description = stringResource(R.string.np_next),
+            enabled = playback.canSkipNext,
+            onClick = actions::onSkipNext,
+            size = Dimens.minTouch,
         )
     }
 }

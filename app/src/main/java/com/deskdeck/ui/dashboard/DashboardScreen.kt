@@ -9,21 +9,15 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.displayCutout
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.SegmentedButton
-import androidx.compose.material3.SegmentedButtonDefaults
-import androidx.compose.material3.SingleChoiceSegmentedButtonRow
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
@@ -36,13 +30,22 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.SharedTransitionLayout
+import androidx.compose.animation.togetherWith
+import androidx.compose.ui.platform.LocalDensity
+import com.deskdeck.ui.adaptive.DeskSize
+import com.deskdeck.ui.adaptive.LocalDeskSize
+import com.deskdeck.ui.adaptive.LocalSharedLayoutScopes
+import com.deskdeck.ui.adaptive.SharedLayoutScopes
+import com.deskdeck.ui.components.MiniLyrics
+import com.deskdeck.ui.components.MiniPlayer
+import com.deskdeck.ui.components.hasMiniLyrics
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.deskdeck.R
 import com.deskdeck.ui.spotify.StartedPlaylist
 import com.deskdeck.ui.spotify.LocalArtTarget
 import com.deskdeck.ui.spotify.LibraryOverlay
@@ -248,8 +251,32 @@ fun DashboardScreen(
             animate = animateBackground,
             modifier = Modifier.fillMaxSize(),
         )
-        val compact = maxWidth < Dimens.compactWidthThreshold
-        Row(
+        val motion = LocalMotion.current
+        val deskSize = LocalDeskSize.current
+        // One layout per size class; the art and title travel between them where it's cheap.
+        SharedTransitionLayout(Modifier.fillMaxSize()) {
+        AnimatedContent(
+            targetState = deskSize,
+            transitionSpec = { fadeIn(motion.fade(MotionSpec.LONG_MS)) togetherWith fadeOut(motion.fade()) },
+            label = "deskLayout",
+        ) { size ->
+        val scopes = remember(this@SharedTransitionLayout, this) { SharedLayoutScopes(this@SharedTransitionLayout, this) }
+        CompositionLocalProvider(LocalSharedLayoutScopes provides scopes) {
+        if (size == DeskSize.COMPACT) {
+            MiniPlayer(
+                nowPlaying = nowPlaying,
+                position = position,
+                actions = actions,
+                accessMissing = !notificationAccessGranted,
+                onGrantAccess = onGrantAccess,
+                emptySource = emptySource,
+                onOpenApp = actions::onOpenApp,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .windowInsetsPadding(WindowInsets.displayCutout)
+                    .padding(Dimens.screenPadding),
+            )
+        } else Row(
             modifier = Modifier.fillMaxSize()
                 .windowInsetsPadding(WindowInsets.displayCutout)
                 .padding(Dimens.screenPadding),
@@ -268,8 +295,8 @@ fun DashboardScreen(
                 onNotifications = actions::onOpenNotifications,
                 onToggleNight = actions::onToggleNight,
             )
-            if (compact) {
-                CompactPanels(
+            if (size == DeskSize.MEDIUM) {
+                MediumPanels(
                     nowPlaying = nowPlaying,
                     lyrics = lyrics,
                     position = position,
@@ -313,12 +340,18 @@ fun DashboardScreen(
                 )
             }
         }
+        }
+        }
+        }
     }
 }
 
-/** Narrow windows (split-screen): one panel at a time with a switcher on top. */
+/**
+ * Medium windows (half the tablet in split screen): the Now Playing card, and under it the line
+ * being sung with one before and after, when there's room for both. Otherwise the card alone.
+ */
 @Composable
-private fun CompactPanels(
+private fun MediumPanels(
     nowPlaying: NowPlaying?,
     lyrics: LyricsUiState,
     position: State<Long>,
@@ -330,29 +363,11 @@ private fun CompactPanels(
     volumeControl: (@Composable () -> Unit)?,
     modifier: Modifier = Modifier,
 ) {
-    var showLyrics by rememberSaveable { mutableStateOf(false) }
-    Column(modifier) {
-        SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
-            SegmentedButton(
-                selected = !showLyrics,
-                onClick = { showLyrics = false },
-                shape = SegmentedButtonDefaults.itemShape(index = 0, count = 2),
-                modifier = Modifier.heightIn(min = 48.dp),
-            ) { Text(stringResource(R.string.tab_now_playing), style = MaterialTheme.typography.labelLarge) }
-            SegmentedButton(
-                selected = showLyrics,
-                onClick = { showLyrics = true },
-                shape = SegmentedButtonDefaults.itemShape(index = 1, count = 2),
-                modifier = Modifier.heightIn(min = 48.dp),
-            ) { Text(stringResource(R.string.tab_lyrics), style = MaterialTheme.typography.labelLarge) }
-        }
-        Spacer(Modifier.height(12.dp))
-        val panelModifier = Modifier
-            .weight(1f)
-            .fillMaxWidth()
-        if (showLyrics) {
-            LyricsPanel(lyrics, position, actions, panelModifier)
-        } else {
+    BoxWithConstraints(modifier) {
+        val fontScale = LocalDensity.current.fontScale.coerceAtLeast(1f)
+        val cardMin = (if (volumeControl != null) 496.dp else 440.dp) * fontScale
+        val showLyrics = nowPlaying != null && lyrics.hasMiniLyrics() && maxHeight >= cardMin + Dimens.zoneGap + MiniLyricsHeight
+        Column(Modifier.fillMaxSize()) {
             NowPlayingCard(
                 nowPlaying = nowPlaying,
                 position = position,
@@ -365,11 +380,16 @@ private fun CompactPanels(
                 onGetApp = actions::onGetApp,
                 volumeControl = volumeControl,
                 onOpenLibrary = actions::onOpenLibrary.takeIf { LocalAppSettings.current.spotifyLibrary },
-                modifier = panelModifier,
+                modifier = Modifier.weight(1f).fillMaxWidth(),
             )
+            AnimatedVisibility(visible = showLyrics, enter = fadeIn(LocalMotion.current.fade()), exit = fadeOut(LocalMotion.current.fade())) {
+                MiniLyrics(lyrics, position, Modifier.padding(top = Dimens.zoneGap).fillMaxWidth().height(MiniLyricsHeight))
+            }
         }
     }
 }
+
+private val MiniLyricsHeight = 168.dp
 
 // region Previews
 
@@ -452,17 +472,53 @@ private fun DashboardNotFoundPreview() {
     }
 }
 
-@Preview(name = "Split-screen (compact)", widthDp = 640, heightDp = 800)
 @Composable
-private fun DashboardCompactPreview() {
+private fun SizedDashboardPreview(size: DeskSize) {
+    val np = previewNowPlaying()
+    val lines = (FakeData.lyricsFor(np.track.id) as Lyrics.Synced).lines
     DeskDeckTheme {
-        DashboardScreen(
-            nowPlaying = previewNowPlaying(index = 1),
-            lyrics = LyricsUiState.Plain(FakeData.tracks[1].track.id, "Sample plain lyrics"),
-            railApps = FakeData.railApps,
-            notificationCount = 1,
-            actions = previewActions,
-        )
+        CompositionLocalProvider(LocalDeskSize provides size) {
+            DashboardScreen(
+                nowPlaying = np,
+                lyrics = LyricsUiState.Synced(np.track.id, lines),
+                railApps = FakeData.railApps,
+                notificationCount = 3,
+                actions = previewActions,
+                position = remember { mutableLongStateOf(36_000L) },
+            )
+        }
+    }
+}
+
+@Preview(name = "Expanded – full tablet", widthDp = 1317, heightDp = 823)
+@Composable
+private fun DashboardExpandedPreview() = SizedDashboardPreview(DeskSize.EXPANDED)
+
+@Preview(name = "Medium – half split screen", widthDp = 650, heightDp = 823)
+@Composable
+private fun DashboardMediumPreview() = SizedDashboardPreview(DeskSize.MEDIUM)
+
+@Preview(name = "Compact – narrow split", widthDp = 430, heightDp = 823)
+@Composable
+private fun DashboardCompactPreview() = SizedDashboardPreview(DeskSize.COMPACT)
+
+@Preview(name = "Compact – pop-up view", widthDp = 560, heightDp = 340)
+@Composable
+private fun DashboardPopUpPreview() = SizedDashboardPreview(DeskSize.COMPACT)
+
+@Preview(name = "Compact – nothing playing", widthDp = 430, heightDp = 600)
+@Composable
+private fun DashboardCompactEmptyPreview() {
+    DeskDeckTheme {
+        CompositionLocalProvider(LocalDeskSize provides DeskSize.COMPACT) {
+            DashboardScreen(
+                nowPlaying = null,
+                lyrics = LyricsUiState.Idle,
+                railApps = FakeData.railApps,
+                notificationCount = 0,
+                actions = previewActions,
+            )
+        }
     }
 }
 

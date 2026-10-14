@@ -104,12 +104,13 @@ fun NotificationCenter(viewModel: BannerViewModel = hiltViewModel()) {
             )
         }
         BoxWithConstraints(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.displayCutout)) {
-            val width = minOf(PanelMaxWidth, maxWidth - RailEdge - Dimens.screenPadding)
+            val start = overlayStart()
+            val width = minOf(PanelMaxWidth, maxWidth - start - Dimens.screenPadding)
             AnimatedVisibility(
                 visible = open,
                 enter = if (motion.reduced) fadeIn(motion.fade()) else slideInHorizontally(motion.gentle()) { -it } + fadeIn(motion.fade()),
                 exit = if (motion.reduced) fadeOut(motion.fade()) else slideOutHorizontally(motion.snappy()) { -it } + fadeOut(motion.fade()),
-                modifier = Modifier.padding(start = RailEdge, top = Dimens.screenPadding, bottom = Dimens.screenPadding),
+                modifier = Modifier.padding(start = start, top = Dimens.screenPadding, bottom = Dimens.screenPadding),
             ) {
                 Column(
                     Modifier

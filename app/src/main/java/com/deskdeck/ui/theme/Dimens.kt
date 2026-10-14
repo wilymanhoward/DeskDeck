@@ -14,7 +14,4 @@ object Dimens {
     val minTouch = 56.dp
     val playButton = 88.dp
     val skipButton = 72.dp
-
-    /** Below this width (split-screen, small windows) the lyrics share one panel with now playing. */
-    val compactWidthThreshold = 720.dp
 }

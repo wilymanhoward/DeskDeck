@@ -64,6 +64,9 @@ import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
+import com.deskdeck.ui.adaptive.DeskSize
+import com.deskdeck.ui.adaptive.LocalDeskSize
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -86,6 +89,10 @@ private val BannerShape = RoundedCornerShape(BannerHeight / 2)
 /** Where banners and the panel start: just right of the rail. Banners line up with its bell. */
 internal val RailEdge = Dimens.screenPadding + Dimens.railWidth + 8.dp
 private val BellTop = Dimens.screenPadding + Dimens.minTouch + 4.dp
+
+/** Left edge for banners and the panel: right of the rail, or the window edge in the mini player (no rail). */
+@Composable
+internal fun overlayStart(): Dp = if (LocalDeskSize.current == DeskSize.COMPACT) Dimens.screenPadding else RailEdge
 
 // Denser than other glass: banners sit over album art, and their text must stay readable.
 internal val DenseGlass = Color(0xFF1C1D21).copy(alpha = 0.95f)
@@ -136,7 +143,12 @@ fun BannerHost(modifier: Modifier = Modifier, viewModel: BannerViewModel = hiltV
 
     Box(modifier.fillMaxSize().windowInsetsPadding(WindowInsets.displayCutout)) {
         Column(
-            modifier = Modifier.padding(start = RailEdge, top = BellTop),
+            // The end padding keeps banners inside narrow windows.
+            modifier = Modifier.padding(
+                start = overlayStart(),
+                top = if (LocalDeskSize.current == DeskSize.COMPACT) Dimens.screenPadding else BellTop,
+                end = Dimens.screenPadding,
+            ),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             entries.forEach { entry ->
