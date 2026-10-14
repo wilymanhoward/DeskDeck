@@ -41,11 +41,13 @@ class MainActivity : ComponentActivity() {
             AppRoot()
         }
         handleSpotifyRedirect(intent)
+        DebugTools.handle(this, intent)
     }
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         handleSpotifyRedirect(intent)
+        DebugTools.handle(this, intent)
     }
 
     /** The end of Spotify sign-in: the Custom Tab redirects to deskdeck://spotify-callback. */
