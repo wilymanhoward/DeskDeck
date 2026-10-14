@@ -46,6 +46,8 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import com.deskdeck.R
@@ -312,7 +314,11 @@ private fun Watchlist(items: List<String>, onChange: (List<String>) -> Unit) {
         Row(Modifier.fillMaxWidth().padding(start = 24.dp, end = 12.dp), verticalAlignment = Alignment.CenterVertically) {
             Text(item, style = MaterialTheme.typography.titleMedium, color = CappedWhite, modifier = Modifier.weight(1f))
             if (i > 0) {
-                TextButton(onClick = { onChange(items.toMutableList().apply { add(i - 1, removeAt(i)) }) }) { Text(stringResource(R.string.market_move_up)) }
+                val moveLabel = stringResource(R.string.market_move_up_description, item)
+                TextButton(
+                    onClick = { onChange(items.toMutableList().apply { add(i - 1, removeAt(i)) }) },
+                    modifier = Modifier.semantics { contentDescription = moveLabel },
+                ) { Text(stringResource(R.string.market_move_up)) }
             }
             IconButton(onClick = { onChange(items - item) }, modifier = Modifier.size(Dimens.minTouch)) {
                 Icon(painterResource(R.drawable.ic_close), stringResource(R.string.market_remove, item), tint = MutedText)

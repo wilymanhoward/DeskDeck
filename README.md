@@ -17,6 +17,10 @@ AMOLED tablets that sit on a desk all day. No maps, no navigation.
 - **Notifications** inside DeskDeck: small banners by the bell, and a panel with all of them.
 - **Volume HUD:** the volume buttons show DeskDeck's own glass indicator instead of the system panel.
 - **Spotify library** (optional): browse your playlists and start one on this tablet.
+- **Night Mode:** a StandBy-style bedside screen on a schedule: a big dim clock, the next alarm,
+  and small music controls, in red when the room is dark.
+- **Morning Brief:** after your wake-up time, the weather, your market watchlist (stocks, index
+  ETFs, Bitcoin) and a few headlines, until you tap Done.
 - **Burn-in protection:** pixel shift, idle dimming, a drifting ambient mode, a dim paused clock,
   a brightness cap, and keep-screen-on rules.
 
@@ -159,7 +163,69 @@ button instead of the player.
   - **Settings › Notifications**: turn banners off, hide message content, follow Do Not Disturb
     (with its exceptions), set how long banners stay, and turn banners off per app.
 - **Settings** (gear icon): screen & burn-in, sources (incl. the Spotify library), notifications,
-  lyrics (incl. audio delay), clock, appearance, sidebar.
+  lyrics (incl. audio delay), night mode (incl. the Morning Brief), clock, appearance, sidebar.
+
+### Night Mode
+
+Off until you turn it on under **Settings › Night Mode**.
+
+- **Schedule:** a bedtime and wake-up time (crossing midnight is fine), the days it runs, and
+  optionally a different weekend schedule. A night belongs to the day you wake up on, so "Saturday"
+  means the night from Friday to Saturday.
+- **Start now / End now:** **Start Night Mode now** in Settings, or **long-press the clock** in the
+  sidebar, starts it until the next wake-up; ending it early lasts until the next bedtime.
+- **The screen:** true black, the clock on the right (bold, thin or analog; 12/24 h) with the date
+  and your next alarm, and the playing song on the left with play/pause and skip. Everything is
+  drawn dim, the window brightness is held at the night level (5 % by default), and the layout
+  drifts a little every 90 s. Nothing else from DeskDeck shows: banners are replaced by a tiny dot
+  next to the date, and the volume HUD has a dim night look.
+- **Red tint:** on, off, or automatic: red when the light sensor reads a dark room (or all night on
+  tablets without a light sensor).
+- **Tap** brightens the screen for 10 seconds and shows **End Night Mode** and the settings button.
+  With TalkBack on, those stay available all the time.
+- DeskDeck shows Night Mode only while it's on screen. It doesn't turn the screen on or appear
+  over other apps at bedtime (that would need a full-screen intent or an overlay).
+
+### Morning Brief
+
+After the wake-up time of a scheduled night, DeskDeck shows a brief in place of the dashboard for
+15, 30 or 60 minutes, or until you tap **Done** (it never stays longer than 4 hours). **Settings ›
+Night Mode › Show Morning Brief now** opens it any time.
+
+- **Weather:** now, high/low, chance of rain and sunrise, from [Open-Meteo](https://open-meteo.com)
+  (no key). Use a city name, or the tablet's approximate location (DeskDeck asks for coarse
+  location only when you choose that). °C or °F.
+- **Market:** one page per watchlist item, turning every few seconds (swipe to browse; it doesn't
+  turn by itself under TalkBack), each with price, change and a small chart. Indices aren't on the
+  free data plan, so they're shown through the ETF that tracks them: **S&P 500** via SPY,
+  **Nasdaq 100** via QQQ, **Dow Jones** via DIA ("Shown via SPY" on the card). Stock symbols
+  (`AAPL`) work as they are. **Bitcoin**/**BTC** and **Ethereum**/**ETH** show the last 24 hours,
+  since crypto never closes; other pairs can be written like `SOL/USD`. Needs a Twelve Data key
+  (below).
+- **Headlines:** the latest three from CNBC's public markets RSS feed (one with very large text).
+  Tapping one asks before opening it in your browser.
+- **Fresh data:** about 15 minutes before each wake-up, a background job fetches everything once a
+  network is available and caches it, so the brief appears instantly and also works offline.
+  Android decides the exact time (Doze and battery saving can delay it), so when the brief opens
+  with data older than 30 minutes, or without something it should show (e.g. a newly added
+  watchlist item), it refreshes then and says "Updating…". The bottom line shows when it was last
+  updated.
+
+#### Twelve Data key (for the market card)
+
+1. Create a free account at <https://twelvedata.com> and copy your API key from the dashboard.
+2. Add it to `local.properties` (gitignored, never committed):
+
+   ```properties
+   twelvedata.apiKey=your_key_here
+   ```
+
+3. Rebuild and install. Without a key the market card says how to add one; weather and headlines
+   work without it.
+
+The free plan allows 800 requests a day and 8 a minute. Each watchlist item costs 2 requests per
+update (quote and chart), so keep the watchlist to about 4 items. Markets outside the US (e.g.
+KLCI) need a paid plan, so they aren't offered.
 
 ### Burn-in protection
 
@@ -254,21 +320,23 @@ injection, coroutines.
 ```
 com.deskdeck
 ├─ domain/     Track, PlaybackInfo (position interpolation), NowPlaying, Lyrics (lines, words,
-│              gap rows), Volume, RailApp
+│              gap rows), Volume, RailApp, night/ (NightScheduleCalculator), brief/ (MorningBrief,
+│              briefVisible)
 ├─ media/      MediaListenerService (notification listener), NotificationAccess, NotificationCounter,
 │              NotificationBanners, MediaSessionRepository + SessionEntry (framework MediaController;
 │              compat controller only for shuffle/repeat), SessionSelector, MediaMapping,
-│              VolumeController, OutputLatency, ArtworkLoader, Letterbox
+│              VolumeController, OutputLatency, ArtworkLoader, Letterbox, NightModeController
 │  └─ sources/ PlaybackSource, ResumeChain, SourceSwitcher (rail taps; never launches apps)
 ├─ data/       lyrics/ (LyricsProvider, LrclibProvider, LrcParser, WordTiming, TitleCleaner,
 │              LyricMatcher, DefaultLyricsRepository), spotify/ (SpotifyAuth, TokenStore, SpotifyApi,
-│              SpotifyLibrary), db/ (Room: lyrics cache, offsets, playlist cache), settings/
-│              (DataStore), NetworkMonitor
+│              SpotifyLibrary), brief/ (BriefApis, BriefRepository, RssParser, BriefPrefetch),
+│              db/ (Room: lyrics cache, offsets, playlist cache, brief cache), settings/
+│              (DataStore, NightSettings), NetworkMonitor
 ├─ launcher/   InstalledAppsRepository (LauncherApps), RailAppsRepository, AppLauncher, AppIconFetcher
 ├─ burnin/     BurnInPolicy (pure state machine), Motion (pixel shift, drift, rail opacity), Compose glue
 ├─ ui/         AppRoot, dashboard/, components/ (LeftRail, NowPlayingCard, SeekBar, LyricsPanel…),
 │              notifications/, volume/, spotify/, onboarding/, picker/, settings/, ambient/,
-│              lyrics/, theme/ (Motion, Glass, Type)
+│              lyrics/, night/, brief/, common/, theme/ (Motion, Glass, Type)
 └─ di/         Hilt modules
 ```
 
@@ -300,6 +368,13 @@ com.deskdeck
   the panel is open.
 - **Spotify:** PKCE sign-in in a Custom Tab, tokens encrypted with a Keystore key, playlists cached
   in Room, playback started on this tablet's Spotify Connect device.
+- **Night Mode:** `NightScheduleCalculator` (pure, tested across midnight, weekend schedules,
+  DST and manual overrides) says whether it's night and when that next changes;
+  `NightModeController` sleeps exactly until then. The Morning Brief's visibility is another pure
+  function (`briefVisible`) of the last wake-up, the chosen duration and **Done**.
+- **Morning Brief data:** `BriefRepository` fetches weather, market and headlines independently
+  and merges them into one cached copy in Room, so one failing part keeps its last value.
+  `BriefScheduler` enqueues a unique WorkManager job 15 minutes before the next wake-up.
 - **Burn-in:** `BurnInPolicy` decides the display mode and keep-screen-on from idle time, playback
   and settings. The UI re-evaluates it exactly when the next threshold is due.
 
@@ -325,8 +400,9 @@ com.deskdeck
 | Compose BOM, Material 3, Activity, Lifecycle | UI |
 | Hilt (+ hilt-lifecycle-viewmodel-compose) | Dependency injection, including the notification listener service |
 | androidx.media (compat) | Shuffle/repeat **state** lives in the compat "extra binder", which the framework `MediaController` can't read. Used only for that (it's deprecated in favor of Media3, which uses the same mechanism internally for other apps' sessions). |
-| Retrofit + Moshi (codegen via KSP) + OkHttp 4.12 | LRCLIB client. Codegen adapters avoid reflection and keep R8 simple. OkHttp stays on 4.x because Retrofit 3 and Coil are built against it. |
-| Room | Lyrics cache, per-song timing offsets, Spotify playlist cache |
+| Retrofit + Moshi (codegen via KSP) + OkHttp 4.12 | LRCLIB, Open-Meteo and Twelve Data clients. Codegen adapters avoid reflection and keep R8 simple. OkHttp stays on 4.x because Retrofit 3 and Coil are built against it. |
+| Room | Lyrics cache, per-song timing offsets, Spotify playlist cache, Morning Brief cache |
+| WorkManager + hilt-work | Fetches the Morning Brief before you wake up, waiting for a network and surviving reboots |
 | AndroidX Browser | Spotify sign-in in a Custom Tab over DeskDeck |
 | DataStore Preferences | Settings and pinned apps |
 | Coil 3 | Album art from URIs, plus launcher icons through a small custom fetcher (memory-cached) |
@@ -377,6 +453,14 @@ screen plus two overlays), and transliteration libraries (Android's built-in ICU
   past Android's hearing-safety level on headphones still needs the system's confirmation dialog,
   which DeskDeck then shows. Outside changes are detected through `VOLUME_CHANGED_ACTION`, a stable
   but undocumented system broadcast.
+- **Night Mode** only takes over while DeskDeck is on screen. It can't switch the screen on at
+  bedtime or appear over another app without a full-screen intent or an overlay permission, which
+  DeskDeck doesn't use. The next alarm comes from `AlarmManager.getNextAlarmClock()`, so it shows
+  alarms set as alarm clocks (the Clock app's), not plain reminders.
+- **Morning Brief timing** depends on Android: the prefetch job may run late under Doze or battery
+  saving, so the brief can show "Updating…" for a moment when it opens.
+- **Market data** is from Twelve Data's free plan: US-listed symbols and crypto only, indices
+  through ETFs (so the value is the ETF's price, not index points), and quotes may be delayed.
 - **targetSdk 35** is deliberate. With 36+, Android 16 ignores orientation locks on large screens.
 
 ## Troubleshooting
@@ -391,6 +475,10 @@ screen plus two overlays), and transliteration libraries (Android's built-in ICU
 ## Credits
 
 Lyrics by [LRCLIB](https://lrclib.net), a free, open lyrics database.
+
+Weather data by [Open-Meteo.com](https://open-meteo.com) (CC BY 4.0). Market data by
+[Twelve Data](https://twelvedata.com). Headlines from CNBC's public RSS feed; articles open on
+CNBC's site.
 
 Typography uses [Inter 4.1](https://github.com/rsms/inter/releases/tag/v4.1),
 Copyright © The Inter Project Authors, licensed under the SIL Open Font License 1.1.
