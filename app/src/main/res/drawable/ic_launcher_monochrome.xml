@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Themed-icon glyph (Android 13+): the play button and lyric lines from the front card. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M36,43.5C36,41.6 38,40.4 39.7,41.4L50.3,47.9C51.9,48.9 51.9,51.1 50.3,52.1L39.7,58.6C38,59.6 36,58.4 36,56.5Z" />
+    <path
+        android:pathData="M58,44.5H70M58,50H76M58,55.5H70"
+        android:strokeColor="#FFFFFFFF"
+        android:strokeWidth="3.6"
+        android:strokeLineCap="round" />
+</vector>
