@@ -179,6 +179,12 @@ internal fun NightSettingsSection(n: NightSettings, vm: SettingsViewModel) {
         SwitchRow(stringResource(R.string.brief_weather), null, n.briefWeather, n.brief) { v -> vm.updateNight { it.copy(briefWeather = v) } }
         SwitchRow(stringResource(R.string.brief_market), null, n.briefMarket, n.brief) { v -> vm.updateNight { it.copy(briefMarket = v) } }
         SwitchRow(stringResource(R.string.brief_headlines), null, n.briefHeadlines, n.brief) { v -> vm.updateNight { it.copy(briefHeadlines = v) } }
+        ActionRow(
+            title = stringResource(R.string.brief_show_now),
+            subtitle = stringResource(R.string.brief_show_now_detail),
+            actionLabel = stringResource(R.string.brief_show),
+            onClick = vm::showBriefNow,
+        )
     }
 
     SettingCard {
