@@ -44,7 +44,8 @@ data class NightSettings(
         if (weekendDifferent && (wakeDay == DayOfWeek.SATURDAY || wakeDay == DayOfWeek.SUNDAY)) weekend else weekdays
 
     companion object {
-        val DEFAULT_WATCHLIST = listOf("S&P 500", "FTSE Bursa Malaysia KLCI")
+        // The KLCI has no free official data source (N1c), so only the S&P 500 by default.
+        val DEFAULT_WATCHLIST = listOf("S&P 500")
     }
 }
 

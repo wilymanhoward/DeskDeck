@@ -59,6 +59,10 @@ class NightScheduleCalculator(private val zone: ZoneId) {
         return NightOverride(on = false, untilEpochMs = (nextStart ?: now.plusSeconds(12 * 3600)).toEpochMilli())
     }
 
+    /** The next scheduled wake-up after [now], for the Morning Brief prefetch; null if none. */
+    fun nextWakeAfter(now: Instant, settings: NightSettings): Instant? =
+        if (settings.enabled) nightsAround(now, settings).map { it.end }.filter { it > now }.minOrNull() else null
+
     /** Scheduled nights whose wake-up day is from yesterday to a week ahead, in order. */
     fun nightsAround(now: Instant, settings: NightSettings): List<NightInterval> {
         val today = now.atZone(zone).toLocalDate()

@@ -30,6 +30,8 @@ android {
         versionName = "1.0.0"
 
         // Optional Spotify library (R6). Empty = the feature explains how to set it up instead.
+        // Morning Brief market data (Twelve Data free key). Empty = market card explains setup.
+        buildConfigField("String", "TWELVE_DATA_API_KEY", "\"${localProperties.getProperty("twelvedata.apiKey", "").trim()}\"")
         buildConfigField("String", "SPOTIFY_CLIENT_ID", "\"${localProperties.getProperty("spotify.clientId", "").trim()}\"")
     }
 
@@ -105,6 +107,11 @@ dependencies {
 
     // Spotify sign-in in a Custom Tab over DeskDeck, rather than switching to a browser app.
     implementation(libs.androidx.browser)
+
+    // Morning Brief prefetch shortly before wake-up (not exact timing; see README).
+    implementation(libs.androidx.work.runtime)
+    implementation(libs.androidx.hilt.work)
+    ksp(libs.androidx.hilt.compiler)
 
     // Small user settings (pinned apps now, the settings screen in M5).
     implementation(libs.androidx.datastore.preferences)

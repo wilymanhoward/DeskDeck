@@ -345,5 +345,6 @@
     <string name="night_toggle">Start or end Night Mode</string>
     <string name="night_exit">End Night Mode</string>
     <string name="night_clock_description">%1$s, %2$s</string>
+    <string name="brief_your_area">Your area</string>
 </resources>
 
