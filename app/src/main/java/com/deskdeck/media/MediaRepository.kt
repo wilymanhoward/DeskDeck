@@ -35,6 +35,15 @@ interface MediaRepository {
      */
     fun requestPrepare(packageName: String): Boolean
 
+    /**
+     * Pauses every session that is playing right now, except [except]'s (calls).
+     * @return the packages it paused.
+     */
+    fun pausePlaying(except: Set<String> = emptySet()): Set<String> = emptySet()
+
+    /** Plays [packages]' sessions again, those that are still paused. */
+    fun resume(packages: Set<String>) {}
+
     fun playPause()
     fun skipNext()
     fun skipPrevious()

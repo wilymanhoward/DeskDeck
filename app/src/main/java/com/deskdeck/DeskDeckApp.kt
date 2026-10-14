@@ -9,6 +9,7 @@ import coil3.SingletonImageLoader
 import com.deskdeck.launcher.AppIconFetcher
 import com.deskdeck.launcher.AppIconKeyer
 import com.deskdeck.data.brief.BriefScheduler
+import com.deskdeck.media.call.CallMusic
 import dagger.hilt.android.HiltAndroidApp
 import javax.inject.Inject
 
@@ -17,6 +18,7 @@ class DeskDeckApp : Application(), SingletonImageLoader.Factory, Configuration.P
 
     @Inject lateinit var workerFactory: HiltWorkerFactory
     @Inject lateinit var briefScheduler: BriefScheduler
+    @Inject lateinit var callMusic: CallMusic
 
     /** WorkManager with Hilt-injected workers (the default initializer is removed in the manifest). */
     override val workManagerConfiguration: Configuration
@@ -25,6 +27,7 @@ class DeskDeckApp : Application(), SingletonImageLoader.Factory, Configuration.P
     override fun onCreate() {
         super.onCreate()
         briefScheduler.start()
+        callMusic.start()
     }
 
     /** The shared Coil loader: album art URIs plus launcher icons ([com.deskdeck.launcher.AppIcon]). */

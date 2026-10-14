@@ -64,6 +64,17 @@ data class NotificationSettings(
     val durationSec: Int = 5,
 )
 
+/** Call awareness (N2): the incoming call banner, the in-call layout, and music around calls. */
+data class CallSettings(
+    val enabled: Boolean = true,
+    val incomingBanner: Boolean = true,
+    val callLayout: Boolean = true,
+    /** Pause music that is still playing once a call starts. */
+    val pauseMusic: Boolean = true,
+    /** Play it again after the call (only what DeskDeck paused). */
+    val resumeMusic: Boolean = true,
+)
+
 data class AppSettings(
     val clockFormat: ClockFormat = ClockFormat.SYSTEM,
     val clockShowSeconds: Boolean = false,
@@ -89,6 +100,7 @@ data class AppSettings(
     val spotifyLibrary: Boolean = false,
     val burnIn: BurnInSettings = BurnInSettings(),
     val notifications: NotificationSettings = NotificationSettings(),
+    val calls: CallSettings = CallSettings(),
 )
 
 /** Allowed values, shared by the settings UI and input validation. */
