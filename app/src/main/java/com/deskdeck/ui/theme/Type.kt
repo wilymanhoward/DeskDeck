@@ -23,6 +23,20 @@ private fun inter(weight: Int) = Font(
     variationSettings = FontVariation.Settings(FontVariation.weight(weight)),
 )
 
+/**
+ * Nunito (variable), the closest freely licensed match for SF Pro Rounded, the font of Apple's
+ * StandBy clock (which can't be bundled). Used for the night clock. SIL OFL:
+ * assets/licenses/Nunito-OFL.txt.
+ */
+@OptIn(ExperimentalTextApi::class)
+private fun nunito(weight: Int) = Font(
+    resId = R.font.nunito_variable,
+    weight = FontWeight(weight),
+    variationSettings = FontVariation.Settings(FontVariation.weight(weight)),
+)
+
+val NunitoRounded = FontFamily(nunito(300), nunito(500), nunito(600), nunito(700), nunito(800), nunito(900))
+
 val Inter = FontFamily(inter(200), inter(300), inter(400), inter(500), inter(600), inter(700), inter(800))
 
 /** Tighter tracking for large text, as Apple does; body text keeps Inter's default. */
