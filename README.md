@@ -104,7 +104,8 @@ $env:JAVA_HOME = "C:\Program Files\Android\Android Studio\jbr"; .\gradlew.bat in
   music pause/resume can be tried without a call.
 - adb hooks (`DebugTools`): `-a com.deskdeck.debug.FAKE_CALL --es state incoming|ongoing|end`
   feeds a call straight into the call monitor; `-a com.deskdeck.debug.SPLIT_TEST --es mode
-  adjacent|plain|pi_immutable|pi_mutable` tries the ways of opening an app beside DeskDeck. Both via
+  adjacent|plain|pi_immutable|pi_mutable|voip_*` tries the ways of opening an app, or a stand-in
+  call screen in its own task with picture-in-picture, beside DeskDeck. Both via
   `adb shell am start -n com.deskdeck/.MainActivity …`.
 - In debug builds, tapping a call button logs what kind of intent WhatsApp gave it (tag
   `DeskDeckCall`).
@@ -207,21 +208,19 @@ On by default under **Settings › Calls**; it uses the notification access Desk
 WhatsApp and WhatsApp Business are supported.
 
 - **Incoming call:** a large banner at the top, above every screen (dimmed in Night Mode), with
-  the caller, voice or video, **Decline** and **Answer**, and **Answer beside DeskDeck** where split
-  screen works. It stays until the call is answered, declined or missed; the × or a deliberate
+  the caller, voice or video, **Decline** and **Answer**. It stays until the call is answered, declined or missed; the × or a deliberate
   swipe up hides it. With **Hide content** (Settings › Notifications) it says "WhatsApp video call"
   instead of the name and shows no picture. When Do Not Disturb would keep the call quiet, only a
   small pill shows; tap it for the banner.
-- **During the call:** a call card with the caller, a running timer, **Open call beside DeskDeck**,
-  and **Hang up** when WhatsApp offers its own button. The player shrinks to the mini player; the
-  lyrics stay beside it only on the full tablet.
+- **During the call:** a call card with the caller, a running timer, **Show call** (WhatsApp's call
+  screen) and **Hang up** when WhatsApp offers its own button. The player shrinks to the mini
+  player; the lyrics stay beside it only on the full tablet. A video call keeps playing in
+  WhatsApp's own floating window over DeskDeck (move or resize it there); **Show call** brings it
+  back full screen.
 - **Music:** if music is still playing once the call connects, DeskDeck pauses it and plays it
   again afterwards (**Resume music after calls**). It only resumes what it paused itself.
 - DeskDeck only ever sends WhatsApp's own buttons. It never fakes taps, and it opens WhatsApp only
   when you tap a button that says so.
-- **Beside DeskDeck:** opens WhatsApp in the other half of the screen (splitting it if DeskDeck was
-  full screen). From a pop-up window that isn't possible, so DeskDeck says to drag WhatsApp from
-  the taskbar instead of opening it full screen.
 
 ### Night Mode
 
@@ -535,11 +534,12 @@ screen plus two overlays), and transliteration libraries (Android's built-in ICU
   WhatsApp stops sending them, detection falls back to English and Malay wording, which any
   WhatsApp update can change and which doesn't cover other languages. Other call apps (Telegram,
   Meet) aren't supported yet.
-- **Opening a call beside DeskDeck** uses WhatsApp's launch intent, because all of WhatsApp's
-  notification intents are immutable: Android ignores the "launch adjacent" flag on those (they'd
-  open full screen, or in DeskDeck's own half in split screen). So "beside" opens WhatsApp, which
-  may show its chat list with its "return to call" bar rather than the call screen itself. From a
-  pop-up window DeskDeck can only show a hint.
+- **No call beside DeskDeck:** WhatsApp's call screen isn't open to other apps and can only be
+  reached through WhatsApp's own (immutable) notification intents. On One UI those always bring it
+  up full screen: from its floating window, from the background or new, whatever the order, the
+  launch bounds, or which half of a split screen asks (tested with stand-ins on a Tab S9 FE, One UI
+  8.5). Only you can put it into split screen (Recents → WhatsApp's icon → Open in split screen
+  view). So DeskDeck leaves a video call in WhatsApp's floating window and offers **Show call**.
 - **Answer** sends WhatsApp's own answer action; what WhatsApp then shows (its call screen full
   screen, or nothing) is up to WhatsApp.
 - **Music after calls:** DeskDeck resumes only what it paused itself. Players that paused on
