@@ -340,7 +340,7 @@
     <string name="market_watchlist_detail">Indices and symbols for the Morning Brief, in order</string>
     <string name="market_move_up">Move up</string>
     <string name="market_remove">Remove %1$s</string>
-    <string name="market_add_hint">Index or symbol</string>
+    <string name="market_add_hint">Index, symbol or crypto (e.g. Bitcoin)</string>
     <string name="market_add">Add</string>
     <string name="night_toggle">Start or end Night Mode</string>
     <string name="night_exit">End Night Mode</string>
@@ -364,6 +364,7 @@
     <string name="brief_rain_chance">Rain %1$d%%</string>
     <string name="brief_sunrise">Sunrise %1$s</string>
     <string name="brief_market_open">Market open</string>
+    <string name="brief_market_24h">Last 24 hours</string>
     <string name="brief_market_closed">Market closed</string>
     <string name="brief_market_via">Shown via %1$s</string>
     <string name="brief_market_up">%1$s %2$s, up %3$s percent</string>

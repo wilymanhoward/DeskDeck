@@ -48,6 +48,10 @@ class BriefPartsTest {
         assertEquals("SPY", Watchlist.symbolFor("S&P 500"))
         assertEquals("QQQ", Watchlist.symbolFor("nasdaq 100"))
         assertEquals("AAPL", Watchlist.symbolFor(" aapl "))
+        assertEquals("BTC/USD", Watchlist.symbolFor("Bitcoin"))
+        assertEquals("ETH/USD", Watchlist.symbolFor("eth"))
+        assertEquals(true, Watchlist.isCrypto(Watchlist.symbolFor("BTC")))
+        assertEquals(false, Watchlist.isCrypto(Watchlist.symbolFor("S&P 500")))
     }
 
     @Test

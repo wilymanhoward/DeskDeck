@@ -278,7 +278,7 @@ private fun MarketPage(m: MarketBrief) {
     val color = if (up) Up else Down
     val arrow = if (up) "▲" else "▼"
     val sign = if (up) "+" else "−"
-    val viaEtf = !m.symbol.equals(m.name, ignoreCase = true)
+    val viaEtf = !m.crypto && !m.symbol.equals(m.name, ignoreCase = true)
     val spoken = stringResource(
         if (up) R.string.brief_market_up else R.string.brief_market_down,
         m.name, String.format(Locale.getDefault(), "%,.2f", m.price), String.format(Locale.getDefault(), "%.2f", abs(m.changePercent)),
@@ -287,7 +287,13 @@ private fun MarketPage(m: MarketBrief) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(m.name, style = TextStyle(fontFamily = Inter, fontSize = 22.sp, fontWeight = FontWeight.W600), color = Primary, modifier = Modifier.weight(1f), maxLines = 1, overflow = TextOverflow.Ellipsis)
             Text(
-                stringResource(if (m.marketOpen) R.string.brief_market_open else R.string.brief_market_closed),
+                stringResource(
+                    when {
+                        m.crypto -> R.string.brief_market_24h
+                        m.marketOpen -> R.string.brief_market_open
+                        else -> R.string.brief_market_closed
+                    },
+                ),
                 style = TextStyle(fontFamily = Inter, fontSize = 14.sp),
                 color = Secondary,
             )

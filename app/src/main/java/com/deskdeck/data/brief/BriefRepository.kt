@@ -123,17 +123,35 @@ class BriefRepository @Inject constructor(
         val key = BuildConfig.TWELVE_DATA_API_KEY
         val quote = marketApi.quote(symbol, key)
         if (quote.status == "error") return@mapNotNull null
-        val series = runCatching { marketApi.timeSeries(symbol, key) }.getOrNull()
-        MarketBrief(
-            name = name,
-            symbol = symbol,
-            price = quote.close?.toDoubleOrNull() ?: return@mapNotNull null,
-            change = quote.change?.toDoubleOrNull() ?: 0.0,
-            changePercent = quote.percentChange?.toDoubleOrNull() ?: 0.0,
-            points = series?.values?.let(::lastSession).orEmpty(),
-            currency = quote.currency,
-            marketOpen = quote.marketOpen ?: false,
-        )
+        val price = quote.close?.toDoubleOrNull() ?: return@mapNotNull null
+        if (Watchlist.isCrypto(symbol)) {
+            // No sessions: the last 24 hours, 96 fifteen-minute bars (still one credit).
+            val series = runCatching { marketApi.timeSeries(symbol, key, interval = "15min", size = 96) }.getOrNull()
+            val percent = quote.rolling1dChange?.toDoubleOrNull() ?: quote.percentChange?.toDoubleOrNull() ?: 0.0
+            MarketBrief(
+                name = name,
+                symbol = symbol,
+                price = price,
+                change = price - price / (1 + percent / 100),
+                changePercent = percent,
+                points = series?.values?.mapNotNull { it.close.toDoubleOrNull() }?.reversed().orEmpty(),
+                currency = quote.currency,
+                marketOpen = true,
+                crypto = true,
+            )
+        } else {
+            val series = runCatching { marketApi.timeSeries(symbol, key) }.getOrNull()
+            MarketBrief(
+                name = name,
+                symbol = symbol,
+                price = price,
+                change = quote.change?.toDoubleOrNull() ?: 0.0,
+                changePercent = quote.percentChange?.toDoubleOrNull() ?: 0.0,
+                points = series?.values?.let(::lastSession).orEmpty(),
+                currency = quote.currency,
+                marketOpen = quote.marketOpen ?: false,
+            )
+        }
     }
 
     private fun fetchHeadlines(): List<Headline> = HEADLINE_FEEDS.flatMap { (source, url) ->

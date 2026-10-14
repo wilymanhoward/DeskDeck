@@ -39,6 +39,8 @@ data class MarketBrief(
     val points: List<Double>,
     val currency: String?,
     val marketOpen: Boolean,
+    /** Trades around the clock: change and chart cover the last 24 hours instead of a session. */
+    val crypto: Boolean = false,
 )
 
 @JsonClass(generateAdapter = true)
@@ -79,7 +81,14 @@ object Watchlist {
         "NASDAQ-100" to "QQQ",
         "DOW JONES" to "DIA",
         "DOW" to "DIA",
+        "BITCOIN" to "BTC/USD",
+        "BTC" to "BTC/USD",
+        "ETHEREUM" to "ETH/USD",
+        "ETH" to "ETH/USD",
     )
 
     fun symbolFor(name: String): String = PROXIES[name.trim().uppercase()] ?: name.trim().uppercase().replace(' ', '.')
+
+    /** Crypto pairs are written with a slash on Twelve Data ("BTC/USD"). */
+    fun isCrypto(symbol: String): Boolean = '/' in symbol
 }
