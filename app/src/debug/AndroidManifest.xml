@@ -8,5 +8,24 @@
         <receiver
             android:name=".debug.SimCallReceiver"
             android:exported="false" />
+
+        <!-- Stand-in for WhatsApp's call screen: own task, picture-in-picture. -->
+        <activity
+            android:name=".debug.FakeCallActivity"
+            android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize"
+            android:excludeFromRecents="true"
+            android:exported="false"
+            android:launchMode="singleTask"
+            android:resizeableActivity="true"
+            android:supportsPictureInPicture="true"
+            android:taskAffinity=":voip" />
+
+        <!-- Stand-in for WhatsApp's main window (its own task). -->
+        <activity
+            android:name=".debug.FakeChatsActivity"
+            android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize"
+            android:exported="false"
+            android:resizeableActivity="true"
+            android:taskAffinity=":chats" />
     </application>
 </manifest>
