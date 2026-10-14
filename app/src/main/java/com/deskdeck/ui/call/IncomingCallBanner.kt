@@ -1,8 +1,5 @@
 package com.deskdeck.ui.call
 
-import android.app.Activity
-import android.content.Context
-import android.content.ContextWrapper
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.LinearEasing
@@ -115,12 +112,11 @@ fun IncomingCallHost(viewModel: CallViewModel = hiltViewModel()) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val closedKey by viewModel.closedKey.collectAsStateWithLifecycle()
     val expandedKey by viewModel.expandedKey.collectAsStateWithLifecycle()
-    val hint by viewModel.splitHint.collectAsStateWithLifecycle()
     val settings = LocalAppSettings.current.notifications
     val night = LocalNightMode.current
     val motion = LocalMotion.current
     val tracker = LocalInteractionTracker.current
-    val activity = LocalContext.current.findActivity()
+    val context = LocalContext.current
 
     val callSettings = LocalAppSettings.current.calls
     val incoming = (state as? CallState.Incoming)?.call
@@ -149,11 +145,9 @@ fun IncomingCallHost(viewModel: CallViewModel = hiltViewModel()) {
                 call = call,
                 hideContent = settings.hideContent,
                 night = night,
-                canAnswerBeside = activity != null && viewModel.canOpenBeside(activity, call),
-                onAnswer = { activity?.let { viewModel.answer(it, call) } },
-                onDecline = { activity?.let { viewModel.decline(it, call) } },
-                onAnswerBeside = { activity?.let { viewModel.answerBeside(it, call) } },
-                onOpenApp = { activity?.let { viewModel.openApp(it, call) } },
+                onAnswer = { viewModel.answer(context, call) },
+                onDecline = { viewModel.decline(context, call) },
+                onOpenApp = { viewModel.showCall(context, call) },
                 onClose = { viewModel.close(call) },
                 modifier = Modifier.width(width),
             )
@@ -166,14 +160,6 @@ fun IncomingCallHost(viewModel: CallViewModel = hiltViewModel()) {
         ) {
             (incoming ?: lastCall)?.let { QuietCallIndicator(it, settings.hideContent, onClick = { viewModel.expand(it) }) }
         }
-        AnimatedVisibility(
-            visible = hint != null,
-            enter = fadeIn(motion.fade()),
-            exit = fadeOut(motion.fade(MotionSpec.LONG_MS)),
-            modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 32.dp),
-        ) {
-            SplitHint(hint.orEmpty())
-        }
     }
 }
 
@@ -182,10 +168,8 @@ fun IncomingCallBanner(
     call: Call,
     hideContent: Boolean,
     night: Boolean,
-    canAnswerBeside: Boolean,
     onAnswer: () -> Unit,
     onDecline: () -> Unit,
-    onAnswerBeside: () -> Unit,
     onOpenApp: () -> Unit,
     onClose: () -> Unit,
     modifier: Modifier = Modifier,
@@ -263,16 +247,6 @@ fun IncomingCallBanner(
                 RoundCallButton(stringResource(R.string.call_decline), stringResource(R.string.call_decline_description, title), DeclineRed, rotation = 0f, night, onDecline)
                 RoundCallButton(stringResource(R.string.call_answer), stringResource(R.string.call_answer_description, title), AnswerGreen, rotation = -135f, night, onAnswer)
             }
-            if (canAnswerBeside) {
-                Spacer(Modifier.height(14.dp))
-                BesideButton(
-                    label = stringResource(R.string.call_answer_beside),
-                    description = stringResource(R.string.call_answer_beside_description, title),
-                    night = night,
-                    onClick = onAnswerBeside,
-                    modifier = Modifier.fillMaxWidth().padding(end = 12.dp),
-                )
-            }
         } else {
             // The app's own buttons couldn't be identified: only a way to its call screen.
             OutlinedButton(onClick = onOpenApp, modifier = Modifier.fillMaxWidth().padding(end = 12.dp).heightIn(min = Dimens.minTouch)) {
@@ -320,9 +294,9 @@ private fun CallerAvatar(call: Call, hideContent: Boolean, night: Boolean) {
     }
 }
 
-/** A wide green-tinted pill: answer (or open the call) beside DeskDeck in split screen. */
+/** A wide green-tinted pill for a secondary call action ("Show call"). */
 @Composable
-internal fun BesideButton(label: String, description: String, night: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier) {
+internal fun CallPillButton(label: String, description: String, iconRes: Int, night: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier) {
     val green = AnswerGreen.copy(alpha = if (night) 0.55f else 1f)
     Row(
         modifier
@@ -338,7 +312,7 @@ internal fun BesideButton(label: String, description: String, night: Boolean, on
         horizontalArrangement = Arrangement.Center,
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Icon(painterResource(R.drawable.ic_split_screen), null, tint = green, modifier = Modifier.size(22.dp))
+        Icon(painterResource(iconRes), null, tint = green, modifier = Modifier.size(22.dp))
         Spacer(Modifier.width(10.dp))
         Text(label, style = MaterialTheme.typography.titleSmall, color = green, maxLines = 1, overflow = TextOverflow.Ellipsis)
     }
@@ -396,26 +370,6 @@ private fun QuietCallIndicator(call: Call, hideContent: Boolean, onClick: () -> 
         Spacer(Modifier.width(8.dp))
         Text(stringResource(R.string.call_quiet_dnd), style = MaterialTheme.typography.labelMedium, color = MutedText)
     }
-}
-
-@Composable
-internal fun SplitHint(appLabel: String) {
-    Text(
-        text = stringResource(R.string.call_split_hint, appLabel),
-        style = MaterialTheme.typography.titleSmall,
-        color = CappedWhite,
-        textAlign = TextAlign.Center,
-        modifier = Modifier
-            .glass(RoundedCornerShape(24.dp), tint = DenseGlass)
-            .padding(horizontal = 20.dp, vertical = 12.dp)
-            .semantics { liveRegion = LiveRegionMode.Polite },
-    )
-}
-
-internal tailrec fun Context.findActivity(): Activity? = when (this) {
-    is Activity -> this
-    is ContextWrapper -> baseContext.findActivity()
-    else -> null
 }
 
 private const val PULSE_MS = 1_400

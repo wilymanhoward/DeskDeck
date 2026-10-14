@@ -19,7 +19,6 @@ import androidx.compose.runtime.Composable
 import com.deskdeck.debug.DebugCallSource
 import com.deskdeck.media.call.CallSource
 import com.deskdeck.debug.FakeCallActivity
-import com.deskdeck.media.call.CallLauncher
 import com.deskdeck.debug.FakeChatsActivity
 import android.util.Log
 
@@ -142,8 +141,8 @@ object DebugTools {
                 "voip_pip" -> activity.startActivity(Intent(activity, FakeCallActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK).putExtra(FakeCallActivity.EXTRA_PIP, true))
                 "voip_beside" -> {
                     // "Beside", then the call screen's own intent from the app context (tested: it goes full screen).
-                    val launcher = CallLauncher()
-                    if (launcher.openBeside(activity, pkg) == CallLauncher.BesideResult.OPENED) {
+                    activity.startActivity(Intent(launch).addFlags(adjacent))
+                    run {
                         Handler(Looper.getMainLooper()).postDelayed({
                             fakeCall.send(activity.applicationContext, 0, null, null, null, null, options)
                         }, 700)
@@ -161,7 +160,7 @@ object DebugTools {
                         fakeCall.send(activity.applicationContext, 0, null, null, null, null, opts)
                     }
                     if (mode == "voip_split_bounds") {
-                        CallLauncher().openBeside(activity, pkg)
+                        activity.startActivity(Intent(launch).addFlags(adjacent))
                         Handler(Looper.getMainLooper()).postDelayed({ send() }, 700)
                     } else {
                         send()

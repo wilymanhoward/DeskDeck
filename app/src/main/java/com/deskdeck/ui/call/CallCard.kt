@@ -59,8 +59,7 @@ import kotlinx.coroutines.delay
 fun CallCard(
     state: CallState,
     hideContent: Boolean,
-    canOpenBeside: Boolean,
-    onOpenBeside: () -> Unit,
+    onShowCall: () -> Unit,
     onHangUp: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -106,18 +105,19 @@ fun CallCard(
                 }
             }
         }
-        if (!ended && (canOpenBeside || call.actions.hangUp != null)) {
+        if (!ended) {
             Spacer(Modifier.height(16.dp))
             FlowRow(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                if (canOpenBeside) {
-                    BesideButton(
-                        label = stringResource(R.string.call_open_beside),
-                        description = stringResource(R.string.call_open_beside_description, title),
-                        night = false,
-                        onClick = onOpenBeside,
-                        modifier = Modifier.widthIn(min = 200.dp),
-                    )
-                }
+                // A video call floats over DeskDeck in WhatsApp's own window; this brings it back
+                // full screen (WhatsApp's call screen can't be placed beside DeskDeck).
+                CallPillButton(
+                    label = stringResource(R.string.call_show),
+                    description = stringResource(R.string.call_show_description, title),
+                    iconRes = if (call.isVideo) R.drawable.ic_videocam else R.drawable.ic_handset,
+                    night = false,
+                    onClick = onShowCall,
+                    modifier = Modifier.widthIn(min = 160.dp),
+                )
                 // Only when the app offers its own hang-up button.
                 if (call.actions.hangUp != null) HangUpButton(stringResource(R.string.call_hang_up_description, title), onHangUp)
             }

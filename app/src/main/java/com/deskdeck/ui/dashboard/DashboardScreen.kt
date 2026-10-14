@@ -47,7 +47,6 @@ import com.deskdeck.media.call.CallState
 import com.deskdeck.media.call.Call
 import com.deskdeck.ui.call.CallCard
 import com.deskdeck.ui.call.CallViewModel
-import com.deskdeck.ui.call.findActivity
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.LifecycleResumeEffect
@@ -167,7 +166,7 @@ fun DashboardRoute(
     // The call layout: while a call is on, and briefly after one that was answered.
     val callViewModel: CallViewModel = hiltViewModel()
     val callState by callViewModel.state.collectAsStateWithLifecycle()
-    val activity = LocalContext.current.findActivity()
+    val context = LocalContext.current
     val callShown = settings.calls.enabled && settings.calls.callLayout &&
         (callState is CallState.Ongoing || (callState as? CallState.Ended)?.answered == true)
     val callCard: (@Composable (Modifier) -> Unit)? = if (!callShown) null else { m ->
@@ -175,9 +174,8 @@ fun DashboardRoute(
         CallCard(
             state = callState,
             hideContent = settings.notifications.hideContent,
-            canOpenBeside = activity != null && call != null && callViewModel.canOpenBeside(activity, call),
-            onOpenBeside = { if (activity != null && call != null) callViewModel.openBeside(activity, call) },
-            onHangUp = { if (activity != null && call != null) callViewModel.hangUp(activity, call) },
+            onShowCall = { if (call != null) callViewModel.showCall(context, call) },
+            onHangUp = { if (call != null) callViewModel.hangUp(context, call) },
             modifier = m,
         )
     }
@@ -577,7 +575,7 @@ private fun CallLayoutPreview(size: DeskSize) {
                 notificationCount = 3,
                 actions = previewActions,
                 position = remember { mutableLongStateOf(36_000L) },
-                call = { m -> CallCard(state, hideContent = false, canOpenBeside = true, onOpenBeside = {}, onHangUp = {}, modifier = m) },
+                call = { m -> CallCard(state, hideContent = false, onShowCall = {}, onHangUp = {}, modifier = m) },
             )
         }
     }
