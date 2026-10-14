@@ -18,6 +18,9 @@ import dagger.hilt.components.SingletonComponent
 import androidx.compose.runtime.Composable
 import com.deskdeck.debug.DebugCallSource
 import com.deskdeck.media.call.CallSource
+import com.deskdeck.debug.FakeCallActivity
+import com.deskdeck.media.call.CallLauncher
+import com.deskdeck.debug.FakeChatsActivity
 import android.util.Log
 
 /**
@@ -26,7 +29,10 @@ import android.util.Log
  *   adb shell am start -n com.deskdeck/.MainActivity -a com.deskdeck.debug.SPLIT_TEST --es mode <mode> --es pkg com.whatsapp
  *
  * Modes: adjacent (launch intent + FLAG_ACTIVITY_LAUNCH_ADJACENT), plain (launch intent, no flag),
- * pi_immutable / pi_mutable (a PendingIntent sent with the adjacent flag via startIntentSender).
+ * pi_immutable / pi_mutable (a PendingIntent sent with the adjacent flag via startIntentSender),
+ * voip_pip: start a fake call screen in its own task and shrink it to picture-in-picture
+ * (run first), then voip_beside: "Open call beside DeskDeck" with pkg as the app and the fake
+ * call screen's immutable intent as the call screen.
  *
  *   adb shell am start -n com.deskdeck/.MainActivity -a com.deskdeck.debug.FAKE_CALL --es state incoming|ongoing|end
  *       [--es caller Aisyah] [--ez video true] [--ez dnd true] [--ez buttons false]
@@ -112,7 +118,55 @@ object DebugTools {
             }
         }.toBundle()
         runCatching {
+            val fakeCall = PendingIntent.getActivity(
+                activity, 9, Intent(activity, FakeCallActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK), PendingIntent.FLAG_IMMUTABLE,
+            )
             when (mode) {
+                // Reverse order: the call screen first (its own intent, full screen), then DeskDeck
+                // itself beside it, which DeskDeck can do because the flag is on its own launch.
+                "voip_swap" -> {
+                    fakeCall.send(activity, 0, null, null, null, null, options)
+                    Handler(Looper.getMainLooper()).postDelayed({
+                        runCatching {
+                            activity.applicationContext.startActivity(
+                                Intent(activity.applicationContext, MainActivity::class.java)
+                                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_LAUNCH_ADJACENT),
+                                ActivityOptions.makeBasic().toBundle(),
+                            )
+                        }.onFailure { Log.w(TAG, "swap relaunch failed", it) }
+                    }, 600)
+                }
+                "voip_chats" -> activity.startActivity(Intent(activity, FakeChatsActivity::class.java).addFlags(adjacent))
+                "voip_finish" -> activity.startActivity(Intent(activity, FakeCallActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK).putExtra(FakeCallActivity.EXTRA_FINISH, true))
+                "voip_background" -> activity.startActivity(Intent(activity, FakeCallActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK).putExtra(FakeCallActivity.EXTRA_NO_PIP, true))
+                "voip_pip" -> activity.startActivity(Intent(activity, FakeCallActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK).putExtra(FakeCallActivity.EXTRA_PIP, true))
+                "voip_beside" -> {
+                    // "Beside", then the call screen's own intent from the app context (tested: it goes full screen).
+                    val launcher = CallLauncher()
+                    if (launcher.openBeside(activity, pkg) == CallLauncher.BesideResult.OPENED) {
+                        Handler(Looper.getMainLooper()).postDelayed({
+                            fakeCall.send(activity.applicationContext, 0, null, null, null, null, options)
+                        }, 700)
+                    }
+                }
+                // The fake call screen's own (immutable) intent, sent with launch bounds for the right half.
+                "voip_bounds", "voip_split_bounds" -> {
+                    val send = {
+                        val screen = activity.windowManager.maximumWindowMetrics.bounds
+                        val right = android.graphics.Rect(screen.centerX(), screen.top, screen.right, screen.bottom)
+                        val opts = ActivityOptions.makeBasic().setLaunchBounds(right).apply {
+                            @Suppress("DEPRECATION")
+                            setPendingIntentBackgroundActivityStartMode(ActivityOptions.MODE_BACKGROUND_ACTIVITY_START_ALLOWED)
+                        }.toBundle()
+                        fakeCall.send(activity.applicationContext, 0, null, null, null, null, opts)
+                    }
+                    if (mode == "voip_split_bounds") {
+                        CallLauncher().openBeside(activity, pkg)
+                        Handler(Looper.getMainLooper()).postDelayed({ send() }, 700)
+                    } else {
+                        send()
+                    }
+                }
                 "adjacent" -> activity.startActivity(Intent(launch).addFlags(adjacent))
                 "plain" -> activity.startActivity(Intent(launch).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
                 "pi_immutable", "pi_mutable" -> {
