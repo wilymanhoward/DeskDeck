@@ -6,6 +6,8 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <!-- Retry lyrics as soon as the connection comes back. -->
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <!-- Optional, asked for in Settings › Night Mode: approximate area for the morning weather. -->
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
 
     <!--
         Android 11+ package visibility: make launchable apps visible so we can show the label of the
