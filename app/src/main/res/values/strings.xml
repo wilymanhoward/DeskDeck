@@ -361,6 +361,15 @@
     <string name="brief_minutes">%1$d min</string>
     <string name="brief_until_dismissed">Until dismissed</string>
     <string name="brief_weather">Weather</string>
+    <string name="brief_air_quality">Air quality</string>
+    <string name="brief_air_quality_detail">The air quality index (US AQI, the same scale as Malaysia\'s API) on the weather card</string>
+    <string name="brief_aqi">AQI %1$d · %2$s</string>
+    <string name="aqi_good">Good</string>
+    <string name="aqi_moderate">Moderate</string>
+    <string name="aqi_sensitive">Unhealthy for sensitive groups</string>
+    <string name="aqi_unhealthy">Unhealthy</string>
+    <string name="aqi_very_unhealthy">Very unhealthy</string>
+    <string name="aqi_hazardous">Hazardous</string>
     <string name="brief_market">Market</string>
     <string name="brief_headlines">Market headlines</string>
     <string name="weather_device_location">Use this tablet\'s location</string>

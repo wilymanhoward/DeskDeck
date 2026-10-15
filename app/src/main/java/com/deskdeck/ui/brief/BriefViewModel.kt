@@ -55,6 +55,7 @@ class BriefViewModel @Inject constructor(
         // Also refresh when a part that should be there is missing (e.g. a key was just added, or a watchlist item).
         val missing = cached == null ||
             (settings.briefWeather && cached.weather == null) ||
+            (settings.briefWeather && settings.briefAirQuality && cached.weather?.airQuality == null) ||
             (settings.briefMarket && hasMarketKey && !cached.markets.map { it.name }.containsAll(settings.watchlist)) ||
             (settings.briefHeadlines && cached.headlines.isEmpty())
         if ((age < STALE_MS && !missing) || _refreshing.value) return

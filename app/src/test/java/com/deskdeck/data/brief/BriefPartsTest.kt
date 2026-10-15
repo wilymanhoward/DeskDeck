@@ -96,3 +96,16 @@ class BriefPartsTest {
         assertEquals(Duration.ofHours(24), prefetchDelay(ranAt, next))
     }
 }
+
+class AirQualityLevelTest {
+    @Test
+    fun `US AQI bands`() {
+        assertEquals(com.deskdeck.domain.brief.AirQualityLevel.GOOD, com.deskdeck.domain.brief.AirQualityLevel.of(0))
+        assertEquals(com.deskdeck.domain.brief.AirQualityLevel.GOOD, com.deskdeck.domain.brief.AirQualityLevel.of(50))
+        assertEquals(com.deskdeck.domain.brief.AirQualityLevel.MODERATE, com.deskdeck.domain.brief.AirQualityLevel.of(51))
+        assertEquals(com.deskdeck.domain.brief.AirQualityLevel.SENSITIVE, com.deskdeck.domain.brief.AirQualityLevel.of(150))
+        assertEquals(com.deskdeck.domain.brief.AirQualityLevel.UNHEALTHY, com.deskdeck.domain.brief.AirQualityLevel.of(174))
+        assertEquals(com.deskdeck.domain.brief.AirQualityLevel.VERY_UNHEALTHY, com.deskdeck.domain.brief.AirQualityLevel.of(300))
+        assertEquals(com.deskdeck.domain.brief.AirQualityLevel.HAZARDOUS, com.deskdeck.domain.brief.AirQualityLevel.of(301))
+    }
+}

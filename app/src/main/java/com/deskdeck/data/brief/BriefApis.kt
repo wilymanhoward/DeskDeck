@@ -19,6 +19,25 @@ interface OpenMeteoApi {
     ): ForecastJson
 }
 
+/** Open-Meteo air quality (https://open-meteo.com/en/docs/air-quality-api): free, no key, CC BY 4.0. */
+interface OpenMeteoAirQualityApi {
+    @GET("v1/air-quality")
+    suspend fun current(
+        @Query("latitude") latitude: Double,
+        @Query("longitude") longitude: Double,
+        @Query("current") current: String = "us_aqi,pm2_5",
+    ): AirQualityJson
+}
+
+@JsonClass(generateAdapter = true)
+data class AirQualityJson(val current: AirQualityNowJson?)
+
+@JsonClass(generateAdapter = true)
+data class AirQualityNowJson(
+    @Json(name = "us_aqi") val usAqi: Double?,
+    @Json(name = "pm2_5") val pm25: Double?,
+)
+
 /** Open-Meteo geocoding, for a city typed in Settings. */
 interface OpenMeteoGeocodingApi {
     @GET("v1/search")

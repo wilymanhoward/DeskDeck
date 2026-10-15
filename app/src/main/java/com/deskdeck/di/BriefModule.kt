@@ -1,5 +1,6 @@
 package com.deskdeck.di
 
+import com.deskdeck.data.brief.OpenMeteoAirQualityApi
 import com.deskdeck.data.brief.OpenMeteoApi
 import com.deskdeck.data.brief.OpenMeteoGeocodingApi
 import com.deskdeck.data.brief.TwelveDataApi
@@ -35,6 +36,10 @@ object BriefModule {
     @Provides
     @Singleton
     fun provideGeocoding(client: OkHttpClient): OpenMeteoGeocodingApi = api(client, "https://geocoding-api.open-meteo.com/")
+
+    @Provides
+    @Singleton
+    fun provideAirQuality(client: OkHttpClient): OpenMeteoAirQualityApi = api(client, "https://air-quality-api.open-meteo.com/")
 
     @Provides
     @Singleton

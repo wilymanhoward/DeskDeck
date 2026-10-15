@@ -50,6 +50,8 @@ data class NightSettings(
     val brief: Boolean = true,
     val briefDuration: BriefDuration = BriefDuration.MIN_30,
     val briefWeather: Boolean = true,
+    /** The air quality index on the weather card. */
+    val briefAirQuality: Boolean = true,
     val briefMarket: Boolean = true,
     val briefHeadlines: Boolean = true,
     /** Weather for the device's coarse location; otherwise [city]. */

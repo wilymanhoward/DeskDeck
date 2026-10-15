@@ -68,6 +68,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.tooling.preview.Preview
 import com.deskdeck.ui.theme.DeskDeckTheme
+import com.deskdeck.domain.brief.AirQualityLevel
 import androidx.compose.ui.unit.sp
 import androidx.core.net.toUri
 import com.deskdeck.R
@@ -151,7 +152,7 @@ fun MorningBriefScreen(
             }
             Spacer(Modifier.height(if (stacked) 16.dp else 28.dp))
             val weather: @Composable (Modifier) -> Unit = { m ->
-                Appear(0, m) { WeatherCard(brief?.weather, Modifier.fillMaxHeight()) }
+                Appear(0, m) { WeatherCard(brief?.weather, settings.briefAirQuality, Modifier.fillMaxHeight()) }
             }
             val market: @Composable (Modifier) -> Unit = { m ->
                 Appear(1, m) {
@@ -189,6 +190,25 @@ fun MorningBriefScreen(
 private val StackedWeatherHeight = 360.dp
 private val StackedMarketHeight = 480.dp
 
+private fun airQualityLabel(level: AirQualityLevel): Int = when (level) {
+    AirQualityLevel.GOOD -> R.string.aqi_good
+    AirQualityLevel.MODERATE -> R.string.aqi_moderate
+    AirQualityLevel.SENSITIVE -> R.string.aqi_sensitive
+    AirQualityLevel.UNHEALTHY -> R.string.aqi_unhealthy
+    AirQualityLevel.VERY_UNHEALTHY -> R.string.aqi_very_unhealthy
+    AirQualityLevel.HAZARDOUS -> R.string.aqi_hazardous
+}
+
+/** Apple's dark-mode colors for the EPA's green / yellow / orange / red / purple / maroon. */
+private fun airQualityColor(level: AirQualityLevel): Color = when (level) {
+    AirQualityLevel.GOOD -> Color(0xFF32D74B)
+    AirQualityLevel.MODERATE -> Color(0xFFFFD60A)
+    AirQualityLevel.SENSITIVE -> Color(0xFFFF9F0A)
+    AirQualityLevel.UNHEALTHY -> Color(0xFFFF453A)
+    AirQualityLevel.VERY_UNHEALTHY -> Color(0xFFBF5AF2)
+    AirQualityLevel.HAZARDOUS -> Color(0xFFA2132E)
+}
+
 /** Cards rise in one after another; just fade with reduced motion. */
 @Composable
 private fun Appear(index: Int, modifier: Modifier, content: @Composable () -> Unit) {
@@ -213,7 +233,7 @@ private fun Card(modifier: Modifier, content: @Composable () -> Unit) {
 }
 
 @Composable
-private fun WeatherCard(weather: WeatherBrief?, modifier: Modifier) {
+private fun WeatherCard(weather: WeatherBrief?, showAirQuality: Boolean, modifier: Modifier) {
     Card(modifier.fillMaxWidth()) {
         if (weather == null) {
             Placeholder(stringResource(R.string.brief_weather_missing))
@@ -222,7 +242,13 @@ private fun WeatherCard(weather: WeatherBrief?, modifier: Modifier) {
         val condition = WeatherCondition.fromWmo(weather.code)
         val conditionText = stringResource(conditionLabel(condition))
         val unit = if (weather.fahrenheit) "°F" else "°C"
-        val spoken = stringResource(R.string.brief_weather_description, weather.place, weather.temperature.toInt(), unit, conditionText, weather.high.toInt(), weather.low.toInt())
+        val aqi = weather.airQuality.takeIf { showAirQuality }
+        val aqiLevel = aqi?.let { AirQualityLevel.of(it) }
+        val aqiText = aqiLevel?.let { stringResource(R.string.brief_aqi, aqi, stringResource(airQualityLabel(it))) }
+        val spoken = listOfNotNull(
+            stringResource(R.string.brief_weather_description, weather.place, weather.temperature.toInt(), unit, conditionText, weather.high.toInt(), weather.low.toInt()),
+            aqiText,
+        ).joinToString(". ")
         Column(Modifier.fillMaxSize().semantics(mergeDescendants = true) { contentDescription = spoken }) {
             Text(weather.place, style = TextStyle(fontFamily = Inter, fontSize = 22.sp, fontWeight = FontWeight.W600), color = Primary, maxLines = 1, overflow = TextOverflow.Ellipsis)
             Spacer(Modifier.weight(1f))
@@ -239,6 +265,15 @@ private fun WeatherCard(weather: WeatherBrief?, modifier: Modifier) {
                 weather.sunrise?.let { stringResource(R.string.brief_sunrise, it) },
             ).joinToString("  ·  ")
             if (extras.isNotEmpty()) Text(extras, style = TextStyle(fontFamily = Inter, fontSize = 18.sp), color = Secondary)
+            if (aqiText != null && aqiLevel != null) {
+                Spacer(Modifier.height(8.dp))
+                // A dot in the level's color, like the AQI in Apple's Weather.
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(Modifier.size(12.dp).clip(CircleShape).background(airQualityColor(aqiLevel)))
+                    Spacer(Modifier.width(8.dp))
+                    Text(aqiText, style = TextStyle(fontFamily = Inter, fontSize = 18.sp, fontWeight = FontWeight.W600), color = Primary)
+                }
+            }
             Spacer(Modifier.weight(1f))
             // Open-Meteo's CC BY 4.0 licence asks for credit.
             Text(stringResource(R.string.brief_weather_credit), style = TextStyle(fontFamily = Inter, fontSize = 12.sp), color = Secondary.copy(alpha = 0.6f))

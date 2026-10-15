@@ -27,6 +27,10 @@ data class WeatherBrief(
     /** Where [place] is, for the World clock face's marker; null in older cached briefs. */
     val latitude: Double? = null,
     val longitude: Double? = null,
+    /** US AQI (0–500) now, or null when not fetched / unavailable there. */
+    val airQuality: Int? = null,
+    /** Fine particles (PM2.5), µg/m³. */
+    val pm25: Double? = null,
 )
 
 @JsonClass(generateAdapter = true)

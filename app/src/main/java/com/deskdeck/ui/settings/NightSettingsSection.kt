@@ -192,6 +192,9 @@ internal fun NightSettingsSection(n: NightSettings, vm: SettingsViewModel) {
             onSelect = { v -> vm.updateNight { it.copy(briefDuration = v) } },
         )
         SwitchRow(stringResource(R.string.brief_weather), null, n.briefWeather, n.brief) { v -> vm.updateNight { it.copy(briefWeather = v) } }
+        SwitchRow(stringResource(R.string.brief_air_quality), stringResource(R.string.brief_air_quality_detail), n.briefAirQuality, n.brief && n.briefWeather) { v ->
+            vm.updateNight { it.copy(briefAirQuality = v) }
+        }
         SwitchRow(stringResource(R.string.brief_market), null, n.briefMarket, n.brief) { v -> vm.updateNight { it.copy(briefMarket = v) } }
         SwitchRow(stringResource(R.string.brief_headlines), null, n.briefHeadlines, n.brief) { v -> vm.updateNight { it.copy(briefHeadlines = v) } }
         ActionRow(
