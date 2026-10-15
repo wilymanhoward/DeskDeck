@@ -36,7 +36,6 @@ import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
@@ -48,6 +47,7 @@ import com.deskdeck.data.settings.NightClockStyle
 import com.deskdeck.domain.night.WorldMap
 import com.deskdeck.ui.theme.Inter
 import com.deskdeck.ui.theme.NunitoRounded
+import com.deskdeck.ui.theme.SerifDisplay
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.ZoneId
@@ -286,7 +286,7 @@ private fun SerifFace(info: FaceInfo, p: FacePalette, modifier: Modifier) {
             )
             Text(
                 "$h:$m",
-                style = TextStyle(fontFamily = FontFamily.Serif, fontSize = px(size), lineHeight = px(size * 1.02f), fontWeight = FontWeight.Bold, letterSpacing = px(size * -0.03f)),
+                style = TextStyle(fontFamily = SerifDisplay, fontSize = px(size), lineHeight = px(size * 1.02f), fontWeight = FontWeight.W800, letterSpacing = px(size * -0.02f)),
                 color = p.main,
                 maxLines = 1,
             )
@@ -322,7 +322,7 @@ private fun CalendarFace(info: FaceInfo, p: FacePalette, modifier: Modifier) {
                 val size = minOf(unit.value * 44, maxWidth.value / (day.length * 0.62f + 0.05f), maxHeight.value * 0.95f).dp
                 Text(
                     day,
-                    style = TextStyle(fontFamily = FontFamily.Serif, fontSize = px(size), lineHeight = px(size * 1.05f), fontWeight = FontWeight.Bold),
+                    style = TextStyle(fontFamily = SerifDisplay, fontSize = px(size), lineHeight = px(size * 1.05f), fontWeight = FontWeight.W800),
                     color = p.main,
                     maxLines = 1,
                     softWrap = false,

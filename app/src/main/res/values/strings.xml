@@ -322,6 +322,11 @@
     <string name="night_time_ok">OK</string>
     <string name="night_time_cancel">Cancel</string>
     <string name="night_clock_format">Night clock</string>
+    <string name="night_music_style">Music on the night screen</string>
+    <string name="night_music_style_detail">Beside the clock with album art, a slim text bar along the bottom, or hidden so the clock face fills the screen.</string>
+    <string name="night_music_panel">Beside the clock</string>
+    <string name="night_music_bar">Bottom bar</string>
+    <string name="night_music_hidden">Hidden</string>
     <string name="night_clock_face">Clock face</string>
     <string name="night_clock_face_detail">Swipe through the faces and tap one. They show the time and your next alarm.</string>
     <string name="night_clock_color">Color</string>

@@ -53,6 +53,7 @@ import androidx.core.content.ContextCompat
 import com.deskdeck.R
 import com.deskdeck.data.settings.BriefDuration
 import com.deskdeck.data.settings.ClockFormat
+import com.deskdeck.data.settings.NightMusicStyle
 import com.deskdeck.data.settings.NightClockStyle
 import com.deskdeck.data.settings.NightSettings
 import com.deskdeck.data.settings.RedTint
@@ -129,6 +130,24 @@ internal fun NightSettingsSection(n: NightSettings, vm: SettingsViewModel) {
             n = n,
             onStyle = { v -> vm.updateNight { it.copy(clockStyle = v) } },
             onColor = { v -> vm.updateNight { it.copy(clockColor = v) } },
+        )
+    }
+    SettingCard {
+        ChoiceRow(
+            title = stringResource(R.string.night_music_style),
+            subtitle = stringResource(R.string.night_music_style_detail),
+            options = NightMusicStyle.entries,
+            selected = n.musicStyle,
+            label = {
+                stringResource(
+                    when (it) {
+                        NightMusicStyle.PANEL -> R.string.night_music_panel
+                        NightMusicStyle.BAR -> R.string.night_music_bar
+                        NightMusicStyle.HIDDEN -> R.string.night_music_hidden
+                    },
+                )
+            },
+            onSelect = { v -> vm.updateNight { it.copy(musicStyle = v) } },
         )
     }
     SettingCard {
