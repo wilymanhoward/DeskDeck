@@ -2,7 +2,21 @@ package com.deskdeck.data.settings
 
 import java.time.DayOfWeek
 
-enum class NightClockStyle { BOLD, THIN, ANALOG }
+/** Night Mode clock faces, StandBy style. */
+enum class NightClockStyle { BOLD, THIN, ANALOG, LAYERED, SERIF, CALENDAR, WORLD }
+
+/** The face color (Apple's dark-mode system colors). Red tint at night overrides it. */
+enum class NightClockColor(val argb: Long) {
+    WHITE(0xFFBDBDBD),
+    RED(0xFFFF453A),
+    ORANGE(0xFFFF9F0A),
+    YELLOW(0xFFFFD60A),
+    GREEN(0xFF32D74B),
+    TEAL(0xFF64D2FF),
+    BLUE(0xFF0A84FF),
+    PURPLE(0xFFBF5AF2),
+    PINK(0xFFFF375F),
+}
 
 /** Deep red night screen: always, never, or when the room is dark (light sensor; else the schedule). */
 enum class RedTint { OFF, ON, AUTO }
@@ -25,6 +39,7 @@ data class NightSettings(
     val wakeDays: Set<DayOfWeek> = DayOfWeek.entries.toSet(),
     val clockFormat: ClockFormat = ClockFormat.SYSTEM,
     val clockStyle: NightClockStyle = NightClockStyle.BOLD,
+    val clockColor: NightClockColor = NightClockColor.WHITE,
     val redTint: RedTint = RedTint.AUTO,
     /** Window brightness at night, 0.01..0.5. */
     val brightness: Float = 0.05f,

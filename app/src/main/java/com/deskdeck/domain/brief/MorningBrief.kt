@@ -24,6 +24,9 @@ data class WeatherBrief(
     /** Local time "HH:mm", or null. */
     val sunrise: String?,
     val fahrenheit: Boolean,
+    /** Where [place] is, for the World clock face's marker; null in older cached briefs. */
+    val latitude: Double? = null,
+    val longitude: Double? = null,
 )
 
 @JsonClass(generateAdapter = true)

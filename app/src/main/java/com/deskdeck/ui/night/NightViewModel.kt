@@ -7,6 +7,12 @@ import com.deskdeck.media.MediaRepository
 import com.deskdeck.media.NightModeController
 import com.deskdeck.media.NotificationCounter
 import dagger.hilt.android.lifecycle.HiltViewModel
+import androidx.lifecycle.viewModelScope
+import com.deskdeck.data.brief.BriefRepository
+import com.deskdeck.domain.brief.WeatherBrief
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
 import javax.inject.Inject
 import kotlinx.coroutines.flow.StateFlow
 
@@ -16,7 +22,11 @@ class NightViewModel @Inject constructor(
     private val media: MediaRepository,
     private val night: NightModeController,
     notifications: NotificationCounter,
+    brief: BriefRepository,
 ) : ViewModel() {
+    /** The World face marks the Morning Brief's weather place. */
+    val weather: StateFlow<WeatherBrief?> = brief.brief.map { it?.weather }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
     val state: StateFlow<NightState> = night.state
     val nowPlaying: StateFlow<NowPlaying?> = media.nowPlaying
     val notificationCount: StateFlow<Int> = notifications.count

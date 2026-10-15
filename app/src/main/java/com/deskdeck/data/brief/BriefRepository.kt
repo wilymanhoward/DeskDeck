@@ -91,6 +91,9 @@ class BriefRepository @Inject constructor(
             rainChancePercent = daily?.rainChance?.firstOrNull(),
             sunrise = daily?.sunrise?.firstOrNull()?.substringAfter('T')?.take(5),
             fahrenheit = fahrenheit,
+            // Rounded to about 1 km: enough for a dot on a world map.
+            latitude = Math.round(lat * 100) / 100.0,
+            longitude = Math.round(lon * 100) / 100.0,
         )
     }
 

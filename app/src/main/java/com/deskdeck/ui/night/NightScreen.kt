@@ -61,8 +61,6 @@ import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.ColorMatrix
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.asImageBitmap
-import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -83,7 +81,6 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.deskdeck.R
 import com.deskdeck.burnin.KeepScreenOn
 import com.deskdeck.data.settings.ClockFormat
-import com.deskdeck.data.settings.NightClockStyle
 import com.deskdeck.data.settings.NightSettings
 import com.deskdeck.data.settings.RedTint
 import com.deskdeck.domain.NowPlaying
@@ -93,7 +90,6 @@ import com.deskdeck.ui.settings.LocalAppSettings
 import com.deskdeck.ui.theme.Inter
 import com.deskdeck.ui.theme.NunitoRounded
 import com.deskdeck.ui.theme.LocalMotion
-import com.deskdeck.ui.common.cappedSp
 import com.deskdeck.ui.common.rememberTouchExploration
 import com.deskdeck.ui.adaptive.DeskSize
 import com.deskdeck.ui.adaptive.LocalDeskSize
@@ -104,9 +100,12 @@ import com.deskdeck.data.fake.FakeData
 import com.deskdeck.domain.PlaybackInfo
 import com.deskdeck.domain.PlaybackStatus
 import com.deskdeck.ui.theme.DeskDeckTheme
+import com.deskdeck.domain.brief.WeatherBrief
+import com.deskdeck.ui.night.faces.ClockFace
+import com.deskdeck.ui.night.faces.FaceInfo
+import com.deskdeck.ui.night.faces.facePalette
 import com.deskdeck.ui.theme.MotionSpec
 import java.time.Instant
-import java.time.LocalDateTime
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Locale
@@ -141,6 +140,7 @@ fun NightScreen(onOpenSettings: () -> Unit, viewModel: NightViewModel = hiltView
     val night = LocalAppSettings.current.night
     val nowPlaying by viewModel.nowPlaying.collectAsStateWithLifecycle()
     val notifications by viewModel.notificationCount.collectAsStateWithLifecycle()
+    val weather by viewModel.weather.collectAsStateWithLifecycle()
     val motion = LocalMotion.current
 
     KeepScreenOn(enabled = true)
@@ -199,6 +199,7 @@ fun NightScreen(onOpenSettings: () -> Unit, viewModel: NightViewModel = hiltView
             onNext = viewModel::skipNext,
             onPrevious = viewModel::skipPrevious,
             modifier = Modifier.fillMaxSize().offset { drift.value },
+            weather = weather,
         )
 
         AnimatedVisibility(
@@ -232,6 +233,7 @@ private fun NightLayout(
     onNext: () -> Unit,
     onPrevious: () -> Unit,
     modifier: Modifier = Modifier,
+    weather: WeatherBrief? = null,
 ) {
     val np = nowPlaying
     if (LocalDeskSize.current == DeskSize.EXPANDED) {
@@ -244,14 +246,14 @@ private fun NightLayout(
                 NightMusic(np, ink, red, onPlayPause, onNext, onPrevious, Modifier.weight(0.36f))
                 Spacer(Modifier.width(56.dp))
             }
-            NightClock(settings, ink, hasNewNotifications, Modifier.weight(if (np != null) 0.64f else 1f).fillMaxHeight())
+            NightClock(settings, red, weather, hasNewNotifications, Modifier.weight(if (np != null) 0.64f else 1f).fillMaxHeight())
         }
     } else {
         Column(
             modifier = modifier.padding(horizontal = 24.dp, vertical = 24.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            NightClock(settings, ink, hasNewNotifications, Modifier.weight(1f).fillMaxWidth())
+            NightClock(settings, red, weather, hasNewNotifications, Modifier.weight(1f).fillMaxWidth())
             if (np != null) {
                 Spacer(Modifier.height(16.dp))
                 NightMiniMusic(np, ink, red, onPlayPause, onNext, onPrevious, Modifier.widthIn(max = 520.dp).fillMaxWidth())
@@ -261,7 +263,7 @@ private fun NightLayout(
 }
 
 @Composable
-private fun NightClock(settings: NightSettings, ink: Ink, hasNewNotifications: Boolean, modifier: Modifier) {
+private fun NightClock(settings: NightSettings, red: Boolean, weather: WeatherBrief?, hasNewNotifications: Boolean, modifier: Modifier) {
     val context = LocalContext.current
     val now by rememberCurrentTime(withSeconds = false)
     val is24 = when (settings.clockFormat) {
@@ -270,7 +272,6 @@ private fun NightClock(settings: NightSettings, ink: Ink, hasNewNotifications: B
         ClockFormat.SYSTEM -> DateFormat.is24HourFormat(context)
     }
     val alarm = remember(now.hour, now.minute) { nextAlarm(context, is24) }
-    val date = now.format(DateTimeFormatter.ofPattern("EEE d", Locale.getDefault())).uppercase(Locale.getDefault())
     val time = now.format(DateTimeFormatter.ofPattern(if (is24) "HH:mm" else "h:mm a"))
     val fullDate = now.format(DateTimeFormatter.ofPattern("EEEE d MMMM", Locale.getDefault()))
     val spoken = listOfNotNull(
@@ -278,84 +279,24 @@ private fun NightClock(settings: NightSettings, ink: Ink, hasNewNotifications: B
         alarm?.let { stringResource(R.string.night_alarm_description, it) },
         if (hasNewNotifications) stringResource(R.string.night_new_notifications) else null,
     ).joinToString(". ")
+    val motion = LocalMotion.current
+    // Red tint fades in and out rather than switching.
+    val target = facePalette(settings.clockColor, red)
+    val main by animateColorAsState(target.main, motion.color(), label = "faceMain")
+    val accent by animateColorAsState(target.accent, motion.color(), label = "faceAccent")
+    val palette = target.copy(main = main, accent = accent)
 
-    BoxWithConstraints(modifier.clearAndSetSemantics { contentDescription = spoken }, contentAlignment = Alignment.Center) {
-    // As large as the room allows, up to the full-tablet size: digits by width, everything by height.
-    val roomForClock = maxHeight - 64.dp
-    val digitalDp = minOf(220f, maxWidth.value / if (is24) 2.9f else 3.6f, roomForClock.value / 1.05f).coerceAtLeast(48f)
-    val analogSize = minOf(340.dp, maxWidth * 0.8f, roomForClock).coerceAtLeast(96.dp)
-    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        when (settings.clockStyle) {
-            NightClockStyle.ANALOG -> AnalogClock(now, ink, Modifier.size(analogSize))
-            else -> DigitalClock(now, is24, settings.clockStyle == NightClockStyle.THIN, ink, digitalDp)
-        }
-        Spacer(Modifier.height(12.dp))
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(date, style = TextStyle(fontFamily = NunitoRounded, fontSize = cappedSp(32f, 1.3f), fontWeight = FontWeight.W800, letterSpacing = 1.sp), color = ink.soft)
-            if (alarm != null) {
-                Spacer(Modifier.width(28.dp))
-                Icon(painterResource(R.drawable.ic_alarm), null, tint = ink.soft, modifier = Modifier.size(26.dp))
-                Spacer(Modifier.width(8.dp))
-                Text(alarm, style = TextStyle(fontFamily = NunitoRounded, fontSize = cappedSp(32f, 1.3f), fontWeight = FontWeight.W800, fontFeatureSettings = "tnum"), color = ink.soft)
-            }
-            if (hasNewNotifications) {
-                Spacer(Modifier.width(24.dp))
-                Box(Modifier.size(10.dp).clip(CircleShape).background(ink.faint))
-            }
-        }
-    }
-    }
-}
-
-@Composable
-private fun DigitalClock(now: LocalDateTime, is24: Boolean, thin: Boolean, ink: Ink, sizeDp: Float) {
-    val digits = now.format(DateTimeFormatter.ofPattern(if (is24) "HH:mm" else "h:mm"))
-    Row(verticalAlignment = Alignment.Bottom) {
-        Text(
-            text = digits,
-            // StandBy's look: rounded digits, heavy by default, light for the thin style.
-            style = TextStyle(
-                fontFamily = NunitoRounded,
-                // Sized to the window, so it doesn't grow with the font size.
-                fontSize = cappedSp(sizeDp),
-                lineHeight = cappedSp(sizeDp),
-                fontWeight = if (thin) FontWeight.W300 else FontWeight.W900,
-                letterSpacing = (-4).sp,
-                fontFeatureSettings = "tnum",
-            ),
-            color = ink.main,
-            maxLines = 1,
+    Box(modifier.clearAndSetSemantics { contentDescription = spoken }) {
+        ClockFace(
+            style = settings.clockStyle,
+            palette = palette,
+            info = FaceInfo(now, is24, alarm, weather?.place, weather?.latitude, weather?.longitude),
+            modifier = Modifier.fillMaxSize(),
         )
-        if (!is24) {
-            Spacer(Modifier.width(12.dp))
-            Text(
-                text = now.format(DateTimeFormatter.ofPattern("a", Locale.getDefault())),
-                style = TextStyle(fontFamily = NunitoRounded, fontSize = cappedSp(sizeDp * 0.16f), fontWeight = FontWeight.W700),
-                color = ink.soft,
-                modifier = Modifier.padding(bottom = (sizeDp * 0.16f).dp),
-            )
+        // New notifications since the night began: a tiny dim dot, not a banner.
+        if (hasNewNotifications) {
+            Box(Modifier.align(Alignment.TopEnd).padding(8.dp).size(10.dp).clip(CircleShape).background(palette.faint))
         }
-    }
-}
-
-/** Thin dial, hour and minute hands; no second hand (it would be the brightest moving thing at night). */
-@Composable
-private fun AnalogClock(now: LocalDateTime, ink: Ink, modifier: Modifier) {
-    Canvas(modifier) {
-        val r = size.minDimension / 2
-        val c = center
-        drawCircle(ink.faint, r - 2.dp.toPx(), c, style = Stroke(2.dp.toPx()))
-        for (i in 0 until 12) {
-            rotate(i * 30f, c) {
-                val long = i % 3 == 0
-                drawLine(ink.soft, Offset(c.x, c.y - r + 14.dp.toPx()), Offset(c.x, c.y - r + (if (long) 40 else 26).dp.toPx()), (if (long) 5 else 3).dp.toPx(), StrokeCap.Round)
-            }
-        }
-        val minuteAngle = now.minute * 6f
-        val hourAngle = (now.hour % 12) * 30f + now.minute * 0.5f
-        rotate(hourAngle, c) { drawLine(ink.main, c, Offset(c.x, c.y - r * 0.5f), 12.dp.toPx(), StrokeCap.Round) }
-        rotate(minuteAngle, c) { drawLine(ink.main, c, Offset(c.x, c.y - r * 0.78f), 7.dp.toPx(), StrokeCap.Round) }
-        drawCircle(ink.main, 9.dp.toPx(), c)
     }
 }
 
@@ -493,7 +434,7 @@ private val RedOnly = ColorFilter.colorMatrix(
 )
 
 /** The next alarm set in any clock app, formatted, or null if none. */
-private fun nextAlarm(context: Context, is24: Boolean): String? {
+internal fun nextAlarm(context: Context, is24: Boolean): String? {
     val info = context.getSystemService(AlarmManager::class.java)?.nextAlarmClock ?: return null
     val time = Instant.ofEpochMilli(info.triggerTime).atZone(ZoneId.systemDefault())
     return time.format(DateTimeFormatter.ofPattern(if (is24) "HH:mm" else "h:mm a", Locale.getDefault()))
