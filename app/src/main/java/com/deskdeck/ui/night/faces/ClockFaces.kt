@@ -25,6 +25,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.BiasAlignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
@@ -45,6 +47,10 @@ import com.deskdeck.R
 import com.deskdeck.data.settings.NightClockColor
 import com.deskdeck.data.settings.NightClockStyle
 import com.deskdeck.domain.night.WorldMap
+import com.deskdeck.domain.brief.AirQualityLevel
+import com.deskdeck.domain.brief.WeatherCondition
+import com.deskdeck.ui.common.WeatherGlyph
+import com.deskdeck.ui.common.airQualityColor
 import com.deskdeck.ui.theme.Inter
 import com.deskdeck.ui.theme.NunitoRounded
 import com.deskdeck.ui.theme.SerifDisplay
@@ -69,13 +75,15 @@ data class FacePalette(
     val faint: Color,
     /** Complications that stand out (the analog face's date, today in the calendar). */
     val accent: Color,
+    /** Red tint: everything in one color (the air quality dot too). */
+    val monochrome: Boolean = false,
 )
 
 private val NightRed = Color(0xFFD7261E)
 private val AppleRed = Color(0xFFFF453A)
 
 fun facePalette(color: NightClockColor, red: Boolean): FacePalette {
-    if (red) return FacePalette(NightRed, NightRed.copy(alpha = 0.7f), NightRed.copy(alpha = 0.6f), NightRed.copy(alpha = 0.28f), NightRed)
+    if (red) return FacePalette(NightRed, NightRed.copy(alpha = 0.7f), NightRed.copy(alpha = 0.6f), NightRed.copy(alpha = 0.28f), NightRed, monochrome = true)
     val c = Color(color.argb)
     return FacePalette(
         main = c,
@@ -98,7 +106,11 @@ data class FaceInfo(
     val place: String? = null,
     val latitude: Double? = null,
     val longitude: Double? = null,
+    /** Temperature and air quality, or null when hidden or unknown. */
+    val weather: FaceWeather? = null,
 )
+
+data class FaceWeather(val temperature: Int, val condition: WeatherCondition, val airQuality: Int?)
 
 /** One clock face, drawn to fill [modifier]'s size: the night screen, or a small preview in Settings. */
 @Composable
@@ -133,6 +145,28 @@ private fun AlarmLabel(alarm: String, color: Color, size: Dp) {
         Icon(painterResource(R.drawable.ic_alarm), null, tint = color, modifier = Modifier.size(size * 0.9f))
         Spacer(Modifier.width(size * 0.25f))
         Text(alarm, style = TextStyle(fontFamily = NunitoRounded, fontSize = px(size), fontWeight = FontWeight.W800, fontFeatureSettings = "tnum"), color = color, maxLines = 1)
+    }
+}
+
+/** Weather icon and temperature, then the air quality dot and index, in one quiet line. */
+@Composable
+private fun WeatherLabel(w: FaceWeather, p: FacePalette, size: Dp, color: Color = p.soft) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        WeatherGlyph(w.condition, Modifier.size(size * 1.3f), tint = color)
+        Spacer(Modifier.width(size * 0.2f))
+        Text("${w.temperature}°", style = TextStyle(fontFamily = NunitoRounded, fontSize = px(size), fontWeight = FontWeight.W800, fontFeatureSettings = "tnum"), color = color, maxLines = 1)
+        if (w.airQuality != null) {
+            val level = AirQualityLevel.of(w.airQuality)
+            Spacer(Modifier.width(size * 0.6f))
+            Box(
+                Modifier
+                    .size(size * 0.45f)
+                    .clip(CircleShape)
+                    .background(if (p.monochrome) color else airQualityColor(level).copy(alpha = 0.85f)),
+            )
+            Spacer(Modifier.width(size * 0.25f))
+            Text("AQI ${w.airQuality}", style = TextStyle(fontFamily = NunitoRounded, fontSize = px(size), fontWeight = FontWeight.W800, fontFeatureSettings = "tnum"), color = color, maxLines = 1)
+        }
     }
 }
 
@@ -175,6 +209,10 @@ private fun DigitalFace(info: FaceInfo, p: FacePalette, thin: Boolean, modifier:
                 if (info.alarm != null) {
                     Spacer(Modifier.width(small * 0.9f))
                     AlarmLabel(info.alarm, p.soft, small)
+                }
+                if (info.weather != null) {
+                    Spacer(Modifier.width(small * 0.9f))
+                    WeatherLabel(info.weather, p, small)
                 }
             }
         }
@@ -232,12 +270,14 @@ private fun AnalogFace(info: FaceInfo, p: FacePalette, modifier: Modifier) {
         if (info.alarm != null) {
             Box(Modifier.align(BiasAlignment(-0.3f, 0f))) { AlarmLabel(info.alarm, p.soft, unit * 3.2f) }
         }
-        Text(
-            shortDate(info.now),
-            style = TextStyle(fontFamily = Inter, fontSize = px(unit * 3.4f), fontWeight = FontWeight.W700),
-            color = p.accent,
-            modifier = Modifier.align(BiasAlignment(0.3f, 0f)),
-        )
+        Column(Modifier.align(BiasAlignment(0.32f, if (info.weather != null) 0.06f else 0f))) {
+            Text(
+                shortDate(info.now),
+                style = TextStyle(fontFamily = Inter, fontSize = px(unit * 3.4f), fontWeight = FontWeight.W700),
+                color = p.accent,
+            )
+            if (info.weather != null) WeatherLabel(info.weather, p, unit * 2.8f)
+        }
     }
 }
 
@@ -249,6 +289,10 @@ private fun AnalogFace(info: FaceInfo, p: FacePalette, modifier: Modifier) {
 @Composable
 private fun LayeredFace(info: FaceInfo, p: FacePalette, modifier: Modifier) {
     BoxWithConstraints(modifier, contentAlignment = Alignment.Center) {
+        if (info.weather != null) {
+            val unit = min(maxWidth.value, maxHeight.value * 1.6f).dp / 100
+            Box(Modifier.align(Alignment.TopEnd).padding(unit * 2)) { WeatherLabel(info.weather, p, unit * 3.4f) }
+        }
         val (h, m) = hoursMinutes(info)
         val chars = (h + m).length
         val size = minOf(maxWidth.value / (0.52f * chars + 0.6f), maxHeight.value * 0.92f).dp
@@ -290,7 +334,13 @@ private fun SerifFace(info: FaceInfo, p: FacePalette, modifier: Modifier) {
                 color = p.main,
                 maxLines = 1,
             )
-            if (info.alarm != null) AlarmLabel(info.alarm, p.faint, size * 0.1f)
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                if (info.alarm != null) {
+                    AlarmLabel(info.alarm, p.faint, size * 0.1f)
+                    Spacer(Modifier.width(size * 0.08f))
+                }
+                if (info.weather != null) WeatherLabel(info.weather, p, size * 0.1f, color = p.faint)
+            }
         }
     }
 }
@@ -308,12 +358,14 @@ private fun CalendarFace(info: FaceInfo, p: FacePalette, modifier: Modifier) {
         val locale = Locale.getDefault()
         val firstDow = remember(locale) { WeekFields.of(locale).firstDayOfWeek }
         val (h, m) = hoursMinutes(info)
-        Text(
-            "$h:$m",
-            style = TextStyle(fontFamily = NunitoRounded, fontSize = px(unit * 4.4f), fontWeight = FontWeight.W800, fontFeatureSettings = "tnum"),
-            color = p.soft,
-            modifier = Modifier.align(Alignment.TopEnd).padding(unit * 3),
-        )
+        Column(Modifier.align(Alignment.TopEnd).padding(unit * 3), horizontalAlignment = Alignment.End) {
+            Text(
+                "$h:$m",
+                style = TextStyle(fontFamily = NunitoRounded, fontSize = px(unit * 4.4f), fontWeight = FontWeight.W800, fontFeatureSettings = "tnum"),
+                color = p.soft,
+            )
+            if (info.weather != null) WeatherLabel(info.weather, p, unit * 2.6f)
+        }
         Row(Modifier.fillMaxSize().padding(unit * 4), verticalAlignment = Alignment.CenterVertically) {
             MonthGrid(today, firstDow, p, unit, Modifier.weight(1f))
             BoxWithConstraints(Modifier.weight(1f).fillMaxHeight(), contentAlignment = Alignment.Center) {
@@ -423,13 +475,38 @@ private fun WorldFace(info: FaceInfo, p: FacePalette, modifier: Modifier) {
             }
         }
         val (h, m) = hoursMinutes(info)
-        Column(Modifier.align(Alignment.BottomStart).padding(start = unit * 4, bottom = unit * 3)) {
+        Column(
+            Modifier
+                .align(Alignment.BottomStart)
+                // A soft dark pool behind the text, so map dots under it don't fight the words.
+                .drawBehind {
+                    val r = size.maxDimension * 0.75f
+                    drawCircle(
+                        Brush.radialGradient(
+                            0f to Color.Black.copy(alpha = 0.92f),
+                            0.6f to Color.Black.copy(alpha = 0.7f),
+                            1f to Color.Transparent,
+                            center = center,
+                            radius = r,
+                        ),
+                        radius = r,
+                        center = center,
+                    )
+                }
+                .padding(start = unit * 4, bottom = unit * 3),
+        ) {
             if (info.place != null) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(painterResource(R.drawable.ic_location_arrow), null, tint = p.soft, modifier = Modifier.size(unit * 3.6f))
                     Spacer(Modifier.width(unit))
                     Text(info.place, style = TextStyle(fontFamily = Inter, fontSize = px(unit * 3.8f), fontWeight = FontWeight.W600), color = p.soft, maxLines = 1)
+                    if (info.weather != null) {
+                        Spacer(Modifier.width(unit * 2.5f))
+                        WeatherLabel(info.weather, p, unit * 3.6f)
+                    }
                 }
+            } else if (info.weather != null) {
+                WeatherLabel(info.weather, p, unit * 3.6f)
             }
             Text(
                 "$h:$m",

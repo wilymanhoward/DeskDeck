@@ -322,6 +322,8 @@
     <string name="night_time_ok">OK</string>
     <string name="night_time_cancel">Cancel</string>
     <string name="night_clock_format">Night clock</string>
+    <string name="night_weather">Weather and air quality</string>
+    <string name="night_weather_detail">The temperature and air quality index on the clock face, updated about once an hour while Night Mode is on (the Morning Brief\'s location)</string>
     <string name="night_music_style">Music on the night screen</string>
     <string name="night_music_style_detail">Beside the clock with album art, a slim text bar along the bottom, or hidden so the clock face fills the screen.</string>
     <string name="night_music_panel">Beside the clock</string>

@@ -149,6 +149,9 @@ internal fun NightSettingsSection(n: NightSettings, vm: SettingsViewModel) {
             },
             onSelect = { v -> vm.updateNight { it.copy(musicStyle = v) } },
         )
+        SwitchRow(stringResource(R.string.night_weather), stringResource(R.string.night_weather_detail), n.nightWeather) { v ->
+            vm.updateNight { it.copy(nightWeather = v) }
+        }
     }
     SettingCard {
         val hasLightSensor = remember { hasLightSensor(context) }

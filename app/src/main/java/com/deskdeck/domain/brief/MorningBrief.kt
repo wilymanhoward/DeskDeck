@@ -10,6 +10,8 @@ data class MorningBrief(
     val headlines: List<Headline> = emptyList(),
     /** Epoch ms of the last successful fetch of any part. */
     val fetchedAtMs: Long = 0,
+    /** Epoch ms the weather (and air quality) was last fetched; the night screen keeps it fresh. */
+    val weatherFetchedAtMs: Long = 0,
 )
 
 @JsonClass(generateAdapter = true)

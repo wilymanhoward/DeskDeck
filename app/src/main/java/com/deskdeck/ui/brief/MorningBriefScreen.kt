@@ -70,6 +70,9 @@ import androidx.compose.ui.tooling.preview.Preview
 import com.deskdeck.ui.theme.DeskDeckTheme
 import com.deskdeck.domain.brief.AirQualityLevel
 import androidx.compose.ui.unit.sp
+import com.deskdeck.ui.common.airQualityLabel
+import com.deskdeck.ui.common.airQualityColor
+import com.deskdeck.ui.common.WeatherGlyph
 import androidx.core.net.toUri
 import com.deskdeck.R
 import com.deskdeck.burnin.KeepScreenOn
@@ -189,25 +192,6 @@ fun MorningBriefScreen(
 
 private val StackedWeatherHeight = 360.dp
 private val StackedMarketHeight = 480.dp
-
-private fun airQualityLabel(level: AirQualityLevel): Int = when (level) {
-    AirQualityLevel.GOOD -> R.string.aqi_good
-    AirQualityLevel.MODERATE -> R.string.aqi_moderate
-    AirQualityLevel.SENSITIVE -> R.string.aqi_sensitive
-    AirQualityLevel.UNHEALTHY -> R.string.aqi_unhealthy
-    AirQualityLevel.VERY_UNHEALTHY -> R.string.aqi_very_unhealthy
-    AirQualityLevel.HAZARDOUS -> R.string.aqi_hazardous
-}
-
-/** Apple's dark-mode colors for the EPA's green / yellow / orange / red / purple / maroon. */
-private fun airQualityColor(level: AirQualityLevel): Color = when (level) {
-    AirQualityLevel.GOOD -> Color(0xFF32D74B)
-    AirQualityLevel.MODERATE -> Color(0xFFFFD60A)
-    AirQualityLevel.SENSITIVE -> Color(0xFFFF9F0A)
-    AirQualityLevel.UNHEALTHY -> Color(0xFFFF453A)
-    AirQualityLevel.VERY_UNHEALTHY -> Color(0xFFBF5AF2)
-    AirQualityLevel.HAZARDOUS -> Color(0xFFA2132E)
-}
 
 /** Cards rise in one after another; just fade with reduced motion. */
 @Composable
@@ -477,65 +461,6 @@ private fun conditionLabel(c: WeatherCondition): Int = when (c) {
 }
 
 /** Simple drawn weather icons in the app's outline style, with a little color like StandBy's. */
-@Composable
-private fun WeatherGlyph(condition: WeatherCondition, modifier: Modifier) {
-    Canvas(modifier) {
-        val sun = Color(0xFFFFD60A)
-        val cloud = Color(0xFFD1D1D6)
-        val drop = Color(0xFF64D2FF)
-        when (condition) {
-            WeatherCondition.CLEAR -> drawSun(center, size.minDimension * 0.22f, sun)
-            WeatherCondition.PARTLY_CLOUDY -> {
-                drawSun(Offset(size.width * 0.38f, size.height * 0.36f), size.minDimension * 0.15f, sun)
-                drawCloud(cloud, dy = 0.08f)
-            }
-            WeatherCondition.CLOUDY, WeatherCondition.FOG -> drawCloud(cloud, dy = 0f)
-            WeatherCondition.DRIZZLE, WeatherCondition.RAIN, WeatherCondition.SHOWERS -> {
-                drawCloud(cloud, dy = -0.1f)
-                val n = if (condition == WeatherCondition.DRIZZLE) 2 else 3
-                repeat(n) { i ->
-                    val x = size.width * (0.35f + i * 0.15f)
-                    drawLine(drop, Offset(x, size.height * 0.72f), Offset(x - size.width * 0.05f, size.height * 0.9f), 3.dp.toPx(), StrokeCap.Round)
-                }
-            }
-            WeatherCondition.SNOW -> {
-                drawCloud(cloud, dy = -0.1f)
-                repeat(3) { i -> drawCircle(Color.White, 3.dp.toPx(), Offset(size.width * (0.35f + i * 0.15f), size.height * 0.82f)) }
-            }
-            WeatherCondition.THUNDERSTORM -> {
-                drawCloud(cloud, dy = -0.1f)
-                val bolt = Path().apply {
-                    moveTo(size.width * 0.52f, size.height * 0.62f)
-                    lineTo(size.width * 0.42f, size.height * 0.8f)
-                    lineTo(size.width * 0.52f, size.height * 0.8f)
-                    lineTo(size.width * 0.46f, size.height * 0.96f)
-                }
-                drawPath(bolt, sun, style = Stroke(3.dp.toPx(), cap = StrokeCap.Round))
-            }
-        }
-    }
-}
-
-private fun DrawScope.drawSun(c: Offset, r: Float, color: Color) {
-    drawCircle(color, r, c)
-    repeat(8) { i ->
-        rotate(i * 45f, c) {
-            drawLine(color, Offset(c.x, c.y - r * 1.45f), Offset(c.x, c.y - r * 1.85f), 3.dp.toPx(), StrokeCap.Round)
-        }
-    }
-}
-
-private fun DrawScope.drawCloud(color: Color, dy: Float) {
-    val w = size.width
-    val h = size.height
-    val y = h * (0.55f + dy)
-    drawCircle(color, w * 0.17f, Offset(w * 0.38f, y))
-    drawCircle(color, w * 0.22f, Offset(w * 0.56f, y - h * 0.07f))
-    drawCircle(color, w * 0.15f, Offset(w * 0.73f, y + h * 0.02f))
-    drawRect(color, Offset(w * 0.24f, y), androidx.compose.ui.geometry.Size(w * 0.6f, w * 0.15f))
-}
-
-
 // region Previews
 
 private val previewBrief = MorningBrief(
