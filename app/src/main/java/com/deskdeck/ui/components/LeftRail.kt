@@ -7,7 +7,6 @@ import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -124,6 +123,7 @@ fun LeftRail(
         }
     }
     val accent = MaterialTheme.colorScheme.primary
+    val pinnedSelected = state.pinnedPackage != null && state.pinnedPackage == state.highlightPackage
     Column(
         modifier = modifier
             .width(Dimens.railWidth)
@@ -131,11 +131,28 @@ fun LeftRail(
             .onGloballyPositioned { railTop = it.boundsInRoot().top }
             .drawBehind {
                 if (targetCenter != null && ringShown) {
+                    // Apple-style selection: a soft frosted platter behind the icon (like the iPad
+                    // sidebar or a Dock highlight), no outline or glow. A pinned source tints it
+                    // with the accent color.
                     val y = movingCenter.value
-                    val side = (Dimens.minTouch + 4.dp).toPx()
-                    val center = Offset(size.width / 2, y)
-                    drawCircle(Brush.radialGradient(listOf(accent.copy(alpha = 0.20f), Color.Transparent), center, side * 0.8f), side * 0.8f, center)
-                    drawRoundRect(accent.copy(alpha = 0.8f), Offset((size.width - side) / 2, y - side / 2), Size(side, side), CornerRadius(18.dp.toPx()), style = Stroke(1.5.dp.toPx()))
+                    val side = PlatterSize.toPx()
+                    val topLeft = Offset((size.width - side) / 2, y - side / 2)
+                    val corner = CornerRadius(side * 0.3f)
+                    val fill = if (pinnedSelected) accent.copy(alpha = 0.24f) else Color.White.copy(alpha = 0.11f)
+                    drawRoundRect(fill, topLeft, Size(side, side), corner)
+                    // A hairline highlight along the top edge, like light on glass.
+                    drawRoundRect(
+                        brush = Brush.verticalGradient(
+                            0f to Color.White.copy(alpha = 0.16f),
+                            0.5f to Color.Transparent,
+                            startY = topLeft.y,
+                            endY = topLeft.y + side,
+                        ),
+                        topLeft = topLeft,
+                        size = Size(side, side),
+                        cornerRadius = corner,
+                        style = Stroke(0.75.dp.toPx()),
+                    )
                 }
             }
             // Read in the draw phase: the slow opacity drift never recomposes the rail.
@@ -305,22 +322,11 @@ private fun RailAppTile(
             .size(Dimens.minTouch + 4.dp)
             .onGloballyPositioned { centerY = it.boundsInRoot().center.y; onPosition(centerY) }
             .pressScale(interaction)
-            .drawBehind {
-                if (!highlighted) return@drawBehind
-                val glowRadius = size.minDimension * 0.8f
-                drawCircle(
-                    brush = Brush.radialGradient(
-                        listOf(accent.copy(alpha = 0.10f), Color.Transparent),
-                        center = center,
-                        radius = glowRadius,
-                    ),
-                    radius = glowRadius,
-                )
-            }
             .clip(RoundedCornerShape(18.dp))
             .combinedClickable(
                 interactionSource = interaction,
-                indication = ripple(),
+                // Like iPadOS: the icon just gives a little under the finger, no ripple.
+                indication = null,
                 role = Role.Button,
                 onLongClickLabel = actionsLabel,
                 onLongClick = { onLongClick(centerY) },
@@ -334,36 +340,34 @@ private fun RailAppTile(
                 model = AppIcon(app.packageName),
                 contentDescription = null,
                 modifier = Modifier
-                    .size(44.dp)
-                    // Apps without a media session read as "not ready" until selected.
-                    .alpha(if (hasSession || highlighted) 1f else 0.5f),
+                    .size(42.dp)
+                    // Room for the playing bars underneath.
+                    .offset(y = (-3).dp)
+                    // Apps without a media session read as "not ready" until selected: dimmed only.
+                    .alpha(if (hasSession || highlighted) 1f else 0.45f),
             )
         } else {
             NotInstalledTile(app)
         }
-        when {
-            playing -> EqualizerBadge(accent, animate, Modifier.align(Alignment.BottomEnd).padding(3.dp))
-            app.installed && !hasSession -> Box(
-                Modifier
-                    .align(Alignment.BottomEnd)
-                    .padding(6.dp)
-                    .size(8.dp)
-                    .border(1.5.dp, MutedText, CircleShape),
-            )
-        }
+        // Playing: small bars under the icon, where the Dock puts its running-app dot.
+        if (playing) EqualizerBadge(CappedWhite, animate, Modifier.align(Alignment.BottomCenter).padding(bottom = 1.dp))
         if (pinned) {
             Icon(
                 painter = painterResource(R.drawable.ic_push_pin),
                 contentDescription = null,
-                tint = accent,
+                tint = CappedWhite.copy(alpha = 0.55f),
                 modifier = Modifier
                     .align(Alignment.TopEnd)
-                    .padding(2.dp)
-                    .size(14.dp),
+                    // Inside the tile's rounded corner, so the clip doesn't cut it.
+                    .padding(5.dp)
+                    .size(11.dp),
             )
         }
     }
 }
+
+/** The selection platter behind the selected app's icon. */
+private val PlatterSize = 62.dp
 
 /** Three bouncing bars while the source plays. The animation is read only in the draw phase. */
 @Composable
@@ -376,21 +380,20 @@ private fun EqualizerBadge(color: Color, animate: Boolean, modifier: Modifier = 
         label = "equalizerPhase",
     )
     } else rememberUpdatedState(0f)
+    // Apple Music's now-playing bars: three slim rounded bars on one baseline, no container.
     Box(
         modifier
-            .size(18.dp)
-            .background(SurfaceHighest, CircleShape)
+            .size(width = 13.dp, height = 7.dp)
             .drawBehind {
-                val barWidth = size.width / 9
-                val maxHeight = size.height * 0.5f
-                val bottom = size.height * 0.75f
+                val barWidth = 2.5.dp.toPx()
+                val gap = (size.width - barWidth * 3) / 2
                 for (i in 0 until 3) {
-                    val level = 0.35f + 0.65f * (0.5f + 0.5f * sin(phase.value + i * 2.1f))
-                    val x = size.width * (0.3f + i * 0.2f) - barWidth / 2
+                    val level = 0.45f + 0.55f * (0.5f + 0.5f * sin(phase.value + i * 2.1f))
+                    val h = size.height * level
                     drawRoundRect(
-                        color = color,
-                        topLeft = Offset(x, bottom - maxHeight * level),
-                        size = Size(barWidth, maxHeight * level),
+                        color = color.copy(alpha = 0.85f),
+                        topLeft = Offset(i * (barWidth + gap), size.height - h),
+                        size = Size(barWidth, h),
                         cornerRadius = CornerRadius(barWidth / 2),
                     )
                 }
