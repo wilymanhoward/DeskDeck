@@ -36,6 +36,13 @@ class SettingsRepository @Inject constructor(
         NightOverride(on = prefs[Keys.nightOverrideOn] ?: false, untilEpochMs = until)
     }.distinctUntilChanged()
 
+    /** The wake-up whose Morning Brief was closed with Done (epoch ms), so it stays closed after a restart. */
+    val briefDismissedWakeMs: Flow<Long> = dataStore.data.map { it[Keys.briefDismissedWake] ?: 0L }.distinctUntilChanged()
+
+    suspend fun setBriefDismissedWake(epochMs: Long) {
+        dataStore.edit { it[Keys.briefDismissedWake] = epochMs }
+    }
+
     suspend fun setNightOverride(override: NightOverride?) {
         dataStore.edit { prefs ->
             if (override == null) {
@@ -73,6 +80,7 @@ private object Keys {
     val watchlist = stringPreferencesKey("market_watchlist")
     val nightOverrideOn = booleanPreferencesKey("night_override_on")
     val nightOverrideUntil = longPreferencesKey("night_override_until")
+    val briefDismissedWake = longPreferencesKey("brief_dismissed_wake")
     val clockFormat = stringPreferencesKey("clock_format")
     val clockSeconds = booleanPreferencesKey("clock_seconds")
     val lyricsFontSize = intPreferencesKey("lyrics_font_size")

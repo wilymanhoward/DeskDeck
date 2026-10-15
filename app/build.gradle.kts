@@ -56,7 +56,17 @@ android {
                 "proguard-rules.pro",
             )
         }
+        // Optimised like release (R8, not debuggable) but signed with the debug key, so it installs
+        // over a debug build and keeps its data. For daily use on the tablet and for measuring
+        // battery/CPU: debug builds run several times slower. No developer tools in it.
+        create("profile") {
+            initWith(getByName("release"))
+            signingConfig = signingConfigs.getByName("debug")
+            matchingFallbacks += listOf("release")
+        }
     }
+    // The profile build uses release's empty DebugTools.
+    sourceSets.getByName("profile").kotlin.srcDir("src/release/java")
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
