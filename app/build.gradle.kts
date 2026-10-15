@@ -26,8 +26,8 @@ android {
         applicationId = "com.deskdeck"
         minSdk = 26
         targetSdk = 35
-        versionCode = 3
-        versionName = "1.0.1"
+        versionCode = 4
+        versionName = "1.1.0"
 
         // Optional Spotify library (R6). Empty = the feature explains how to set it up instead.
         // Morning Brief market data (Twelve Data free key). Empty = market card explains setup.
