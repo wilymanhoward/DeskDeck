@@ -123,21 +123,15 @@ internal fun NightSettingsSection(n: NightSettings, vm: SettingsViewModel) {
             },
             onSelect = { v -> vm.updateNight { it.copy(clockFormat = v) } },
         )
-        ChoiceRow(
-            title = stringResource(R.string.night_clock_style),
-            options = NightClockStyle.entries,
-            selected = n.clockStyle,
-            label = {
-                stringResource(
-                    when (it) {
-                        NightClockStyle.BOLD -> R.string.night_style_bold
-                        NightClockStyle.THIN -> R.string.night_style_thin
-                        NightClockStyle.ANALOG -> R.string.night_style_analog
-                    },
-                )
-            },
-            onSelect = { v -> vm.updateNight { it.copy(clockStyle = v) } },
+    }
+    SettingCard {
+        ClockFaceGallery(
+            n = n,
+            onStyle = { v -> vm.updateNight { it.copy(clockStyle = v) } },
+            onColor = { v -> vm.updateNight { it.copy(clockColor = v) } },
         )
+    }
+    SettingCard {
         val hasLightSensor = remember { hasLightSensor(context) }
         ChoiceRow(
             title = stringResource(R.string.night_red_tint),
