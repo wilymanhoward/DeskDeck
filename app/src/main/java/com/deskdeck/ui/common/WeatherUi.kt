@@ -4,7 +4,14 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.geometry.RoundRect
+import androidx.compose.ui.graphics.ClipOp
+import androidx.compose.ui.graphics.Matrix
+import androidx.compose.ui.graphics.PathOperation
+import androidx.compose.ui.graphics.StrokeJoin
+import androidx.compose.ui.graphics.drawscope.clipPath
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
@@ -25,37 +32,81 @@ fun WeatherGlyph(condition: WeatherCondition, modifier: Modifier, tint: Color? =
         val sun = tint ?: Color(0xFFFFD60A)
         val cloud = tint ?: Color(0xFFD1D1D6)
         val drop = tint ?: Color(0xFF64D2FF)
-        val stroke = size.minDimension * 0.042f
+        val stroke = size.minDimension * 0.05f
         when (condition) {
-            WeatherCondition.CLEAR -> drawSun(center, size.minDimension * 0.22f, sun, stroke)
+            WeatherCondition.CLEAR -> drawSun(center, size.minDimension * 0.2f, sun, stroke)
             WeatherCondition.PARTLY_CLOUDY -> {
-                drawSun(Offset(size.width * 0.38f, size.height * 0.36f), size.minDimension * 0.15f, sun, stroke)
-                drawCloud(cloud, dy = 0.08f)
+                val cloudShape = cloudPath(dy = 0.1f)
+                // The sun peeks out from behind: cut around the cloud, never drawn under it.
+                clipPath(cloudShape.grown(stroke * 1.4f), ClipOp.Difference) {
+                    drawSun(Offset(size.width * 0.36f, size.height * 0.34f), size.minDimension * 0.14f, sun, stroke)
+                }
+                drawPath(cloudShape, cloud)
             }
-            WeatherCondition.CLOUDY, WeatherCondition.FOG -> drawCloud(cloud, dy = 0f)
+            WeatherCondition.CLOUDY, WeatherCondition.FOG -> drawPath(cloudPath(dy = 0f), cloud)
             WeatherCondition.DRIZZLE, WeatherCondition.RAIN, WeatherCondition.SHOWERS -> {
-                drawCloud(cloud, dy = -0.1f)
+                drawPath(cloudPath(dy = -0.12f), cloud)
                 val n = if (condition == WeatherCondition.DRIZZLE) 2 else 3
                 repeat(n) { i ->
-                    val x = size.width * (0.35f + i * 0.15f)
-                    drawLine(drop, Offset(x, size.height * 0.72f), Offset(x - size.width * 0.05f, size.height * 0.9f), stroke, StrokeCap.Round)
+                    val x = size.width * (if (n == 2) 0.42f + i * 0.16f else 0.34f + i * 0.16f)
+                    drawLine(drop, Offset(x, size.height * 0.74f), Offset(x - size.width * 0.05f, size.height * 0.9f), stroke, StrokeCap.Round)
                 }
             }
             WeatherCondition.SNOW -> {
-                drawCloud(cloud, dy = -0.1f)
-                repeat(3) { i -> drawCircle(tint ?: Color.White, stroke, Offset(size.width * (0.35f + i * 0.15f), size.height * 0.82f)) }
+                drawPath(cloudPath(dy = -0.12f), cloud)
+                repeat(3) { i -> drawCircle(tint ?: Color.White, stroke * 0.9f, Offset(size.width * (0.34f + i * 0.16f), size.height * 0.82f)) }
             }
             WeatherCondition.THUNDERSTORM -> {
-                drawCloud(cloud, dy = -0.1f)
+                val cloudShape = cloudPath(dy = -0.12f)
+                drawPath(cloudShape, cloud)
                 val bolt = Path().apply {
-                    moveTo(size.width * 0.52f, size.height * 0.62f)
-                    lineTo(size.width * 0.42f, size.height * 0.8f)
-                    lineTo(size.width * 0.52f, size.height * 0.8f)
+                    moveTo(size.width * 0.55f, size.height * 0.6f)
+                    lineTo(size.width * 0.43f, size.height * 0.79f)
+                    lineTo(size.width * 0.53f, size.height * 0.79f)
                     lineTo(size.width * 0.46f, size.height * 0.96f)
                 }
-                drawPath(bolt, sun, style = Stroke(stroke, cap = StrokeCap.Round))
+                clipPath(cloudShape.grown(stroke), ClipOp.Difference) {
+                    drawPath(bolt, sun, style = Stroke(stroke, cap = StrokeCap.Round, join = StrokeJoin.Round))
+                }
             }
         }
+    }
+}
+
+/**
+ * Apple's cloud as one outline: a small bump on the left, a bigger one on the right, and a flat
+ * bottom with round ends. One path, so a translucent color fills it evenly (stacked circles would
+ * show their overlaps darker). [dy] moves it up (−) or down as a fraction of the height.
+ */
+private fun DrawScope.cloudPath(dy: Float): Path {
+    val w = size.width
+    val h = size.height
+    fun y(f: Float) = h * (f + dy)
+    val base = Path().apply {
+        addRoundRect(RoundRect(left = w * 0.14f, top = y(0.5f), right = w * 0.86f, bottom = y(0.74f), cornerRadius = CornerRadius(h * 0.12f)))
+    }
+    val left = Path().apply { addOval(Rect(center = Offset(w * 0.34f, y(0.52f)), radius = w * 0.15f)) }
+    val right = Path().apply { addOval(Rect(center = Offset(w * 0.57f, y(0.43f)), radius = w * 0.22f)) }
+    val out = Path()
+    out.op(base, left, PathOperation.Union)
+    val cloud = Path()
+    cloud.op(out, right, PathOperation.Union)
+    return cloud
+}
+
+/** The same outline, [by] px bigger all round: the gap between the cloud and what's behind it. */
+private fun Path.grown(by: Float): Path {
+    val b = getBounds()
+    val sx = (b.width + 2 * by) / b.width
+    val sy = (b.height + 2 * by) / b.height
+    val c = b.center
+    return Path().apply {
+        addPath(this@grown)
+        transform(Matrix().apply {
+            translate(c.x, c.y)
+            scale(sx, sy)
+            translate(-c.x, -c.y)
+        })
     }
 }
 
@@ -66,16 +117,6 @@ private fun DrawScope.drawSun(c: Offset, r: Float, color: Color, stroke: Float) 
             drawLine(color, Offset(c.x, c.y - r * 1.45f), Offset(c.x, c.y - r * 1.85f), stroke, StrokeCap.Round)
         }
     }
-}
-
-private fun DrawScope.drawCloud(color: Color, dy: Float) {
-    val w = size.width
-    val h = size.height
-    val y = h * (0.55f + dy)
-    drawCircle(color, w * 0.17f, Offset(w * 0.38f, y))
-    drawCircle(color, w * 0.22f, Offset(w * 0.56f, y - h * 0.07f))
-    drawCircle(color, w * 0.15f, Offset(w * 0.73f, y + h * 0.02f))
-    drawRect(color, Offset(w * 0.24f, y), Size(w * 0.6f, w * 0.15f))
 }
 
 fun airQualityLabel(level: AirQualityLevel): Int = when (level) {
