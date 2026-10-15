@@ -13,6 +13,9 @@ import com.deskdeck.domain.brief.WeatherBrief
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
+import com.deskdeck.data.settings.SettingsRepository
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.first
 import javax.inject.Inject
 import kotlinx.coroutines.flow.StateFlow
 
@@ -22,7 +25,8 @@ class NightViewModel @Inject constructor(
     private val media: MediaRepository,
     private val night: NightModeController,
     notifications: NotificationCounter,
-    brief: BriefRepository,
+    private val brief: BriefRepository,
+    private val settings: SettingsRepository,
 ) : ViewModel() {
     /** The World face marks the Morning Brief's weather place. */
     val weather: StateFlow<WeatherBrief?> = brief.brief.map { it?.weather }
@@ -35,4 +39,22 @@ class NightViewModel @Inject constructor(
     fun skipNext() = media.skipNext()
     fun skipPrevious() = media.skipPrevious()
     fun exitNight() = night.endNow()
+
+    /**
+     * While the night screen is up (call from its composition): keeps the weather and air quality
+     * under [WEATHER_MAX_AGE_MS] old, checking every [CHECK_EVERY_MS]. Two small requests an hour.
+     */
+    suspend fun keepWeatherFresh() {
+        while (true) {
+            val nightSettings = settings.settings.first().night
+            val age = System.currentTimeMillis() - (brief.brief.first()?.weatherFetchedAtMs ?: 0L)
+            if (nightSettings.nightWeather && age > WEATHER_MAX_AGE_MS) brief.refreshWeather(nightSettings)
+            delay(CHECK_EVERY_MS)
+        }
+    }
+
+    private companion object {
+        const val WEATHER_MAX_AGE_MS = 60 * 60_000L
+        const val CHECK_EVERY_MS = 10 * 60_000L
+    }
 }

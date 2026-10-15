@@ -109,6 +109,8 @@ import com.deskdeck.data.settings.NightClockStyle
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.withStyle
+import com.deskdeck.ui.night.faces.FaceWeather
+import com.deskdeck.domain.brief.WeatherCondition
 import com.deskdeck.ui.theme.MotionSpec
 import java.time.Instant
 import java.time.ZoneId
@@ -146,6 +148,8 @@ fun NightScreen(onOpenSettings: () -> Unit, viewModel: NightViewModel = hiltView
     val nowPlaying by viewModel.nowPlaying.collectAsStateWithLifecycle()
     val notifications by viewModel.notificationCount.collectAsStateWithLifecycle()
     val weather by viewModel.weather.collectAsStateWithLifecycle()
+    // Weather and air quality on the face, kept under an hour old while the night screen is up.
+    LaunchedEffect(viewModel) { viewModel.keepWeatherFresh() }
     val motion = LocalMotion.current
 
     KeepScreenOn(enabled = true)
@@ -307,7 +311,17 @@ private fun NightClock(settings: NightSettings, red: Boolean, weather: WeatherBr
         ClockFace(
             style = settings.clockStyle,
             palette = palette,
-            info = FaceInfo(now, is24, alarm, weather?.place, weather?.latitude, weather?.longitude),
+            info = FaceInfo(
+                now = now,
+                is24 = is24,
+                alarm = alarm,
+                place = weather?.place,
+                latitude = weather?.latitude,
+                longitude = weather?.longitude,
+                weather = weather?.takeIf { settings.nightWeather }?.let {
+                    FaceWeather(it.temperature.roundToInt(), WeatherCondition.fromWmo(it.code), it.airQuality)
+                },
+            ),
             modifier = Modifier.fillMaxSize(),
         )
         // New notifications since the night began: a tiny dim dot, not a banner.

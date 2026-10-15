@@ -63,7 +63,7 @@ class BriefRepository @Inject constructor(
     /** Fetches what [settings] asks for and merges it into the cache. @return true if anything new arrived. */
     suspend fun refresh(settings: NightSettings): Boolean = withContext(Dispatchers.IO) {
         val old = dao.get(KEY)?.let { runCatching { adapter.fromJson(it.json) }.getOrNull() } ?: MorningBrief()
-        val weather = if (settings.briefWeather) attempt { fetchWeather(settings) } else null
+        val weather = if (settings.briefWeather) attempt { fetchWeather(settings, settings.briefAirQuality) } else null
         val markets = if (settings.briefMarket && hasMarketKey) attempt { fetchMarkets(settings.watchlist) } else null
         val headlines = if (settings.briefHeadlines) attempt { fetchHeadlines() } else null
         if (weather == null && markets == null && headlines == null) return@withContext false
@@ -72,12 +72,25 @@ class BriefRepository @Inject constructor(
             markets = markets ?: old.markets,
             headlines = headlines ?: old.headlines,
             fetchedAtMs = System.currentTimeMillis(),
+            weatherFetchedAtMs = if (weather != null) System.currentTimeMillis() else old.weatherFetchedAtMs,
         )
         dao.put(BriefCacheEntity(KEY, adapter.toJson(merged), merged.fetchedAtMs))
         true
     }
 
-    private suspend fun fetchWeather(settings: NightSettings): WeatherBrief? {
+    /**
+     * Just the weather and air quality (two small Open-Meteo requests, no market quota), for the
+     * night screen. Leaves the brief's own "updated" time alone.
+     */
+    suspend fun refreshWeather(settings: NightSettings): Boolean = withContext(Dispatchers.IO) {
+        val old = dao.get(KEY)?.let { runCatching { adapter.fromJson(it.json) }.getOrNull() } ?: MorningBrief()
+        val weather = attempt { fetchWeather(settings, withAirQuality = true) } ?: return@withContext false
+        val merged = old.copy(weather = weather, weatherFetchedAtMs = System.currentTimeMillis())
+        dao.put(BriefCacheEntity(KEY, adapter.toJson(merged), merged.fetchedAtMs))
+        true
+    }
+
+    private suspend fun fetchWeather(settings: NightSettings, withAirQuality: Boolean): WeatherBrief? {
         val (place, lat, lon) = location(settings) ?: return null
         val fahrenheit = settings.temperatureUnit == TemperatureUnit.FAHRENHEIT
         val forecast = weatherApi.forecast(lat, lon, if (fahrenheit) "fahrenheit" else "celsius")
@@ -96,7 +109,7 @@ class BriefRepository @Inject constructor(
             latitude = Math.round(lat * 100) / 100.0,
             longitude = Math.round(lon * 100) / 100.0,
         ).let { weather ->
-            if (!settings.briefAirQuality) return@let weather
+            if (!withAirQuality) return@let weather
             // Its own request: without it the weather still shows.
             val air = runCatching { airQualityApi.current(lat, lon).current }.getOrNull()
             weather.copy(airQuality = air?.usAqi?.toInt(), pm25 = air?.pm25)

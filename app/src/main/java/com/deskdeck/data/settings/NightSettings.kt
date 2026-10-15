@@ -44,6 +44,8 @@ data class NightSettings(
     val clockStyle: NightClockStyle = NightClockStyle.BOLD,
     val clockColor: NightClockColor = NightClockColor.WHITE,
     val musicStyle: NightMusicStyle = NightMusicStyle.PANEL,
+    /** The temperature and air quality on the clock face. */
+    val nightWeather: Boolean = true,
     val redTint: RedTint = RedTint.AUTO,
     /** Window brightness at night, 0.01..0.5. */
     val brightness: Float = 0.05f,
