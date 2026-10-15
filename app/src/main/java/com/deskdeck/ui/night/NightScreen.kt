@@ -104,6 +104,11 @@ import com.deskdeck.domain.brief.WeatherBrief
 import com.deskdeck.ui.night.faces.ClockFace
 import com.deskdeck.ui.night.faces.FaceInfo
 import com.deskdeck.ui.night.faces.facePalette
+import com.deskdeck.data.settings.NightMusicStyle
+import com.deskdeck.data.settings.NightClockStyle
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.withStyle
 import com.deskdeck.ui.theme.MotionSpec
 import java.time.Instant
 import java.time.ZoneId
@@ -235,18 +240,26 @@ private fun NightLayout(
     modifier: Modifier = Modifier,
     weather: WeatherBrief? = null,
 ) {
-    val np = nowPlaying
+    // Music: beside the clock, a slim bar along the bottom, or hidden (the face fills the screen).
+    val np = nowPlaying.takeIf { settings.musicStyle != NightMusicStyle.HIDDEN }
+    val bar = np != null && settings.musicStyle == NightMusicStyle.BAR
     if (LocalDeskSize.current == DeskSize.EXPANDED) {
-        Row(
-            modifier = modifier.padding(horizontal = 56.dp, vertical = 40.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.Center,
-        ) {
-            if (np != null) {
-                NightMusic(np, ink, red, onPlayPause, onNext, onPrevious, Modifier.weight(0.36f))
-                Spacer(Modifier.width(56.dp))
+        Column(modifier.padding(horizontal = 56.dp, vertical = 40.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+            Row(
+                modifier = Modifier.weight(1f).fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Center,
+            ) {
+                if (np != null && !bar) {
+                    NightMusic(np, ink, red, onPlayPause, onNext, onPrevious, Modifier.weight(0.36f))
+                    Spacer(Modifier.width(56.dp))
+                }
+                NightClock(settings, red, weather, hasNewNotifications, Modifier.weight(if (np != null && !bar) 0.64f else 1f).fillMaxHeight())
             }
-            NightClock(settings, red, weather, hasNewNotifications, Modifier.weight(if (np != null) 0.64f else 1f).fillMaxHeight())
+            if (np != null && bar) {
+                Spacer(Modifier.height(20.dp))
+                NightMusicBar(np, ink, onPlayPause, onNext, onPrevious, Modifier.widthIn(max = 760.dp).fillMaxWidth())
+            }
         }
     } else {
         Column(
@@ -256,7 +269,11 @@ private fun NightLayout(
             NightClock(settings, red, weather, hasNewNotifications, Modifier.weight(1f).fillMaxWidth())
             if (np != null) {
                 Spacer(Modifier.height(16.dp))
-                NightMiniMusic(np, ink, red, onPlayPause, onNext, onPrevious, Modifier.widthIn(max = 520.dp).fillMaxWidth())
+                if (bar) {
+                    NightMusicBar(np, ink, onPlayPause, onNext, onPrevious, Modifier.widthIn(max = 560.dp).fillMaxWidth())
+                } else {
+                    NightMiniMusic(np, ink, red, onPlayPause, onNext, onPrevious, Modifier.widthIn(max = 520.dp).fillMaxWidth())
+                }
             }
         }
     }
@@ -352,6 +369,52 @@ private fun NightMusic(
 }
 
 /** Split screen: one row of art, title and controls, with the thin progress line under it. */
+/**
+ * The "bar" music style: one quiet line along the bottom, title and artist as text (no album
+ * art), small controls, and a hairline of progress above it.
+ */
+@Composable
+private fun NightMusicBar(
+    np: NowPlaying,
+    ink: Ink,
+    onPlayPause: () -> Unit,
+    onNext: () -> Unit,
+    onPrevious: () -> Unit,
+    modifier: Modifier,
+) {
+    val position by rememberPlaybackPosition(np.playback, np.track.durationMs, everyFrame = false)
+    val duration = np.track.durationMs?.takeIf { it > 0 }
+    Column(modifier) {
+        Canvas(Modifier.fillMaxWidth().height(2.dp)) {
+            val f = duration?.let { (position.toFloat() / it).coerceIn(0f, 1f) } ?: 0f
+            drawLine(ink.faint, Offset(0f, size.height / 2), Offset(size.width, size.height / 2), size.height, StrokeCap.Round)
+            drawLine(ink.soft, Offset(0f, size.height / 2), Offset(size.width * f, size.height / 2), size.height, StrokeCap.Round)
+        }
+        Spacer(Modifier.height(6.dp))
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                text = buildAnnotatedString {
+                    withStyle(SpanStyle(color = ink.main, fontWeight = FontWeight.W600)) { append(np.track.title) }
+                    np.track.artist?.takeIf { it.isNotBlank() }?.let { artist ->
+                        withStyle(SpanStyle(color = ink.soft)) { append("  ·  $artist") }
+                    }
+                },
+                style = TextStyle(fontFamily = Inter, fontSize = 18.sp),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f),
+            )
+            IconButton(onClick = onPrevious, modifier = Modifier.size(48.dp)) {
+                Icon(painterResource(R.drawable.ic_skip_previous), stringResource(R.string.np_previous), tint = ink.soft, modifier = Modifier.size(20.dp))
+            }
+            PlayPauseGlyph(np.playback.isPlaying, ink, onPlayPause)
+            IconButton(onClick = onNext, modifier = Modifier.size(48.dp)) {
+                Icon(painterResource(R.drawable.ic_skip_next), stringResource(R.string.np_next), tint = ink.soft, modifier = Modifier.size(20.dp))
+            }
+        }
+    }
+}
+
 @Composable
 private fun NightMiniMusic(
     np: NowPlaying,
@@ -516,7 +579,7 @@ internal fun rememberNightDrift(enabled: Boolean): State<IntOffset> {
 // region Previews
 
 @Composable
-private fun NightPreview(size: DeskSize, playing: Boolean = true) {
+private fun NightPreview(size: DeskSize, playing: Boolean = true, settings: NightSettings = NightSettings()) {
     val fake = FakeData.tracks[0]
     val np = NowPlaying(
         track = fake.track,
@@ -530,7 +593,7 @@ private fun NightPreview(size: DeskSize, playing: Boolean = true) {
             Box(Modifier.fillMaxSize().background(Color.Black)) {
                 NightLayout(
                     nowPlaying = np.takeIf { playing },
-                    settings = NightSettings(),
+                    settings = settings,
                     ink = WhiteInk,
                     red = false,
                     hasNewNotifications = true,
@@ -555,6 +618,14 @@ private fun NightMediumPreview() = NightPreview(DeskSize.MEDIUM)
 @Preview(name = "Night – compact (pop-up)", widthDp = 560, heightDp = 340)
 @Composable
 private fun NightCompactPreview() = NightPreview(DeskSize.COMPACT)
+
+@Preview(name = "Night – music as a bottom bar", widthDp = 1317, heightDp = 823)
+@Composable
+private fun NightBarPreview() = NightPreview(DeskSize.EXPANDED, settings = NightSettings(musicStyle = NightMusicStyle.BAR, clockStyle = NightClockStyle.SERIF))
+
+@Preview(name = "Night – music hidden, World face", widthDp = 1317, heightDp = 823)
+@Composable
+private fun NightHiddenPreview() = NightPreview(DeskSize.EXPANDED, settings = NightSettings(musicStyle = NightMusicStyle.HIDDEN, clockStyle = NightClockStyle.WORLD))
 
 @Preview(name = "Night – compact, nothing playing", widthDp = 430, heightDp = 823)
 @Composable

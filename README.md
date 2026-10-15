@@ -238,6 +238,10 @@ Off until you turn it on under **Settings › Night Mode**.
   next to the date, and the volume HUD has a dim night look.
 - **Red tint:** on, off, or automatic: red when the light sensor reads a dark room (or all night on
   tablets without a light sensor).
+- **Clock faces:** Bold, Thin, Analog, Layered, Serif, Calendar and World (a dotted world map lit by
+  the real sun), in nine colors, chosen from live previews under **Settings › Night Mode › Clock
+  face**. **Music on the night screen:** beside the clock with album art, a slim text bar along the
+  bottom, or hidden so the face fills the screen.
 - **Tap** brightens the screen for 10 seconds and shows **End Night Mode** and the settings button.
   With TalkBack on, those stay available all the time.
 - DeskDeck shows Night Mode only while it's on screen. It doesn't turn the screen on or appear
@@ -570,6 +574,10 @@ Only `InterVariable.ttf` (879,708 bytes) is bundled; the full license is in
 The night clock uses [Nunito](https://github.com/googlefonts/nunito), Copyright 2014 The Nunito
 Project Authors, SIL Open Font License 1.1 (variable font; license in
 [`app/src/main/assets/licenses/Nunito-OFL.txt`](app/src/main/assets/licenses/Nunito-OFL.txt)), as a
-stand-in for Apple's SF Pro Rounded.
+stand-in for Apple's SF Pro Rounded. The Serif and Calendar night faces use
+[Source Serif 4](https://github.com/adobe-fonts/source-serif), Copyright 2014 The Source Serif 4
+Project Authors, SIL Open Font License 1.1 (variable font; license in
+[`app/src/main/assets/licenses/SourceSerif4-OFL.txt`](app/src/main/assets/licenses/SourceSerif4-OFL.txt)),
+as a stand-in for Apple's New York.
 
 The outline icons are project-owned vector paths; no Apple fonts or symbols are bundled.

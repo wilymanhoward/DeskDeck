@@ -18,6 +18,9 @@ enum class NightClockColor(val argb: Long) {
     PINK(0xFFFF375F),
 }
 
+/** The music on the night screen: beside the clock, a slim bar along the bottom, or not at all. */
+enum class NightMusicStyle { PANEL, BAR, HIDDEN }
+
 /** Deep red night screen: always, never, or when the room is dark (light sensor; else the schedule). */
 enum class RedTint { OFF, ON, AUTO }
 
@@ -40,6 +43,7 @@ data class NightSettings(
     val clockFormat: ClockFormat = ClockFormat.SYSTEM,
     val clockStyle: NightClockStyle = NightClockStyle.BOLD,
     val clockColor: NightClockColor = NightClockColor.WHITE,
+    val musicStyle: NightMusicStyle = NightMusicStyle.PANEL,
     val redTint: RedTint = RedTint.AUTO,
     /** Window brightness at night, 0.01..0.5. */
     val brightness: Float = 0.05f,

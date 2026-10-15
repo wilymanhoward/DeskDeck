@@ -35,6 +35,20 @@ private fun nunito(weight: Int) = Font(
     variationSettings = FontVariation.Settings(FontVariation.weight(weight)),
 )
 
+/**
+ * Source Serif 4 (variable, by Adobe), in its display optical size: the closest freely licensed
+ * match for Apple's New York, the serif of the Serif and Calendar night faces. SIL OFL:
+ * assets/licenses/SourceSerif4-OFL.txt.
+ */
+@OptIn(ExperimentalTextApi::class)
+private fun sourceSerif(weight: Int) = Font(
+    resId = R.font.source_serif_4,
+    weight = FontWeight(weight),
+    variationSettings = FontVariation.Settings(FontVariation.weight(weight), FontVariation.Setting("opsz", 60f)),
+)
+
+val SerifDisplay = FontFamily(sourceSerif(600), sourceSerif(700), sourceSerif(800), sourceSerif(900))
+
 val NunitoRounded = FontFamily(nunito(300), nunito(500), nunito(600), nunito(700), nunito(800), nunito(900))
 
 val Inter = FontFamily(inter(200), inter(300), inter(400), inter(500), inter(600), inter(700), inter(800))
