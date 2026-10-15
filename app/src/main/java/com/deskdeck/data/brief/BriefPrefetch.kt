@@ -31,6 +31,14 @@ import kotlinx.coroutines.launch
 /** How long before wake-up the brief is fetched. */
 val BRIEF_PREFETCH_LEAD: Duration = Duration.ofMinutes(15)
 
+/**
+ * The moment to look for the next wake-up from. After a prefetch has run (it runs [lead] before
+ * the wake-up), "the next wake-up" must be the following one, not the one about to happen: that
+ * would give a zero delay and the job would replace itself and run again and again until then.
+ */
+fun prefetchSearchFrom(now: Instant, afterRun: Boolean, lead: Duration = BRIEF_PREFETCH_LEAD): Instant =
+    if (afterRun) now.plus(lead).plus(Duration.ofMinutes(1)) else now
+
 /** Delay until the prefetch for [nextWake]: [lead] before it, or now if that's already past. */
 fun prefetchDelay(now: Instant, nextWake: Instant, lead: Duration = BRIEF_PREFETCH_LEAD): Duration {
     val at = nextWake.minus(lead)
@@ -54,9 +62,11 @@ class BriefScheduler @Inject constructor(
         }
     }
 
-    fun schedule(night: NightSettings) {
+    /** @param afterRun called by the job itself when done: queue the following morning's. */
+    fun schedule(night: NightSettings, afterRun: Boolean = false) {
         val work = WorkManager.getInstance(context)
-        val nextWake = if (night.brief) NightScheduleCalculator(ZoneId.systemDefault()).nextWakeAfter(Instant.now(), night) else null
+        val from = prefetchSearchFrom(Instant.now(), afterRun)
+        val nextWake = if (night.brief) NightScheduleCalculator(ZoneId.systemDefault()).nextWakeAfter(from, night) else null
         if (nextWake == null) {
             work.cancelUniqueWork(WORK_NAME)
             return
@@ -65,7 +75,8 @@ class BriefScheduler @Inject constructor(
             .setInitialDelay(prefetchDelay(Instant.now(), nextWake).toMillis(), TimeUnit.MILLISECONDS)
             .setConstraints(Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build())
             .build()
-        work.enqueueUniqueWork(WORK_NAME, ExistingWorkPolicy.REPLACE, request)
+        // From the job itself, REPLACE would cancel the job that's running; queue after it instead.
+        work.enqueueUniqueWork(WORK_NAME, if (afterRun) ExistingWorkPolicy.APPEND_OR_REPLACE else ExistingWorkPolicy.REPLACE, request)
     }
 
     private companion object {
@@ -88,7 +99,7 @@ class BriefPrefetchWorker @AssistedInject constructor(
         val fetched = repository.refresh(night)
         if (!fetched && runAttemptCount < MAX_RETRIES) return Result.retry()
         // Queue tomorrow's.
-        scheduler.schedule(night)
+        scheduler.schedule(night, afterRun = true)
         return Result.success()
     }
 

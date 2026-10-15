@@ -80,4 +80,19 @@ class BriefPartsTest {
         assertEquals(LocalDateTime.parse("2026-10-14T07:00").atZone(kl).toInstant(), calc.nextWakeAfter(now, NightSettings(enabled = true)))
         assertNull(calc.nextWakeAfter(now, NightSettings(enabled = false)))
     }
+
+    @Test
+    fun `after the prefetch has run, the next one is the following morning, not right away`() {
+        val kl = ZoneId.of("Asia/Kuala_Lumpur")
+        val calc = NightScheduleCalculator(kl)
+        val night = NightSettings(enabled = true)
+        // The job runs at 06:45 for the 07:00 wake-up.
+        val ranAt = LocalDateTime.parse("2026-10-14T06:45").atZone(kl).toInstant()
+        val sameMorning = calc.nextWakeAfter(prefetchSearchFrom(ranAt, afterRun = false), night)!!
+        // The bug: looking from "now" finds this morning's wake-up again, so it'd re-run at once.
+        assertEquals(Duration.ZERO, prefetchDelay(ranAt, sameMorning))
+        val next = calc.nextWakeAfter(prefetchSearchFrom(ranAt, afterRun = true), night)!!
+        assertEquals(LocalDateTime.parse("2026-10-15T07:00").atZone(kl).toInstant(), next)
+        assertEquals(Duration.ofHours(24), prefetchDelay(ranAt, next))
+    }
 }

@@ -86,6 +86,7 @@ private object Keys {
     val mediaBrowserResume = booleanPreferencesKey("source_media_browser")
     val spotifyLibrary = booleanPreferencesKey("spotify_library")
     val nowPlayingOnRight = booleanPreferencesKey("layout_now_playing_right")
+    val smoothMotion = booleanPreferencesKey("smooth_motion")
     val pixelShift = booleanPreferencesKey("burnin_pixel_shift")
     val pixelShiftDp = intPreferencesKey("burnin_pixel_shift_dp")
     val idleDim = booleanPreferencesKey("burnin_idle_dim")
@@ -133,6 +134,7 @@ internal fun readSettings(prefs: Preferences): AppSettings {
         mediaBrowserResume = prefs[Keys.mediaBrowserResume] ?: d.mediaBrowserResume,
         spotifyLibrary = prefs[Keys.spotifyLibrary] ?: d.spotifyLibrary,
         nowPlayingOnRight = prefs[Keys.nowPlayingOnRight] ?: d.nowPlayingOnRight,
+        smoothMotion = prefs[Keys.smoothMotion] ?: d.smoothMotion,
         burnIn = BurnInSettings(
             pixelShift = prefs[Keys.pixelShift] ?: b.pixelShift,
             pixelShiftDp = (prefs[Keys.pixelShiftDp] ?: b.pixelShiftDp).coerceIn(SettingsRanges.pixelShiftDp),
@@ -181,6 +183,7 @@ internal fun writeSettings(prefs: MutablePreferences, s: AppSettings) {
     prefs[Keys.mediaBrowserResume] = s.mediaBrowserResume
     prefs[Keys.spotifyLibrary] = s.spotifyLibrary
     prefs[Keys.nowPlayingOnRight] = s.nowPlayingOnRight
+    prefs[Keys.smoothMotion] = s.smoothMotion
     val b = s.burnIn
     prefs[Keys.pixelShift] = b.pixelShift
     prefs[Keys.pixelShiftDp] = b.pixelShiftDp

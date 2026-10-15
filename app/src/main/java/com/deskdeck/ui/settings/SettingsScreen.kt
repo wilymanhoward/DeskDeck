@@ -203,6 +203,9 @@ private fun ScreenSettings(s: AppSettings, vm: SettingsViewModel) {
             },
             onSelect = { v -> vm.update { it.copy(keepScreenOn = v) } },
         )
+        SwitchRow(stringResource(R.string.settings_smooth_motion), stringResource(R.string.settings_smooth_motion_detail), s.smoothMotion) { v ->
+            vm.update { it.copy(smoothMotion = v) }
+        }
     }
     SettingCard {
         SwitchRow(stringResource(R.string.settings_pixel_shift), stringResource(R.string.settings_pixel_shift_detail), b.pixelShift) { v ->

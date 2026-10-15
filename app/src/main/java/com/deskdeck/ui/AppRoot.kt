@@ -54,6 +54,7 @@ import com.deskdeck.ui.volume.VolumeHud
 import com.deskdeck.ui.adaptive.LocalDeskSize
 import com.deskdeck.ui.adaptive.currentDeskSize
 import com.deskdeck.ui.call.IncomingCallHost
+import com.deskdeck.ui.common.PreferredRefreshRate
 import kotlin.math.roundToInt
 
 /**
@@ -104,6 +105,9 @@ fun AppRoot(viewModel: AppViewModel = hiltViewModel()) {
     // DeskDeck never leaves the screen by itself: Back on the dashboard does nothing. Overlays
     // (sheet, picker, settings) register their own handlers later, so those still close with Back.
     BackHandler(enabled = accessGranted || onboardingSkipped) { }
+
+    // 60 Hz unless "Smoother motion" is on: fewer frames to draw all day.
+    PreferredRefreshRate(smooth = settings.smoothMotion)
 
     DeskDeckTheme(accent = Color(settings.accent.argb)) {
         CompositionLocalProvider(
