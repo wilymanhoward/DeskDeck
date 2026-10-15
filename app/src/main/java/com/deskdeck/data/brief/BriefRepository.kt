@@ -50,6 +50,7 @@ class BriefRepository @Inject constructor(
     private val dao: BriefDao,
     private val weatherApi: OpenMeteoApi,
     private val geocodingApi: OpenMeteoGeocodingApi,
+    private val airQualityApi: OpenMeteoAirQualityApi,
     private val marketApi: TwelveDataApi,
     private val http: OkHttpClient,
 ) {
@@ -94,7 +95,12 @@ class BriefRepository @Inject constructor(
             // Rounded to about 1 km: enough for a dot on a world map.
             latitude = Math.round(lat * 100) / 100.0,
             longitude = Math.round(lon * 100) / 100.0,
-        )
+        ).let { weather ->
+            if (!settings.briefAirQuality) return@let weather
+            // Its own request: without it the weather still shows.
+            val air = runCatching { airQualityApi.current(lat, lon).current }.getOrNull()
+            weather.copy(airQuality = air?.usAqi?.toInt(), pm25 = air?.pm25)
+        }
     }
 
     /** The device's coarse location (if allowed and chosen) or the typed city, geocoded. */
