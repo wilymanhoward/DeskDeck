@@ -8,6 +8,8 @@ import androidx.compose.runtime.State
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.CompositingStrategy
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -64,7 +66,10 @@ fun FluidBackground(
         }
     }
 
-    Canvas(modifier) {
+    // Its own offscreen layer: repainted only when it moves (15 times a second while music plays,
+    // never while paused). Every other frame (lyrics, seek bar) just reuses the image instead of
+    // filling five full-screen gradients again.
+    Canvas(modifier.graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }) {
         drawRect(TrueBlack)
         val t = time.floatValue
         val maxDim = max(size.width, size.height)

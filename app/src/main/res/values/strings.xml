@@ -135,6 +135,8 @@
     <string name="settings_keep_while_playing">While playing</string>
     <string name="settings_keep_screen_on_detail">“While playing” also keeps it on through the paused-clock wait, then lets your tablet\'s screen timeout take over.</string>
 
+    <string name="settings_smooth_motion">Smoother motion</string>
+    <string name="settings_smooth_motion_detail">Uses the screen\'s highest refresh rate (90 Hz on this tablet). Off: 60 Hz, which still looks smooth and saves battery.</string>
     <string name="settings_pixel_shift">Pixel shift</string>
     <string name="settings_pixel_shift_detail">Moves everything a few pixels about once a minute.</string>
     <string name="settings_pixel_shift_amount">Shift distance</string>

@@ -152,7 +152,9 @@ fun DashboardRoute(
     )
     KeepScreenOn(enabled = burnIn.keepScreenOn)
     val dashboardVisible = burnIn.mode == DisplayMode.ACTIVE || burnIn.mode == DisplayMode.DIMMED
-    val position = rememberPlaybackPosition(nowPlaying?.playback, nowPlaying?.track?.durationMs, everyFrame = dashboardVisible)
+    // Every frame only while the dashboard can be seen: not under the night screen, the Morning
+    // Brief or Settings (burnInEnabled is false then), where it would redraw unseen all night.
+    val position = rememberPlaybackPosition(nowPlaying?.playback, nowPlaying?.track?.durationMs, everyFrame = dashboardVisible && burnInEnabled)
     val wake = { tracker.onInteraction(force = true) }
     val audioDelay by viewModel.audioDelay.collectAsStateWithLifecycle()
     // Measured only while something plays, so the silent test track never wakes a speaker.
@@ -193,7 +195,9 @@ fun DashboardRoute(
             position = position,
             railState = railState,
             emptySource = emptySource,
-            animateBackground = foreground && dashboardVisible && burnInEnabled && picker == null && railSheet == null && !libraryOpen,
+            // Drifts only while music plays: paused for hours, a still background costs no frames
+            // (pixel shift keeps moving the UI against burn-in).
+            animateBackground = anyPlaying && foreground && dashboardVisible && burnInEnabled && picker == null && railSheet == null && !libraryOpen,
             volumeControl = { VolumeRow(Modifier.fillMaxWidth()) },
             call = callCard,
         )
