@@ -55,6 +55,7 @@ import com.deskdeck.ui.adaptive.LocalDeskSize
 import com.deskdeck.ui.adaptive.currentDeskSize
 import com.deskdeck.ui.call.IncomingCallHost
 import com.deskdeck.ui.common.PreferredRefreshRate
+import kotlinx.coroutines.delay
 import kotlin.math.roundToInt
 
 /**
@@ -86,7 +87,7 @@ fun AppRoot(viewModel: AppViewModel = hiltViewModel()) {
     val brief by briefViewModel.brief.collectAsStateWithLifecycle()
     val briefRefreshing by briefViewModel.refreshing.collectAsStateWithLifecycle()
     val briefPreview by briefViewModel.previewRequested.collectAsStateWithLifecycle()
-    var dismissedWakeMs by rememberSaveable { mutableLongStateOf(0L) }
+    val dismissedWakeMs by briefViewModel.dismissedWakeMs.collectAsStateWithLifecycle()
     val minute by rememberCurrentTime(withSeconds = false)
     val briefScheduled = remember(minute, nightState, settings.night, dismissedWakeMs) {
         briefVisible(
@@ -101,6 +102,20 @@ fun AppRoot(viewModel: AppViewModel = hiltViewModel()) {
     val briefShown = (briefPreview || briefScheduled) && !nightShown && (accessGranted || onboardingSkipped)
     LaunchedEffect(briefShown) { if (briefShown) briefViewModel.refreshIfStale(settings.night) }
     LaunchedEffect(briefPreview) { if (briefPreview) settingsOpen = false }
+
+    // Under the night screen or the Morning Brief (up for hours) the dashboard is taken away once
+    // they've faded in: nothing hidden keeps animating (breathing dots, spinners) and redrawing.
+    // It comes back as soon as they start to fade out; its data lives in ViewModels.
+    val dashboardCovered = nightShown || briefShown
+    var dashboardRemoved by remember { mutableStateOf(false) }
+    LaunchedEffect(dashboardCovered) {
+        if (dashboardCovered) {
+            delay(NIGHT_FADE_MS + 500L)
+            dashboardRemoved = true
+        } else {
+            dashboardRemoved = false
+        }
+    }
 
     // DeskDeck never leaves the screen by itself: Back on the dashboard does nothing. Overlays
     // (sheet, picker, settings) register their own handlers later, so those still close with Back.
@@ -134,7 +149,7 @@ fun AppRoot(viewModel: AppViewModel = hiltViewModel()) {
                         label = "appRoot",
                     ) { showDashboard ->
                         if (showDashboard) {
-                            DashboardRoute(
+                            if (!dashboardRemoved) DashboardRoute(
                                 notificationAccessGranted = accessGranted,
                                 onGrantAccess = openAccessSettings,
                                 onOpenSettings = { settingsOpen = true },
@@ -165,7 +180,7 @@ fun AppRoot(viewModel: AppViewModel = hiltViewModel()) {
                         exit = fadeOut(motion.fade(MotionSpec.LONG_MS)),
                     ) {
                         val done = {
-                            if (briefPreview) briefViewModel.endPreview() else dismissedWakeMs = nightState.lastWakeAt?.toEpochMilli() ?: 0L
+                            if (briefPreview) briefViewModel.endPreview() else briefViewModel.dismiss(nightState.lastWakeAt?.toEpochMilli() ?: 0L)
                         }
                         BackHandler(onBack = done)
                         MorningBriefScreen(

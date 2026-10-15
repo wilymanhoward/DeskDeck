@@ -5,7 +5,9 @@ import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.VectorConverter
 import androidx.compose.animation.core.tween
+import android.view.View
 import androidx.compose.runtime.Composable
+import java.util.WeakHashMap
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.State
@@ -125,12 +127,24 @@ fun rememberRailOpacity(enabled: Boolean): State<Float> {
     return alpha
 }
 
-/** Holds FLAG_KEEP_SCREEN_ON (via the view) while [enabled]. */
+/**
+ * Holds FLAG_KEEP_SCREEN_ON (via the view) while [enabled]. Counted per view: several screens can
+ * ask at once (dashboard, night screen, Settings), and one going away mustn't let the screen
+ * time out under another that still wants it on.
+ */
 @Composable
 fun KeepScreenOn(enabled: Boolean) {
     val view = LocalView.current
     DisposableEffect(view, enabled) {
-        view.keepScreenOn = enabled
-        onDispose { view.keepScreenOn = false }
+        if (!enabled) return@DisposableEffect onDispose { }
+        keepOnCounts[view] = (keepOnCounts[view] ?: 0) + 1
+        view.keepScreenOn = true
+        onDispose {
+            val left = ((keepOnCounts[view] ?: 1) - 1).coerceAtLeast(0)
+            keepOnCounts[view] = left
+            view.keepScreenOn = left > 0
+        }
     }
 }
+
+private val keepOnCounts = WeakHashMap<View, Int>()

@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.deskdeck.data.brief.BriefRepository
 import com.deskdeck.data.settings.NightSettings
+import com.deskdeck.data.settings.SettingsRepository
 import com.deskdeck.domain.brief.MorningBrief
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -28,7 +29,15 @@ class BriefPreview @Inject constructor() {
 class BriefViewModel @Inject constructor(
     private val repository: BriefRepository,
     private val preview: BriefPreview,
+    private val settingsRepository: SettingsRepository,
 ) : ViewModel() {
+    /** The wake-up whose brief was closed with Done; kept across restarts. */
+    val dismissedWakeMs: StateFlow<Long> = settingsRepository.briefDismissedWakeMs.stateIn(viewModelScope, SharingStarted.Eagerly, 0L)
+
+    fun dismiss(wakeEpochMs: Long) {
+        viewModelScope.launch { settingsRepository.setBriefDismissedWake(wakeEpochMs) }
+    }
+
     val brief: StateFlow<MorningBrief?> = repository.brief.stateIn(viewModelScope, SharingStarted.Eagerly, null)
     val previewRequested: StateFlow<Boolean> = preview.requested
     val hasMarketKey: Boolean get() = repository.hasMarketKey
