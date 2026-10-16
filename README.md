@@ -17,7 +17,7 @@ AMOLED tablets that sit on a desk all day. No maps, no navigation.
 - **Notifications** inside DeskDeck: small banners by the bell, and a panel with all of them.
 - **Volume HUD:** the volume buttons show DeskDeck's own glass indicator instead of the system panel.
 - **Spotify library** (optional): browse your playlists and start one on this tablet.
-- **Night Mode:** a StandBy-style bedside screen on a schedule: a big dim clock, the next alarm,
+- **Standby:** a StandBy-style bedside screen on a schedule: a big dim clock, the next alarm,
   and small music controls, in red when the room is dark.
 - **Split screen and pop-up view:** a full, a half-screen and a mini-player layout, picked by
   the window's size.
@@ -198,7 +198,7 @@ without restarting:
 | **Half** of the screen in split screen | Sidebar, Now Playing, and the line being sung with one before and after (the card alone if there's no room) |
 | **Narrow** split (1/3) or a **pop-up** window | Mini player: art, title and artist, a thin progress line, previous / play-pause / next |
 
-The album art and title move between the layouts (just a fade with Remove animations). Night Mode
+The album art and title move between the layouts (just a fade with Remove animations). Standby
 puts the clock on top with a one-row player under it, and the Morning Brief stacks its cards.
 Banners, the notification panel, the volume HUD and the ambient screen fit every size.
 
@@ -207,7 +207,7 @@ Banners, the notification panel, the volume HUD and the ambient screen fit every
 On by default under **Settings › Calls**; it uses the notification access DeskDeck already has.
 WhatsApp and WhatsApp Business are supported.
 
-- **Incoming call:** a large banner at the top, above every screen (dimmed in Night Mode), with
+- **Incoming call:** a large banner at the top, above every screen (dimmed in Standby), with
   the caller, voice or video, **Decline** and **Answer**. It stays until the call is answered, declined or missed; the × or a deliberate
   swipe up hides it. With **Hide content** (Settings › Notifications) it says "WhatsApp video call"
   instead of the name and shows no picture. When Do Not Disturb would keep the call quiet, only a
@@ -222,14 +222,21 @@ WhatsApp and WhatsApp Business are supported.
 - DeskDeck only ever sends WhatsApp's own buttons. It never fakes taps, and it opens WhatsApp only
   when you tap a button that says so.
 
-### Night Mode
+### Standby
 
-Off until you turn it on under **Settings › Night Mode**.
+Standby is a full-screen clock (StandBy style) that comes up in two ways, both under **Settings ›
+Standby**:
+
+- **Automatically when idle** (default after 5 minutes): when no music has played and the screen
+  hasn't been touched for the chosen time, any time of day. It ends as soon as music plays, or with
+  **End Standby**. In the daytime it keeps your brightness.
+- **On a night schedule** (off until you turn it on): from bedtime to wake-up, dimmed, with the
+  Morning Brief afterwards.
 
 - **Schedule:** a bedtime and wake-up time (crossing midnight is fine), the days it runs, and
   optionally a different weekend schedule. A night belongs to the day you wake up on, so "Saturday"
   means the night from Friday to Saturday.
-- **Start now / End now:** **Start Night Mode now** in Settings, or **long-press the clock** in the
+- **Start now / End now:** **Start Standby now** in Settings, or **long-press the clock** in the
   sidebar, starts it until the next wake-up; ending it early lasts until the next bedtime.
 - **The screen:** true black, the clock on the right (bold, thin or analog; 12/24 h) with the date
   and your next alarm, and the playing song on the left with play/pause and skip. Everything is
@@ -239,19 +246,19 @@ Off until you turn it on under **Settings › Night Mode**.
 - **Red tint:** on, off, or automatic: red when the light sensor reads a dark room (or all night on
   tablets without a light sensor).
 - **Clock faces:** Bold, Thin, Analog, Layered, Serif, Calendar and World (a dotted world map lit by
-  the real sun), in nine colors, chosen from live previews under **Settings › Night Mode › Clock
+  the real sun), in nine colors, chosen from live previews under **Settings › Standby › Clock
   face**. **Music on the night screen:** beside the clock with album art, a slim text bar along the
   bottom, or hidden so the face fills the screen.
-- **Tap** brightens the screen for 10 seconds and shows **End Night Mode** and the settings button.
+- **Tap** brightens the screen for 10 seconds and shows **End Standby** and the settings button.
   With TalkBack on, those stay available all the time.
-- DeskDeck shows Night Mode only while it's on screen. It doesn't turn the screen on or appear
+- DeskDeck shows Standby only while it's on screen. It doesn't turn the screen on or appear
   over other apps at bedtime (that would need a full-screen intent or an overlay).
 
 ### Morning Brief
 
 After the wake-up time of a scheduled night, DeskDeck shows a brief in place of the dashboard for
 15, 30 or 60 minutes, or until you tap **Done** (it never stays longer than 4 hours). **Settings ›
-Night Mode › Show Morning Brief now** opens it any time.
+Standby › Show Morning Brief now** opens it any time.
 
 - **Weather:** now, high/low, chance of rain and sunrise, from [Open-Meteo](https://open-meteo.com)
   (no key). Use a city name, or the tablet's approximate location (DeskDeck asks for coarse
@@ -432,7 +439,7 @@ com.deskdeck
   the panel is open.
 - **Spotify:** PKCE sign-in in a Custom Tab, tokens encrypted with a Keystore key, playlists cached
   in Room, playback started on this tablet's Spotify Connect device.
-- **Night Mode:** `NightScheduleCalculator` (pure, tested across midnight, weekend schedules,
+- **Standby:** `NightScheduleCalculator` (pure, tested across midnight, weekend schedules,
   DST and manual overrides) says whether it's night and when that next changes;
   `NightModeController` sleeps exactly until then. The Morning Brief's visibility is another pure
   function (`briefVisible`) of the last wake-up, the chosen duration and **Done**.
@@ -526,7 +533,7 @@ screen plus two overlays), and transliteration libraries (Android's built-in ICU
   past Android's hearing-safety level on headphones still needs the system's confirmation dialog,
   which DeskDeck then shows. Outside changes are detected through `VOLUME_CHANGED_ACTION`, a stable
   but undocumented system broadcast.
-- **Night Mode** only takes over while DeskDeck is on screen. It can't switch the screen on at
+- **Standby** only takes over while DeskDeck is on screen. It can't switch the screen on at
   bedtime or appear over another app without a full-screen intent or an overlay permission, which
   DeskDeck doesn't use. The next alarm comes from `AlarmManager.getNextAlarmClock()`, so it shows
   alarms set as alarm clocks (the Clock app's), not plain reminders.

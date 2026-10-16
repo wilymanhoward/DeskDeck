@@ -56,6 +56,7 @@ import com.deskdeck.ui.adaptive.currentDeskSize
 import com.deskdeck.ui.call.IncomingCallHost
 import com.deskdeck.ui.common.PreferredRefreshRate
 import kotlinx.coroutines.delay
+import android.os.SystemClock
 import kotlin.math.roundToInt
 
 /**
@@ -79,8 +80,27 @@ fun AppRoot(viewModel: AppViewModel = hiltViewModel()) {
     val shift by rememberPixelShift(settings.burnIn.pixelShift, settings.burnIn.pixelShiftDp)
     val nightViewModel: NightViewModel = hiltViewModel()
     val nightState by nightViewModel.state.collectAsStateWithLifecycle()
-    // Night Mode takes over only the dashboard (not onboarding), and only while DeskDeck is in front.
-    val nightShown = nightState.active && (accessGranted || onboardingSkipped)
+    // Standby: on the night schedule (or started by hand), or after a while with no music and no
+    // touch, any time of day. It takes over only the dashboard (not onboarding), only while
+    // DeskDeck is in front, and an idle Standby ends by itself as soon as music plays.
+    val dashboardReady = accessGranted || onboardingSkipped
+    val anyPlaying by viewModel.anyPlaying.collectAsStateWithLifecycle()
+    val idleMinutes = settings.night.idleMinutes
+    var idleStandby by rememberSaveable { mutableStateOf(false) }
+    val notPlayingSince = remember(anyPlaying) { if (anyPlaying) null else SystemClock.elapsedRealtime() }
+    val lastTouch = tracker.lastInteractionMs
+    LaunchedEffect(anyPlaying, idleMinutes, lastTouch, settingsOpen, dashboardReady) {
+        if (anyPlaying || idleMinutes <= 0 || !dashboardReady) {
+            idleStandby = false
+            return@LaunchedEffect
+        }
+        // Once up, a tap (to see the controls) doesn't end it; neither does it start over Settings.
+        if (idleStandby || settingsOpen) return@LaunchedEffect
+        val since = maxOf(notPlayingSince ?: SystemClock.elapsedRealtime(), lastTouch)
+        delay((since + idleMinutes * 60_000L - SystemClock.elapsedRealtime()).coerceAtLeast(0))
+        idleStandby = true
+    }
+    val nightShown = (nightState.active || idleStandby) && dashboardReady
 
     // Morning Brief: from the scheduled wake-up for the chosen time, until Done, or previewed.
     val briefViewModel: BriefViewModel = hiltViewModel()
@@ -172,7 +192,16 @@ fun AppRoot(viewModel: AppViewModel = hiltViewModel()) {
                         enter = fadeIn(motion.fade(NIGHT_FADE_MS)),
                         exit = fadeOut(motion.fade(NIGHT_FADE_MS)),
                     ) {
-                        NightScreen(onOpenSettings = { settingsOpen = true }, viewModel = nightViewModel)
+                        NightScreen(
+                            onOpenSettings = { settingsOpen = true },
+                            onExit = {
+                                if (nightState.active) nightViewModel.exitNight()
+                                idleStandby = false
+                            },
+                            // Dim only at night; an idle Standby in the daytime keeps your brightness.
+                            dim = nightState.active,
+                            viewModel = nightViewModel,
+                        )
                     }
                     AnimatedVisibility(
                         visible = briefShown,

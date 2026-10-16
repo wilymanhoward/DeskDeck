@@ -291,8 +291,11 @@
     <string name="settings_spotify_signing_in">Finish signing in on the Spotify page</string>
     <string name="settings_spotify_connect">Connect</string>
     <string name="settings_spotify_disconnect">Disconnect</string>
-    <!-- Night Mode -->
-    <string name="settings_cat_night">Night Mode</string>
+    <!-- Standby (called Night Mode in code) -->
+    <string name="settings_cat_night">Standby</string>
+    <string name="standby_idle">Start automatically</string>
+    <string name="standby_idle_detail">After this long with no music playing and no touch, any time of day. Ends as soon as music plays.</string>
+    <string name="standby_idle_off">Off</string>
     <string name="settings_cat_calls">Calls</string>
     <string name="settings_calls">Call awareness</string>
     <string name="settings_calls_detail">Show WhatsApp calls in DeskDeck. Uses the notification access DeskDeck already has; nothing else is needed.</string>
@@ -306,10 +309,10 @@
     <string name="settings_call_resume_music_detail">Plays again only what DeskDeck paused</string>
     <string name="settings_calls_about">Privacy and Do Not Disturb</string>
     <string name="settings_calls_about_detail">Follow Settings › Notifications: with Hide content the banner says \"WhatsApp video call\" instead of the name, and when Do Not Disturb would keep the call quiet, only a small indicator shows. DeskDeck only sends WhatsApp\'s own buttons and never opens it unless you tap a button that says so.</string>
-    <string name="night_enabled">Night Mode</string>
-    <string name="night_enabled_detail">A dim StandBy-style clock with your music at bedtime, and a Morning Brief when you wake up. Only while DeskDeck is on screen.</string>
-    <string name="night_start_now">Start Night Mode now</string>
-    <string name="night_start_now_detail">Until your next wake-up time. You can also long-press the clock in the sidebar.</string>
+    <string name="night_enabled">Night schedule</string>
+    <string name="night_enabled_detail">Standby every night from bedtime to wake-up, dimmed, and a Morning Brief when you wake up. Only while DeskDeck is on screen.</string>
+    <string name="night_start_now">Start Standby now</string>
+    <string name="night_start_now_detail">Dimmed, until your next wake-up time. You can also long-press the clock in the sidebar.</string>
     <string name="night_start">Start</string>
     <string name="night_bedtime">Bedtime</string>
     <string name="night_wake">Wake-up</string>
@@ -318,13 +321,13 @@
     <string name="night_weekend_different">Different weekend schedule</string>
     <string name="night_weekend_different_detail">For Saturday and Sunday mornings</string>
     <string name="night_days">Wake-up days</string>
-    <string name="night_days_detail">Night Mode runs on the nights before these mornings</string>
+    <string name="night_days_detail">The night schedule runs on the nights before these mornings</string>
     <string name="night_time_ok">OK</string>
     <string name="night_time_cancel">Cancel</string>
-    <string name="night_clock_format">Night clock</string>
+    <string name="night_clock_format">Clock</string>
     <string name="night_weather">Weather and air quality</string>
-    <string name="night_weather_detail">The temperature and air quality index on the clock face, updated about once an hour while Night Mode is on (the Morning Brief\'s location)</string>
-    <string name="night_music_style">Music on the night screen</string>
+    <string name="night_weather_detail">The temperature and air quality index on the clock face, updated about once an hour while Standby is on (the Morning Brief\'s location)</string>
+    <string name="night_music_style">Music in Standby</string>
     <string name="night_music_style_detail">Beside the clock with album art, a slim text bar along the bottom, or hidden so the clock face fills the screen.</string>
     <string name="night_music_panel">Beside the clock</string>
     <string name="night_music_bar">Bottom bar</string>
@@ -356,7 +359,7 @@
     <string name="night_tint_on">On</string>
     <string name="night_tint_auto">Automatic</string>
     <string name="night_brightness">Night brightness</string>
-    <string name="night_brightness_detail">Tap the night screen to brighten it for a few seconds</string>
+    <string name="night_brightness_detail">How dim Standby gets at night. Tap the screen to brighten it for a few seconds.</string>
     <string name="brief_enabled">Morning Brief</string>
     <string name="brief_enabled_detail">Weather and markets at your wake-up time</string>
     <string name="brief_duration">Show for</string>
@@ -405,12 +408,12 @@
     <string name="call_hang_up_description">Hang up the call with %1$s</string>
     <string name="call_connecting">Calling…</string>
     <string name="call_ended">Call ended</string>
-    <string name="night_toggle">Start or end Night Mode</string>
-    <string name="night_exit">End Night Mode</string>
+    <string name="night_toggle">Start or end Standby</string>
+    <string name="night_exit">End Standby</string>
     <string name="night_clock_description">%1$s, %2$s</string>
     <string name="night_alarm_description">Next alarm %1$s</string>
     <string name="night_new_notifications">New notifications</string>
-    <string name="night_show_controls">show Night Mode controls</string>
+    <string name="night_show_controls">show Standby controls</string>
     <string name="brief_your_area">Your area</string>
     <!-- Morning Brief -->
     <string name="brief_good_morning">Good morning</string>
@@ -420,7 +423,7 @@
     <string name="brief_show_now">Show Morning Brief now</string>
     <string name="brief_show_now_detail">See it any time, with the latest data</string>
     <string name="brief_show">Show</string>
-    <string name="brief_weather_missing">Set a city or allow location in Settings › Night Mode</string>
+    <string name="brief_weather_missing">Set a city or allow location in Settings › Standby</string>
     <string name="brief_market_no_key">Add a Twelve Data key to local.properties (twelvedata.apiKey) for market data. See the README.</string>
     <string name="brief_market_missing">Market data isn\'t available yet</string>
     <string name="brief_chart_missing">No intraday data</string>

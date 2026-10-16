@@ -70,6 +70,7 @@ private object Keys {
     val nightMusicStyle = stringPreferencesKey("night_music_style")
     val briefAirQuality = booleanPreferencesKey("brief_air_quality")
     val nightWeather = booleanPreferencesKey("night_weather")
+    val standbyIdleMinutes = intPreferencesKey("standby_idle_minutes")
     val nightRedTint = stringPreferencesKey("night_red_tint")
     val nightBrightness = floatPreferencesKey("night_brightness")
     val brief = booleanPreferencesKey("brief_enabled")
@@ -247,6 +248,7 @@ private fun readNight(prefs: Preferences): NightSettings {
         musicStyle = enumOr(prefs[Keys.nightMusicStyle], d.musicStyle),
         briefAirQuality = prefs[Keys.briefAirQuality] ?: d.briefAirQuality,
         nightWeather = prefs[Keys.nightWeather] ?: d.nightWeather,
+        idleMinutes = (prefs[Keys.standbyIdleMinutes] ?: d.idleMinutes).coerceIn(0, 60),
         redTint = enumOr(prefs[Keys.nightRedTint], d.redTint),
         brightness = (prefs[Keys.nightBrightness] ?: d.brightness).coerceIn(SettingsRanges.nightBrightness),
         brief = prefs[Keys.brief] ?: d.brief,
@@ -275,6 +277,7 @@ private fun writeNight(prefs: MutablePreferences, n: NightSettings) {
     prefs[Keys.nightMusicStyle] = n.musicStyle.name
     prefs[Keys.briefAirQuality] = n.briefAirQuality
     prefs[Keys.nightWeather] = n.nightWeather
+    prefs[Keys.standbyIdleMinutes] = n.idleMinutes
     prefs[Keys.nightRedTint] = n.redTint.name
     prefs[Keys.nightBrightness] = n.brightness
     prefs[Keys.brief] = n.brief

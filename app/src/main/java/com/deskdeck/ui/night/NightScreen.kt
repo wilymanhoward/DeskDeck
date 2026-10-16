@@ -143,7 +143,13 @@ private val DRIFT_RANGE = 14.dp
  * shows a small way out.
  */
 @Composable
-fun NightScreen(onOpenSettings: () -> Unit, viewModel: NightViewModel = hiltViewModel()) {
+fun NightScreen(
+    onOpenSettings: () -> Unit,
+    onExit: () -> Unit = {},
+    /** At night (schedule or started by hand): the night brightness. Idle in the daytime: as is. */
+    dim: Boolean = true,
+    viewModel: NightViewModel = hiltViewModel(),
+) {
     val night = LocalAppSettings.current.night
     val nowPlaying by viewModel.nowPlaying.collectAsStateWithLifecycle()
     val notifications by viewModel.notificationCount.collectAsStateWithLifecycle()
@@ -162,7 +168,7 @@ fun NightScreen(onOpenSettings: () -> Unit, viewModel: NightViewModel = hiltView
         delay(WAKE_MS)
         awake = false
     }
-    WindowBrightness(if (awake) maxOf(night.brightness * 6, 0.35f) else night.brightness)
+    if (dim) WindowBrightness(if (awake) maxOf(night.brightness * 6, 0.35f) else night.brightness)
     // With TalkBack the way out stays available; it can't be found by a sighted first tap.
     val touchExploration by rememberTouchExploration()
 
@@ -171,7 +177,8 @@ fun NightScreen(onOpenSettings: () -> Unit, viewModel: NightViewModel = hiltView
         RedTint.ON -> true
         RedTint.OFF -> false
         // No sensor: Night Mode is on because it's night, so red.
-        RedTint.AUTO -> lux?.let { it < DARK_ROOM_LUX } ?: true
+        // No light sensor: red at night, not in the daytime.
+        RedTint.AUTO -> lux?.let { it < DARK_ROOM_LUX } ?: dim
     }
     val target = if (red) RedInk else WhiteInk
     val main by animateColorAsState(target.main, motion.color(), label = "inkMain")
@@ -218,7 +225,7 @@ fun NightScreen(onOpenSettings: () -> Unit, viewModel: NightViewModel = hiltView
             modifier = Modifier.align(Alignment.TopEnd).padding(20.dp),
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                TextButton(onClick = viewModel::exitNight) { Text(exitLabel, color = ink.main) }
+                TextButton(onClick = onExit) { Text(exitLabel, color = ink.main) }
                 IconButton(onClick = onOpenSettings, modifier = Modifier.size(56.dp)) {
                     Icon(painterResource(R.drawable.ic_settings), stringResource(R.string.rail_settings), tint = ink.soft)
                 }
