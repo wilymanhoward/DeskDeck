@@ -74,6 +74,16 @@ import kotlin.math.roundToInt
 internal fun NightSettingsSection(n: NightSettings, vm: SettingsViewModel) {
     val context = LocalContext.current
     SettingCard {
+        ChoiceRow(
+            title = stringResource(R.string.standby_idle),
+            subtitle = stringResource(R.string.standby_idle_detail),
+            options = SettingsRanges.standbyIdleChoices,
+            selected = n.idleMinutes,
+            label = { if (it == 0) stringResource(R.string.standby_idle_off) else stringResource(R.string.settings_minutes, it) },
+            onSelect = { v -> vm.updateNight { it.copy(idleMinutes = v) } },
+        )
+    }
+    SettingCard {
         SwitchRow(stringResource(R.string.night_enabled), stringResource(R.string.night_enabled_detail), n.enabled) { v ->
             vm.updateNight { it.copy(enabled = v) }
         }

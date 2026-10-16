@@ -108,6 +108,8 @@ data class AppSettings(
 /** Allowed values, shared by the settings UI and input validation. */
 object SettingsRanges {
     val minuteChoices = listOf(1, 3, 5, 10)
+    /** Standby when idle: 0 = off. */
+    val standbyIdleChoices = listOf(0, 1, 3, 5, 10, 15)
     val pausedMinuteChoices = listOf(1, 3, 5, 10, 15)
     val pixelShiftDp = 2..10
     val lyricsFontSizeSp = 22..42

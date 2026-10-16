@@ -46,6 +46,8 @@ data class NightSettings(
     val musicStyle: NightMusicStyle = NightMusicStyle.PANEL,
     /** The temperature and air quality on the clock face. */
     val nightWeather: Boolean = true,
+    /** Start Standby after this many minutes with no music and no touch, any time of day; 0 = off. */
+    val idleMinutes: Int = 5,
     val redTint: RedTint = RedTint.AUTO,
     /** Window brightness at night, 0.01..0.5. */
     val brightness: Float = 0.05f,

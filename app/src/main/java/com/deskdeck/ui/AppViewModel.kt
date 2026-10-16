@@ -6,6 +6,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.deskdeck.data.settings.AppSettings
 import com.deskdeck.data.settings.SettingsRepository
+import com.deskdeck.media.MediaRepository
 import com.deskdeck.media.NotificationAccess
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
@@ -17,7 +18,11 @@ import kotlinx.coroutines.flow.stateIn
 class AppViewModel @Inject constructor(
     private val notificationAccess: NotificationAccess,
     settingsRepository: SettingsRepository,
+    media: MediaRepository,
 ) : ViewModel() {
+
+    /** Any app playing, shown or not: Standby starts only after a while with none. */
+    val anyPlaying: StateFlow<Boolean> = media.anyPlaying
 
     val notificationAccessGranted: StateFlow<Boolean> = notificationAccess.granted
 
