@@ -6,6 +6,8 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <!-- Retry lyrics as soon as the connection comes back. -->
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <!-- Direct routing of the selected music app; enabled separately through USB setup. -->
+    <uses-permission android:name="android.permission.MEDIA_ROUTING_CONTROL" />
     <!-- Optional, asked for in Settings › Night Mode: approximate area for the morning weather. -->
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
 

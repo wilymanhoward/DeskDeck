@@ -93,6 +93,7 @@ import kotlinx.coroutines.delay
 private enum class Category(val titleRes: Int) {
     SCREEN(R.string.settings_cat_screen),
     SOURCES(R.string.settings_cat_sources),
+    AUDIO(R.string.audio_output),
     NOTIFICATIONS(R.string.settings_cat_notifications),
     CALLS(R.string.settings_cat_calls),
     LYRICS(R.string.settings_cat_lyrics),
@@ -164,6 +165,7 @@ fun SettingsScreen(onBack: () -> Unit, viewModel: SettingsViewModel = hiltViewMo
                 when (category) {
                     Category.SCREEN -> ScreenSettings(settings, viewModel)
                     Category.SOURCES -> SourceSettings(settings, viewModel)
+                    Category.AUDIO -> com.deskdeck.ui.components.AudioOutputOptions()
                     Category.NOTIFICATIONS -> BannerSettings(settings, viewModel)
                     Category.CALLS -> CallSettingsSection(settings, viewModel)
                     Category.LYRICS -> LyricsSettings(settings, viewModel)

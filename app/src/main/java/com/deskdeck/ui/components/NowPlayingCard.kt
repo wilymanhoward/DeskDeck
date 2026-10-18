@@ -105,7 +105,7 @@ fun NowPlayingCard(
     val motion = LocalMotion.current
     BoxWithConstraints(modifier = modifier.glass(RoundedCornerShape(Dimens.cardCorner))) {
         val fontScale = LocalDensity.current.fontScale.coerceAtLeast(1f)
-        val minHeight = (if (volumeControl != null) 496.dp else 440.dp) * fontScale
+        val minHeight = (if (volumeControl != null) 552.dp else 496.dp) * fontScale
         val contentModifier = if (maxHeight < minHeight) {
             Modifier.fillMaxSize().verticalScroll(rememberScrollState()).height(minHeight)
         } else Modifier.fillMaxSize()
@@ -215,6 +215,7 @@ private fun NowPlayingContent(
             Spacer(Modifier.height(4.dp))
             volumeControl()
         }
+        AudioOutputButton()
     }
 }
 
