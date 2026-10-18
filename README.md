@@ -157,6 +157,13 @@ button instead of the player.
   - The bell opens the notification panel (see below).
 - **Lyrics:**
   - The current line fills word by word as it's sung; instrumental breaks show three dots.
+  - **Audio output** below the playback controls (also in Settings) lists outputs reported by
+    Android for the selected music app. Tap an available device to switch; the active selection
+    updates after Android confirms it. Requires Android 15+ and one-time USB setup:
+    `adb shell cmd appops set --uid com.deskdeck MEDIA_ROUTING_CONTROL allow`.
+    Revoke with the same command ending in `default`. Remote destinations depend on what the
+    music app exposes. Switching a local output can affect other media too; Samsung's
+    **Separate app sound** is still needed for music-only separation.
   - Lyrics wait for the sound to reach you: DeskDeck measures the audio output's delay (about
     0.4 s over Bluetooth) and shifts them by it. If a speaker buffers more than it reports, set
     **Settings › Lyrics › Extra delay** once; it's remembered for that speaker only.
