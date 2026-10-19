@@ -80,27 +80,6 @@ fun AppRoot(viewModel: AppViewModel = hiltViewModel()) {
     val shift by rememberPixelShift(settings.burnIn.pixelShift, settings.burnIn.pixelShiftDp)
     val nightViewModel: NightViewModel = hiltViewModel()
     val nightState by nightViewModel.state.collectAsStateWithLifecycle()
-    // Standby: on the night schedule (or started by hand), or after a while with no music and no
-    // touch, any time of day. It takes over only the dashboard (not onboarding), only while
-    // DeskDeck is in front, and an idle Standby ends by itself as soon as music plays.
-    val dashboardReady = accessGranted || onboardingSkipped
-    val anyPlaying by viewModel.anyPlaying.collectAsStateWithLifecycle()
-    val idleMinutes = settings.night.idleMinutes
-    var idleStandby by rememberSaveable { mutableStateOf(false) }
-    val notPlayingSince = remember(anyPlaying) { if (anyPlaying) null else SystemClock.elapsedRealtime() }
-    val lastTouch = tracker.lastInteractionMs
-    LaunchedEffect(anyPlaying, idleMinutes, lastTouch, settingsOpen, dashboardReady) {
-        if (anyPlaying || idleMinutes <= 0 || !dashboardReady) {
-            idleStandby = false
-            return@LaunchedEffect
-        }
-        // Once up, a tap (to see the controls) doesn't end it; neither does it start over Settings.
-        if (idleStandby || settingsOpen) return@LaunchedEffect
-        val since = maxOf(notPlayingSince ?: SystemClock.elapsedRealtime(), lastTouch)
-        delay((since + idleMinutes * 60_000L - SystemClock.elapsedRealtime()).coerceAtLeast(0))
-        idleStandby = true
-    }
-    val nightShown = (nightState.active || idleStandby) && dashboardReady
 
     // Morning Brief: from the scheduled wake-up for the chosen time, until Done, or previewed.
     val briefViewModel: BriefViewModel = hiltViewModel()
@@ -119,9 +98,32 @@ fun AppRoot(viewModel: AppViewModel = hiltViewModel()) {
             dismissedWake = dismissedWakeMs.takeIf { it > 0 }?.let(Instant::ofEpochMilli),
         )
     }
-    val briefShown = (briefPreview || briefScheduled) && !nightShown && (accessGranted || onboardingSkipped)
+    // Only the real night (schedule or Start now) holds the brief back; an idle Standby gives way.
+    val briefShown = (briefPreview || briefScheduled) && !nightState.active && (accessGranted || onboardingSkipped)
     LaunchedEffect(briefShown) { if (briefShown) briefViewModel.refreshIfStale(settings.night) }
     LaunchedEffect(briefPreview) { if (briefPreview) settingsOpen = false }
+
+    // Standby: on the night schedule (or started by hand), or after a while with no music and no
+    // touch, any time of day. It takes over only the dashboard (not onboarding), only while
+    // DeskDeck is in front, and an idle Standby ends by itself as soon as music plays.
+    val dashboardReady = accessGranted || onboardingSkipped
+    val anyPlaying by viewModel.anyPlaying.collectAsStateWithLifecycle()
+    val idleMinutes = settings.night.idleMinutes
+    var idleStandby by rememberSaveable { mutableStateOf(false) }
+    val notPlayingSince = remember(anyPlaying) { if (anyPlaying) null else SystemClock.elapsedRealtime() }
+    val lastTouch = tracker.lastInteractionMs
+    LaunchedEffect(anyPlaying, idleMinutes, lastTouch, settingsOpen, dashboardReady, briefShown) {
+        if (anyPlaying || idleMinutes <= 0 || !dashboardReady || briefShown) {
+            idleStandby = false
+            return@LaunchedEffect
+        }
+        // Once up, a tap (to see the controls) doesn't end it; neither does it start over Settings.
+        if (idleStandby || settingsOpen) return@LaunchedEffect
+        val since = maxOf(notPlayingSince ?: SystemClock.elapsedRealtime(), lastTouch)
+        delay((since + idleMinutes * 60_000L - SystemClock.elapsedRealtime()).coerceAtLeast(0))
+        idleStandby = true
+    }
+    val nightShown = (nightState.active || (idleStandby && !briefShown)) && dashboardReady
 
     // Under the night screen or the Morning Brief (up for hours) the dashboard is taken away once
     // they've faded in: nothing hidden keeps animating (breathing dots, spinners) and redrawing.
