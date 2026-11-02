@@ -99,7 +99,8 @@ fun AudioOutputOptions(viewModel: AudioOutputViewModel = hiltViewModel()) {
         Column(Modifier.fillMaxWidth().selectableGroup(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             state.devices.forEach { device ->
                 key(device.id) {
-                    AudioOutputRow(device, pending = state.pending == device.id, enabled = device.available && state.pending == null) {
+                    // While Spotify plays on another device, the tablet's own output isn't where it plays: no tick.
+                    AudioOutputRow(device.copy(selected = device.selected && remoteDevice == null), pending = state.pending == device.id, enabled = device.available && state.pending == null) {
                         viewModel.select(device.id)
                     }
                 }
