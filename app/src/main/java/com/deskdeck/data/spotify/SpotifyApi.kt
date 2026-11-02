@@ -79,7 +79,32 @@ data class TokenResponse(
 )
 
 @JsonClass(generateAdapter = true)
-data class PlayerJson(@Json(name = "is_playing") val isPlaying: Boolean = false)
+data class PlayerJson(
+    @Json(name = "is_playing") val isPlaying: Boolean = false,
+    @Json(name = "progress_ms") val progressMs: Long? = null,
+    val item: PlayerItemJson? = null,
+    val device: PlayerDeviceJson? = null,
+)
+
+@JsonClass(generateAdapter = true)
+data class PlayerItemJson(
+    val name: String? = null,
+    @Json(name = "duration_ms") val durationMs: Long? = null,
+    val artists: List<PlayerArtistJson>? = null,
+    val album: PlayerAlbumJson? = null,
+)
+
+@JsonClass(generateAdapter = true)
+data class PlayerArtistJson(val name: String? = null)
+
+@JsonClass(generateAdapter = true)
+data class PlayerAlbumJson(val name: String? = null, val images: List<PlayerImageJson>? = null)
+
+@JsonClass(generateAdapter = true)
+data class PlayerImageJson(val url: String)
+
+@JsonClass(generateAdapter = true)
+data class PlayerDeviceJson(val id: String? = null, val name: String? = null, val type: String? = null)
 
 @JsonClass(generateAdapter = true)
 data class SpotifyUser(

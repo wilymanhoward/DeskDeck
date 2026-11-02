@@ -78,7 +78,8 @@ class DashboardViewModel @Inject constructor(
     /** Measures the output latency if this route hasn't been yet; call while music plays. */
     fun measureAudioDelay() = outputLatency.measureIfNeeded()
 
-    val nowPlaying: StateFlow<NowPlaying?> = media.nowPlaying
+    /** Includes Spotify on another device (song and position from Spotify's Web API). */
+    val nowPlaying: StateFlow<NowPlaying?> = listening.nowPlaying
 
     /** Any app playing, shown or not: what burn-in should treat as "music is on". */
     /** Music playing anywhere (incl. Spotify on another device), for the burn-in timers. */
@@ -120,7 +121,7 @@ class DashboardViewModel @Inject constructor(
 
     private val retryRequests = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
 
-    private val lyricsTrack: StateFlow<Track?> = media.nowPlaying
+    private val lyricsTrack: StateFlow<Track?> = listening.nowPlaying
         .map { it?.track }
         .distinctUntilChanged { old, new -> old?.id == new?.id && old?.kind == new?.kind }
         .stateIn(viewModelScope, SharingStarted.Eagerly, null)

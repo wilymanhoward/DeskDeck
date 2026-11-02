@@ -59,11 +59,23 @@ class SpotifyLibrary @Inject constructor(
         }
     }
 
-    /** Whether Spotify plays on any of the account's devices; null when unknown (offline, signed out). */
-    suspend fun playingAnywhere(): Boolean? = when (val result = call { api.player(it) }) {
+    /** The account's playback on any device; null when nothing is active or it's unknown (offline, signed out). */
+    suspend fun currentPlayback(): RemotePlayback? = when (val result = call { api.player(it) }) {
         // 204 (nothing active) comes back without a body, not as a PlayerJson.
-        is ApiResult.Ok -> (result.value as? PlayerJson)?.isPlaying == true
+        is ApiResult.Ok -> (result.value as? PlayerJson)?.let { it.toRemote().copy(onThisDevice = isThisDevice(it.device)) }
         is ApiResult.Failed -> null
+    }
+
+    /** The same rules as [findThisDevice]: the remembered id, else this tablet's name, else a tablet. */
+    private fun isThisDevice(device: PlayerDeviceJson?): Boolean {
+        device ?: return false
+        val remembered = devicePrefs.getString(KEY_DEVICE_ID, null)
+        if (remembered != null) return device.id == remembered
+        val names = setOfNotNull(
+            Settings.Global.getString(context.contentResolver, Settings.Global.DEVICE_NAME),
+            Build.MODEL,
+        ).map { it.lowercase() }
+        return device.name?.lowercase() in names || device.type.equals("Tablet", ignoreCase = true)
     }
 
     /** `/me`, for sign-in. */

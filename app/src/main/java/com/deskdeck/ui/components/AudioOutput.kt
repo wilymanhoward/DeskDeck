@@ -86,6 +86,7 @@ fun AudioOutputButton() {
 @Composable
 fun AudioOutputOptions(viewModel: AudioOutputViewModel = hiltViewModel()) {
     val state by viewModel.state.collectAsStateWithLifecycle()
+    val remoteDevice by viewModel.remoteDevice.collectAsStateWithLifecycle()
     DisposableEffect(viewModel) {
         viewModel.start()
         onDispose { viewModel.stop() }
@@ -93,6 +94,8 @@ fun AudioOutputOptions(viewModel: AudioOutputViewModel = hiltViewModel()) {
     Column(verticalArrangement = Arrangement.spacedBy(20.dp)) {
         Text(state.source?.let { stringResource(R.string.audio_output_for_app, it) }
             ?: stringResource(R.string.audio_output_system), style = MaterialTheme.typography.bodyMedium, color = MutedText)
+        // Spotify Connect: the music comes out of another device, not this tablet.
+        remoteDevice?.let { RemoteDeviceRow(it) }
         Column(Modifier.fillMaxWidth().selectableGroup(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             state.devices.forEach { device ->
                 key(device.id) {
@@ -111,6 +114,26 @@ fun AudioOutputOptions(viewModel: AudioOutputViewModel = hiltViewModel()) {
         if (issue != null) Text(stringResource(issue), style = MaterialTheme.typography.bodyMedium, color = MutedText)
         else if (state.devices.isEmpty()) Text(stringResource(R.string.audio_output_empty), style = MaterialTheme.typography.bodyMedium, color = MutedText)
         Text(stringResource(R.string.audio_output_routing_note), style = MaterialTheme.typography.bodySmall, color = MutedText)
+    }
+}
+
+/** Where Spotify is actually playing, when it's another device; shown like a selected output. */
+@Composable
+private fun RemoteDeviceRow(name: String) {
+    Row(
+        Modifier.fillMaxWidth()
+            .clip(RoundedCornerShape(22.dp)).background(Color.White.copy(alpha = 0.10f))
+            .heightIn(min = 80.dp).padding(horizontal = 16.dp, vertical = 14.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Box(Modifier.size(44.dp).background(Color.White.copy(alpha = 0.06f), RoundedCornerShape(14.dp)), contentAlignment = Alignment.Center) {
+            SpeakerIcon(SpeakerLevel.HIGH, color = CappedWhite, modifier = Modifier.size(24.dp))
+        }
+        Spacer(Modifier.width(16.dp))
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+            Text(name, style = MaterialTheme.typography.titleMedium, color = CappedWhite)
+            Text(stringResource(R.string.audio_output_spotify_connect), style = MaterialTheme.typography.bodySmall, color = MutedText)
+        }
     }
 }
 

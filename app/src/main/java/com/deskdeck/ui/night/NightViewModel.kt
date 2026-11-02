@@ -16,6 +16,7 @@ import kotlinx.coroutines.flow.stateIn
 import com.deskdeck.data.settings.SettingsRepository
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
+import com.deskdeck.data.spotify.ListeningState
 import javax.inject.Inject
 import kotlinx.coroutines.flow.StateFlow
 
@@ -27,12 +28,13 @@ class NightViewModel @Inject constructor(
     notifications: NotificationCounter,
     private val brief: BriefRepository,
     private val settings: SettingsRepository,
+    listening: ListeningState,
 ) : ViewModel() {
     /** The World face marks the Morning Brief's weather place. */
     val weather: StateFlow<WeatherBrief?> = brief.brief.map { it?.weather }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
     val state: StateFlow<NightState> = night.state
-    val nowPlaying: StateFlow<NowPlaying?> = media.nowPlaying
+    val nowPlaying: StateFlow<NowPlaying?> = listening.nowPlaying
     val notificationCount: StateFlow<Int> = notifications.count
 
     fun playPause() = media.playPause()

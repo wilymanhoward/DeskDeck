@@ -10,6 +10,11 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
+import com.deskdeck.data.spotify.ListeningState
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
 import javax.inject.Inject
 import java.util.Locale
 import kotlinx.coroutines.Job
@@ -33,9 +38,14 @@ data class AudioOutputState(
 class AudioOutputViewModel @Inject constructor(
     @param:ApplicationContext private val context: Context,
     private val sessions: MediaSessionRepository,
+    listening: ListeningState,
 ) : ViewModel() {
     private val mutableState = MutableStateFlow(AudioOutputState())
     val state = mutableState.asStateFlow()
+
+    /** Spotify playing on another device (Spotify Connect): its name, e.g. the laptop's. */
+    val remoteDevice: StateFlow<String?> = listening.remote.map { it?.takeIf { r -> r.isPlaying && !r.onThisDevice }?.deviceName }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
     private var router: MediaRouter2? = null
     private var watch: Job? = null
     private var timeout: Job? = null

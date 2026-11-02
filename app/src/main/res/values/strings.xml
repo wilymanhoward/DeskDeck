@@ -466,6 +466,7 @@
     <string name="audio_output_failed">The speaker could not be selected. Check its connection and try again.</string>
     <string name="audio_output_empty">No audio outputs are available yet. Connect your speaker and keep this panel open.</string>
     <string name="audio_output_routing_note">Other apps may follow when you change the tablet’s output.</string>
+    <string name="audio_output_spotify_connect">Spotify is playing here (Spotify Connect)</string>
     <string name="audio_output_current">Current output</string>
     <string name="audio_output_connecting">Connecting…</string>
 </resources>
