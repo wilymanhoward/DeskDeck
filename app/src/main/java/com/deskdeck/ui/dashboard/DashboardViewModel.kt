@@ -12,6 +12,7 @@ import com.deskdeck.launcher.AppLauncher
 import com.deskdeck.launcher.KnownApps
 import com.deskdeck.launcher.RailAppsRepository
 import com.deskdeck.media.AppLabels
+import com.deskdeck.data.spotify.ListeningState
 import com.deskdeck.media.MediaRepository
 import com.deskdeck.media.NotificationAccess
 import com.deskdeck.data.settings.SettingsRepository
@@ -59,6 +60,7 @@ class DashboardViewModel @Inject constructor(
     private val outputLatency: OutputLatency,
     private val settingsRepository: SettingsRepository,
     private val nightMode: NightModeController,
+    listening: ListeningState,
 ) : ViewModel(), DashboardActions {
 
     override fun onToggleNight() {
@@ -79,7 +81,11 @@ class DashboardViewModel @Inject constructor(
     val nowPlaying: StateFlow<NowPlaying?> = media.nowPlaying
 
     /** Any app playing, shown or not: what burn-in should treat as "music is on". */
-    val anyPlaying: StateFlow<Boolean> = media.anyPlaying
+    /** Music playing anywhere (incl. Spotify on another device), for the burn-in timers. */
+    val anyPlaying: StateFlow<Boolean> = listening.anyPlaying
+
+    /** Playing on this tablet: only then is its audio output measured. */
+    val playingHere: StateFlow<Boolean> = media.anyPlaying
 
     val railState: StateFlow<RailState> =
         combine(media.selection, media.nowPlaying, media.sessionPackages) { selection, np, packages ->

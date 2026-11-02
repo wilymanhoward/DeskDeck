@@ -106,6 +106,7 @@ fun DashboardRoute(
     val railState by viewModel.railState.collectAsStateWithLifecycle()
     val emptySource by viewModel.emptySource.collectAsStateWithLifecycle()
     val anyPlaying by viewModel.anyPlaying.collectAsStateWithLifecycle()
+    val playingHere by viewModel.playingHere.collectAsStateWithLifecycle()
     val motion = LocalMotion.current
     var foreground by remember { mutableStateOf(false) }
     LifecycleResumeEffect(Unit) {
@@ -158,8 +159,8 @@ fun DashboardRoute(
     val wake = { tracker.onInteraction(force = true) }
     val audioDelay by viewModel.audioDelay.collectAsStateWithLifecycle()
     // Measured only while something plays, so the silent test track never wakes a speaker.
-    LaunchedEffect(anyPlaying, foreground, audioDelay.measured) {
-        if (anyPlaying && foreground && !audioDelay.measured) viewModel.measureAudioDelay()
+    LaunchedEffect(playingHere, foreground, audioDelay.measured) {
+        if (playingHere && foreground && !audioDelay.measured) viewModel.measureAudioDelay()
     }
     val audioRoute by viewModel.audioRoute.collectAsStateWithLifecycle()
     val lyricsDelay = (if (settings.lyricsLatencyCompensation) audioDelay.ms else 0L) +

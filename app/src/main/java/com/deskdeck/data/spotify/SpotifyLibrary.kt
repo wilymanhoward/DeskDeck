@@ -59,6 +59,13 @@ class SpotifyLibrary @Inject constructor(
         }
     }
 
+    /** Whether Spotify plays on any of the account's devices; null when unknown (offline, signed out). */
+    suspend fun playingAnywhere(): Boolean? = when (val result = call { api.player(it) }) {
+        // 204 (nothing active) comes back without a body, not as a PlayerJson.
+        is ApiResult.Ok -> (result.value as? PlayerJson)?.isPlaying == true
+        is ApiResult.Failed -> null
+    }
+
     /** `/me`, for sign-in. */
     suspend fun loadProfile(accessToken: String): SpotifyUser? = runCatching {
         api.me("Bearer $accessToken").body()

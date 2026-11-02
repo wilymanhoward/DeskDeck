@@ -27,6 +27,10 @@ interface SpotifyApi {
         @Query("offset") offset: Int = 0,
     ): Response<PlaylistPage>
 
+    /** The account's current playback on any device; 204 (no body) when nothing is active. */
+    @GET("me/player")
+    suspend fun player(@Header("Authorization") auth: String): Response<PlayerJson>
+
     @GET("me/player/devices")
     suspend fun devices(@Header("Authorization") auth: String): Response<DeviceList>
 
@@ -73,6 +77,9 @@ data class TokenResponse(
     @Json(name = "refresh_token") val refreshToken: String?,
     val scope: String?,
 )
+
+@JsonClass(generateAdapter = true)
+data class PlayerJson(@Json(name = "is_playing") val isPlaying: Boolean = false)
 
 @JsonClass(generateAdapter = true)
 data class SpotifyUser(

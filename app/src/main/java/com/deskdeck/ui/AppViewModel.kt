@@ -6,7 +6,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.deskdeck.data.settings.AppSettings
 import com.deskdeck.data.settings.SettingsRepository
-import com.deskdeck.media.MediaRepository
+import com.deskdeck.data.spotify.ListeningState
 import com.deskdeck.media.NotificationAccess
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
@@ -18,11 +18,11 @@ import kotlinx.coroutines.flow.stateIn
 class AppViewModel @Inject constructor(
     private val notificationAccess: NotificationAccess,
     settingsRepository: SettingsRepository,
-    media: MediaRepository,
+    listening: ListeningState,
 ) : ViewModel() {
 
-    /** Any app playing, shown or not: Standby starts only after a while with none. */
-    val anyPlaying: StateFlow<Boolean> = media.anyPlaying
+    /** Music playing anywhere (incl. Spotify on another device): Standby starts only after a while with none. */
+    val anyPlaying: StateFlow<Boolean> = listening.anyPlaying
 
     val notificationAccessGranted: StateFlow<Boolean> = notificationAccess.granted
 
